@@ -44,12 +44,8 @@
 | **Nome** | True Deal |
 | **Handle** | @truedeal |
 | **Domínio** | truedeal.app |
-| **Tagline Principal** | "Don't trust. Make a Deal." |
-| **Taglines Alternativas** | "Make a Deal." / "Make a true Deal." / "Deal with it." |
-
-### Por que True Deal?
-
-"Deal" puro se perde na amplitude da língua inglesa. O adjetivo "True" qualifica e posiciona: não é qualquer acordo, é um acordo verdadeiro. Referência implícita ao "Don't trust, verify" do Bitcoin — que vira tagline sem alienar o público não-nativo.
+| **Tagline Principal** | "Don't trust. Make a True Deal." |
+| **Taglines Alternativas** | "The real deal." / "Make a true Deal." / "True Deal with it." |
 
 ---
 
@@ -63,7 +59,7 @@ True Deal é um aplicativo mobile que atua como **árbitro digital automatizado*
 
 - ✅ Provas digitais verificáveis (APIs de redes sociais, saúde, GPS)
 - ✅ Smart contracts para garantir distribuição automática
-- ✅ Pagamento dual (Pix + Cripto)
+- ✅ Pagamento dual (Fiat + Cripto)
 - ✅ UX acessível para público não-nativo Web3
 
 ---
@@ -284,7 +280,7 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 ## 👤 Founder
 
-**Lukas Rocha** (São Pedro, LKR)
+**Lukas Rocha** (LKR)
 
 - 📍 Salvador, BA
 - 🌐 Twitter: [@lkrcripto](https://twitter.com/lkrcripto)
@@ -301,30 +297,10 @@ O projeto une visão de produto e comunicação do founder com sua rede ativa em
 
 ---
 
-## 🤝 Contribuição
-
-Contribuições são bem-vindas! Siga os passos abaixo:
-
-1. Fork este repositório
-2. Crie uma branch (`git checkout -b feature/nova-feature`)
-3. Commit suas mudanças (`git commit -m 'Add nova feature'`)
-4. Push para a branch (`git push origin feature/nova-feature`)
-5. Abra um Pull Request
-
-Consulte o arquivo [CONTRIBUTING.md](CONTRIBUTING.md) para mais detalhes.
-
----
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
----
-
 <div align="center">
 
 Desenvolvido com ❤️ por [Lukas Rocha](https://github.com/lkr0102)
 
-*Don't trust. Make a Deal.*
+*Don't trust. Make a True Deal.*
 
 </div>
