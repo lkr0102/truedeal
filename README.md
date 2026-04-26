@@ -10,7 +10,7 @@
 
 **True Deal** — O app que faz o seu combinado valer de verdade.
 
-*"Don't trust. Make a Deal."*
+*"Don't trust. Make a True Deal."*
 
 </div>
 
