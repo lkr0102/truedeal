@@ -6,7 +6,7 @@ import {
   Bell, Home, Compass, Wallet, User, Plus,
   Users, DollarSign, Clock, Activity, MapPin,
   Camera, TrendingUp, Heart, Trophy, Star,
-  Lock, LockOpen, CheckCircle2,
+  Lock, LockOpen, CheckCircle2, ChevronLeft, ChevronRight,
 } from "lucide-react"
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
@@ -230,12 +230,36 @@ const FEATURED_DEALS = [
     dark: "#7A2500",
     Icon: Activity,
   },
+  {
+    id: "health-challenge",
+    badge: "Oficial True Deal",
+    title: "Meta Mensal de Passos",
+    subtitle: "10k steps/day · Verificado via Health",
+    pot: "R$ 1.200",
+    entry: "R$ 25",
+    players: 48,
+    daysLeft: 12,
+    progress: 0.60,
+    accent: "#EF4444",   // Red
+    dark: "#7F1D1D",
+    Icon: Heart,
+  },
 ]
 
 function HeroBanner({ onJoin }: { onJoin: () => void }) {
-  const deal = FEATURED_DEALS[0]
+  const [currentBanner, setCurrentBanner] = useState(0)
+  const deal = FEATURED_DEALS[currentBanner]
+
+  const handlePrev = () => {
+    setCurrentBanner((prev) => (prev - 1 + FEATURED_DEALS.length) % FEATURED_DEALS.length)
+  }
+
+  const handleNext = () => {
+    setCurrentBanner((prev) => (prev + 1) % FEATURED_DEALS.length)
+  }
+
   return (
-    <div className="px-5 mb-4">
+    <div className="px-5 mb-4 relative">
       <div
         className="relative rounded-3xl overflow-hidden p-5"
         style={{
@@ -298,9 +322,40 @@ function HeroBanner({ onJoin }: { onJoin: () => void }) {
             boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
           }}
         >
-          Participar do Strava Week →
+          Participar →
         </button>
       </div>
+
+      {/* Navigation arrows */}
+      {FEATURED_DEALS.length > 1 && (
+        <>
+          <button onClick={handlePrev}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+            style={{ background: "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)" }}>
+            <ChevronLeft className="w-5 h-5 text-gray-700" />
+          </button>
+          <button onClick={handleNext}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 w-10 h-10 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
+            style={{ background: "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)" }}>
+            <ChevronRight className="w-5 h-5 text-gray-700" />
+          </button>
+        </>
+      )}
+
+      {/* Carousel indicators */}
+      {FEATURED_DEALS.length > 1 && (
+        <div className="flex gap-1.5 justify-center mt-3">
+          {FEATURED_DEALS.map((_, idx) => (
+            <button key={idx}
+              onClick={() => setCurrentBanner(idx)}
+              className="w-2 h-2 rounded-full transition-all"
+              style={{
+                background: idx === currentBanner ? "rgba(74,74,255,0.8)" : "rgba(0,0,0,0.2)",
+                width: idx === currentBanner ? "24px" : "8px",
+              }} />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
