@@ -168,8 +168,8 @@ Um Deal pode combinar mais de um fator de verificação. O usuário seleciona vi
 | **Fase 0 — Conceito** | Doc de projeto v0.2, benchmarks, definição de stack |
 | **Fase 1 — MVP** | App funcional: 4 tipos de deal, X API integrada, check-in manual, pagamento Pix, early testers |
 | **Fase 2 — Validação** | 50 deals realizados, NPS, ajustes de UX, todas APIs centralizadas integradas |
-| **Fase 3 — Expansão** | Pagamento cripto on-chain (multichain), smart contracts auditados, sistema de grupos & parceiros |
-| **Fase 4 — Escala** | SDK para terceiros, marketplace de desafios, expansão LatAm |
+| **Fase 3 — Expansão** | Smart contracts auditados, sistema de grupos & parceiros, marketplace de desafios |
+| **Fase 4 — Escala** | SDK para terceiros, AI agent nas redes sociais confirmando e criando True Deals no app por conversas na rede, expansão LatAm |
 
 ---
 
