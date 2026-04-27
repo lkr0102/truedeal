@@ -3,7 +3,10 @@
     "allow": [
       "Bash(pnpm --version)",
       "Bash(npm --version)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(grep -E '\\\\.\\(tsx|ts|svg|png|jpg\\)$')",
+      "Bash(npx tsc *)",
+      "Bash(grep -n \"1A1A3E\\\\|0D2E1A\\\\|^z$\" /Users/lukasrocha/Downloads/b_xkK82HxkNgi/app/onboarding/profile/page.tsx)"
     ]
   }
 }

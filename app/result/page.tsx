@@ -64,8 +64,8 @@ export default function ResultPage() {
           </div>
           <p className="text-sm font-semibold text-gray-500 mb-2">Vencedor do Deal</p>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Lukas Rocha</h1>
-          <p className="text-4xl font-bold text-[#3DBF6A]">+ R$ 97,00</p>
-          <p className="text-sm text-gray-500 mt-2">Após fee True Deal (3%)</p>
+          <p className="text-4xl font-bold text-[#3DBF6A]">+ R$ 99,00</p>
+          <p className="text-sm text-gray-500 mt-2">Após fee True Deal (1%)</p>
         </div>
 
         {/* Final Scoreboard */}
@@ -138,7 +138,7 @@ export default function ResultPage() {
           }}
         >
           <span className="text-gray-700">Smart contract executado</span>
-          <span className="text-[#4A4AFF] flex items-center gap-1">
+          <span className="text-[#16A34A] flex items-center gap-1">
             Ver on-chain <ExternalLink className="w-4 h-4" />
           </span>
         </button>
@@ -148,8 +148,8 @@ export default function ResultPage() {
           <button
             className="w-full py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
             style={{
-              background: "linear-gradient(135deg, #4A4AFF 0%, #7B7BFF 100%)",
-              boxShadow: "0 8px 32px rgba(74, 74, 255, 0.4)",
+              background: "linear-gradient(135deg, #16A34A 0%, #22C55E 100%)",
+              boxShadow: "0 8px 32px rgba(22, 163, 74, 0.4)",
             }}
           >
             <Share2 className="w-5 h-5" />

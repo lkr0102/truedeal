@@ -114,11 +114,11 @@ export default function TrackingPage() {
                 <div
                   className="w-14 h-14 rounded-xl flex items-center justify-center"
                   style={{
-                    background: "linear-gradient(135deg, rgba(74, 74, 255, 0.15) 0%, rgba(123, 123, 255, 0.1) 100%)",
-                    border: "1px solid rgba(74, 74, 255, 0.2)",
+                    background: "linear-gradient(135deg, rgba(22, 163, 74, 0.15) 0%, rgba(123, 123, 255, 0.1) 100%)",
+                    border: "1px solid rgba(22, 163, 74, 0.2)",
                   }}
                 >
-                  <span className="text-2xl font-bold text-[#4A4AFF]">
+                  <span className="text-2xl font-bold text-[#16A34A]">
                     {String(item.value).padStart(2, "0")}
                   </span>
                 </div>
@@ -186,7 +186,7 @@ export default function TrackingPage() {
               }}
             >
               <span className="text-gray-700">Ver snapshot inicial (dia 1)</span>
-              <span className="text-[#4A4AFF]">&#8594;</span>
+              <span className="text-[#16A34A]">&#8594;</span>
             </button>
             <button
               className="w-full p-4 rounded-xl flex items-center justify-between transition-all duration-300 hover:scale-[1.01]"
@@ -197,7 +197,7 @@ export default function TrackingPage() {
               }}
             >
               <span className="text-gray-700">Última atualização: hoje 09:00</span>
-              <span className="text-[#4A4AFF]">&#8594;</span>
+              <span className="text-[#16A34A]">&#8594;</span>
             </button>
           </div>
         </div>

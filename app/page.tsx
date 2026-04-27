@@ -35,9 +35,9 @@ interface Deal {
 // ── Mock de deals ─────────────────────────────────────────────────────────────
 
 const ALL_DEALS: Deal[] = [
-  { id: 1,  title: "Meta Mensal de Passos",      type: "oficial",  status: "ativo",     pot: 1200, valuePerPerson: 25,  participants: 48, progress: 0.60, daysGone: 18, daysTotal: 30, verifications: ["health","strava"], myRank: 3,  potentialWin: 980, color: "#4A4AFF" },
-  { id: 2,  title: "Ranking de Corrida — Abril", type: "oficial",  status: "ativo",     pot: 800,  valuePerPerson: 20,  participants: 40, progress: 0.80, daysGone: 24, daysTotal: 30, verifications: ["strava"],          myRank: 11, potentialWin: 0,   color: "#4A4AFF" },
-  { id: 3,  title: "Desafio Calorias — Maio",    type: "oficial",  status: "pendente",  pot: 0,    valuePerPerson: 30,  participants: 14, progress: 0,    daysGone: 0,  daysTotal: 21, verifications: ["health"],                              color: "#4A4AFF" },
+  { id: 1,  title: "Meta Mensal de Passos",      type: "oficial",  status: "ativo",     pot: 1200, valuePerPerson: 25,  participants: 48, progress: 0.60, daysGone: 18, daysTotal: 30, verifications: ["health","strava"], myRank: 3,  potentialWin: 980, color: "#16A34A" },
+  { id: 2,  title: "Ranking de Corrida — Abril", type: "oficial",  status: "ativo",     pot: 800,  valuePerPerson: 20,  participants: 40, progress: 0.80, daysGone: 24, daysTotal: 30, verifications: ["strava"],          myRank: 11, potentialWin: 0,   color: "#16A34A" },
+  { id: 3,  title: "Desafio Calorias — Maio",    type: "oficial",  status: "pendente",  pot: 0,    valuePerPerson: 30,  participants: 14, progress: 0,    daysGone: 0,  daysTotal: 21, verifications: ["health"],                              color: "#16A34A" },
   { id: 4,  title: "Quem ganha + seguidores",    type: "privado",  status: "ativo",     pot: 150,  valuePerPerson: 75,  participants: 2,  progress: 0.62, daysGone: 18, daysTotal: 30, verifications: ["x"],               myRank: 1,  potentialWin: 145, color: "#3DBF6A" },
   { id: 5,  title: "Academia todo dia",          type: "privado",  status: "ativo",     pot: 500,  valuePerPerson: 100, participants: 5,  progress: 0.35, daysGone: 7,  daysTotal: 21, verifications: ["checkin","strava"], myRank: 2,  potentialWin: 485, color: "#3DBF6A" },
   { id: 6,  title: "Corrida semanal",            type: "privado",  status: "pendente",  pot: 200,  valuePerPerson: 100, participants: 2,  progress: 0,    daysGone: 0,  daysTotal: 14, verifications: ["health"],                              color: "#C09040" },
@@ -91,7 +91,7 @@ function VerifBadge({ type }: { type: VerifType }) {
 
 function DealTypeIcon({ type }: { type: DealType }) {
   const config: Record<DealType, { Icon: React.FC<{ className?: string; color?: string }>; color: string; title: string }> = {
-    oficial:  { Icon: CheckCircle2, color: "#4A4AFF", title: "Deal Oficial" },
+    oficial:  { Icon: CheckCircle2, color: "#16A34A", title: "Deal Oficial" },
     privado:  { Icon: Lock,         color: "#3DBF6A", title: "Deal Privado" },
     "público":{ Icon: LockOpen,     color: "#8B5CF6", title: "Deal Público" },
   }
@@ -108,7 +108,7 @@ function DealTypeIcon({ type }: { type: DealType }) {
 
 function TypeBadge({ type }: { type: DealType }) {
   const map: Record<DealType, { label: string; bg: string; color: string }> = {
-    oficial:  { label: "Oficial",  bg: "rgba(74,74,255,0.12)",  color: "#4A4AFF" },
+    oficial:  { label: "Oficial",  bg: "rgba(22,163,74,0.12)",  color: "#16A34A" },
     privado:  { label: "Privado",  bg: "rgba(61,191,106,0.12)", color: "#3DBF6A" },
     "público":{ label: "Público",  bg: "rgba(139,92,246,0.12)", color: "#8B5CF6" },
   }
@@ -350,7 +350,7 @@ function HeroBanner({ onJoin }: { onJoin: () => void }) {
               onClick={() => setCurrentBanner(idx)}
               className="w-2 h-2 rounded-full transition-all"
               style={{
-                background: idx === currentBanner ? "rgba(74,74,255,0.8)" : "rgba(0,0,0,0.2)",
+                background: idx === currentBanner ? "rgba(22,163,74,0.8)" : "rgba(0,0,0,0.2)",
                 width: idx === currentBanner ? "24px" : "8px",
               }} />
           ))}
@@ -361,7 +361,7 @@ function HeroBanner({ onJoin }: { onJoin: () => void }) {
 }
 
 const MAIN_TABS: { key: "todos" | "meus"; label: string; color: string }[] = [
-  { key: "todos", label: "Todos os Deals",  color: "#4A4AFF" },
+  { key: "todos", label: "Todos os Deals",  color: "#16A34A" },
   { key: "meus",  label: "Meus Deals",      color: "#3DBF6A" },
 ]
 
@@ -462,8 +462,8 @@ function ProfilePopover({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
               onClick={() => setActiveProfileTab(tab.key)}
               className="px-3 py-1.5 rounded-full text-sm transition-all"
               style={{
-                background: activeProfileTab === tab.key ? "rgba(74,74,255,0.15)" : "transparent",
-                border: activeProfileTab === tab.key ? "1px solid rgba(74,74,255,0.3)" : "none",
+                background: activeProfileTab === tab.key ? "rgba(22,163,74,0.15)" : "transparent",
+                border: activeProfileTab === tab.key ? "1px solid rgba(22,163,74,0.3)" : "none",
               }}>
               {tab.label}
             </button>
@@ -601,7 +601,7 @@ export default function HomePage() {
         <div className="grid grid-cols-3 gap-3">
           {[
             { label: "Deals ativos", value: allActive.length.toString(),   color: "#3DBF6A" },
-            { label: "Em jogo",      value: `R$${totalAtStake}`,           color: "#4A4AFF" },
+            { label: "Em jogo",      value: `R$${totalAtStake}`,           color: "#16A34A" },
             { label: "Potencial",    value: `R$${totalPotential}`,         color: "#F59E0B" },
           ].map((s) => (
             <div key={s.label} className="p-3 rounded-2xl text-center"
@@ -642,10 +642,10 @@ export default function HomePage() {
             onClick={() => setActiveDealType(null)}
             className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 whitespace-nowrap"
             style={{
-              background: !activeDealType ? "rgba(74,74,255,0.15)" : "rgba(255,255,255,0.4)",
+              background: !activeDealType ? "rgba(22,163,74,0.15)" : "rgba(255,255,255,0.4)",
               backdropFilter: "blur(20px)",
-              border: !activeDealType ? "1.5px solid rgba(74,74,255,0.4)" : "1px solid rgba(255,255,255,0.5)",
-              color: !activeDealType ? "#4A4AFF" : "#6B7280",
+              border: !activeDealType ? "1.5px solid rgba(22,163,74,0.4)" : "1px solid rgba(255,255,255,0.5)",
+              color: !activeDealType ? "#16A34A" : "#6B7280",
             }}>
             Todos os tipos
           </button>
@@ -654,10 +654,10 @@ export default function HomePage() {
               onClick={() => setActiveDealType(dType.key)}
               className="flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition-all duration-200 whitespace-nowrap"
               style={{
-                background: activeDealType === dType.key ? "rgba(74,74,255,0.15)" : "rgba(255,255,255,0.4)",
+                background: activeDealType === dType.key ? "rgba(22,163,74,0.15)" : "rgba(255,255,255,0.4)",
                 backdropFilter: "blur(20px)",
-                border: activeDealType === dType.key ? "1.5px solid rgba(74,74,255,0.4)" : "1px solid rgba(255,255,255,0.5)",
-                color: activeDealType === dType.key ? "#4A4AFF" : "#6B7280",
+                border: activeDealType === dType.key ? "1.5px solid rgba(22,163,74,0.4)" : "1px solid rgba(255,255,255,0.5)",
+                color: activeDealType === dType.key ? "#16A34A" : "#6B7280",
               }}>
               {dType.label}
             </button>
@@ -676,15 +676,15 @@ export default function HomePage() {
                 onClick={() => setActiveStatus(sf.key)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all duration-200"
                 style={{
-                  background: isActive ? "rgba(74,74,255,0.15)" : "rgba(255,255,255,0.4)",
+                  background: isActive ? "rgba(22,163,74,0.15)" : "rgba(255,255,255,0.4)",
                   backdropFilter: "blur(20px)",
-                  border: isActive ? "1.5px solid rgba(74,74,255,0.4)" : "1px solid rgba(255,255,255,0.5)",
-                  color: isActive ? "#4A4AFF" : "#6B7280",
+                  border: isActive ? "1.5px solid rgba(22,163,74,0.4)" : "1px solid rgba(255,255,255,0.5)",
+                  color: isActive ? "#16A34A" : "#6B7280",
                 }}>
                 {sf.label}
                 {count > 0 && (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                    style={{ background: isActive ? "rgba(74,74,255,0.2)" : "rgba(0,0,0,0.07)" }}>
+                    style={{ background: isActive ? "rgba(22,163,74,0.2)" : "rgba(0,0,0,0.07)" }}>
                     {count}
                   </span>
                 )}
@@ -711,7 +711,7 @@ export default function HomePage() {
             {/* Footer de totais */}
             {activeUserDeals.length > 0 && (
               <div className="mt-1 p-4 rounded-2xl"
-                style={{ background: "rgba(74,74,255,0.07)", backdropFilter: "blur(20px)", border: "1.5px solid rgba(74,74,255,0.18)" }}>
+                style={{ background: "rgba(22,163,74,0.07)", backdropFilter: "blur(20px)", border: "1.5px solid rgba(22,163,74,0.18)" }}>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Resumo financeiro</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
@@ -737,8 +737,8 @@ export default function HomePage() {
       <button onClick={() => router.push("/create")}
         className="fixed bottom-24 left-1/2 -translate-x-1/2 flex items-center gap-2 px-6 py-3 rounded-full transition-all duration-300 hover:scale-105 active:scale-95 z-20"
         style={{
-          background: "linear-gradient(135deg,#4A4AFF 0%,#7B7BFF 100%)",
-          boxShadow: "0 8px 32px rgba(74,74,255,0.45), 0 16px 48px rgba(74,74,255,0.2)",
+          background: "linear-gradient(135deg,#16A34A 0%,#22C55E 100%)",
+          boxShadow: "0 8px 32px rgba(22,163,74,0.45), 0 16px 48px rgba(22,163,74,0.2)",
         }}>
         <Plus className="w-5 h-5 text-white" />
         <span className="text-white font-semibold">Novo Deal</span>
@@ -756,10 +756,10 @@ export default function HomePage() {
                 onClick={() => { setActiveNav(item.label); if (item.href !== "/") router.push(item.href) }}
                 className="flex flex-col items-center gap-1 transition-all duration-300">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? "scale-110" : ""}`}
-                  style={{ background: isActive ? "linear-gradient(135deg,#4A4AFF,#7B7BFF)" : "transparent" }}>
+                  style={{ background: isActive ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}>
                   <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500"}`} />
                 </div>
-                <span className={`text-xs font-medium ${isActive ? "text-[#4A4AFF]" : "text-gray-500"}`}>
+                <span className={`text-xs font-medium ${isActive ? "text-[#16A34A]" : "text-gray-500"}`}>
                   {item.label}
                 </span>
               </button>

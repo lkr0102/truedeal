@@ -1,0 +1,20 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>True Deal — Open Graph banner</title>
+  <rect width="1200" height="630" fill="#0D0D14"/>
+  <defs>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#FFFFFF" stroke-width="0.3" opacity="0.05"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <g transform="translate(120, 165) scale(2.14)">
+    <path d="M70 10 L78 4 L86 10 L96 8 L101 17 L111 19 L113 29 L122 34 L120 44 L128 51 L122 60 L128 70 L122 80 L128 89 L120 96 L122 106 L113 111 L111 121 L101 123 L96 132 L86 130 L78 136 L70 130 L62 136 L54 130 L44 132 L39 123 L29 121 L27 111 L18 106 L20 96 L12 89 L18 80 L12 70 L18 60 L12 51 L20 44 L18 34 L27 29 L29 19 L39 17 L44 8 L54 10 L62 4 Z" fill="#16A34A"/>
+    <polyline points="43,72 60,89 97,52" stroke="#FFFFFF" stroke-width="7.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="43" cy="72" r="5" fill="#FFFFFF"/>
+    <circle cx="97" cy="52" r="5" fill="#FFFFFF"/>
+  </g>
+  <text x="450" y="270" font-family="Inter, -apple-system, sans-serif" font-size="88" font-weight="300" fill="#EEEEFF" letter-spacing="-2">true<tspan fill="#16A34A">deal</tspan></text>
+  <text x="452" y="340" font-family="Inter, -apple-system, sans-serif" font-size="26" font-weight="300" fill="#5050A0" letter-spacing="0.5">Don't trust. Make a Deal.</text>
+  <line x1="450" y1="375" x2="980" y2="375" stroke="#16A34A" stroke-width="1.5" opacity="0.4"/>
+  <text x="452" y="410" font-family="Inter, -apple-system, sans-serif" font-size="20" font-weight="300" fill="#5050A0">Acordos digitais com prova e stake · truedeal.app</text>
+</svg>

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "solana-dev": {
+      "source": "solanabr/wiki",
+      "sourceType": "github",
+      "computedHash": "c1d07bc8b625da828ba9189815076ffea1c3f1c36c5f07f25e215c3093194d94"
+    }
+  }
+}
