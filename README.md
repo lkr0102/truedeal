@@ -122,23 +122,6 @@ Um Deal pode combinar mais de um fator de verificação. O usuário seleciona vi
 
 ---
 
-## 📱 Telas do App
-
-O app possui **7 telas principais** no fluxo:
-
-| Tela | Descrição |
-|------|-----------|
-| **Tela 0 — Login / Onboarding** | Múltiplas opções de entrada: Google, Apple, Telegram, Instagram, X, WalletConnect (Web3), Email |
-| **Tela 0b — Perfil** | Gerenciamento de contas e carteiras vinculadas (X, Google, Instagram, Telegram, MetaMask, Phantom, Apple Health) |
-| **Tela 1 — Home** | Dashboard com todos os deals ativos, pendentes e histórico. Filtros por status, cards de deal com identificação Oficial/Privado |
-| **Tela 2 — Criar Deal (Tipo)** | Grid 2×2 com os 4 tipos do MVP + seção 'Em breve' para tipos futuros |
-| **Tela 3 — Criar Deal (Configuração)** | Formulário completo: nome, participantes, período, valor, fatores de verificação, pagamento |
-| **Tela 4 — Deal ativo** | Tracking com countdown, placar, verificação auditável, compartilhar placar |
-| **Tela 5 — Pagamento Pix** | QR Code dinâmico, timer de expiração (15 min), chave Pix copiável |
-| **Tela 6 — Resultado Final** | Card de resultado compartilhável, vencedor em destaque, stats do deal, link on-chain |
-
----
-
 ## 🏗️ Arquitetura Técnica
 
 ### Stack MVP
@@ -182,37 +165,11 @@ O app possui **7 telas principais** no fluxo:
 
 | Fase | Período | Entregas principais |
 |------|---------|---------------------|
-| **Fase 0 — Conceito** | Abr–Mai 2026 | Doc de projeto v0.2, benchmarks, wireframes 7 telas, definição de stack |
-| **Fase 1 — MVP** | Jun–Ago 2026 | App funcional: 2 tipos de deal, X API integrada, check-in manual, pagamento Pix, early testers |
-| **Fase 2 — Validação** | Set–Nov 2026 | 50 deals realizados, NPS, ajustes de UX, Meta API e Apple Health integradas |
-| **Fase 3 — Expansão** | Dez 2026–Fev 2027 | Pagamento cripto on-chain (Arbitrum), smart contracts auditados, sistema de grupos |
-| **Fase 4 — Escala** | 2027+ | SDK para terceiros, marketplace de desafios, token próprio, expansão LatAm |
-
----
-
-## 📦 Escopo do MVP
-
-### ✅ Entra no MVP
-
-- Telas 0 a 6 conforme wireframes v0.2
-- Criação de deals entre 2+ usuários
-- 2 tipos de deal: Redes sociais (X API) + Check-in manual com foto
-- Fatores de verificação múltiplos — seleção em abas
-- Pagamento via Pix (NoxPay) — custódia centralizada
-- Distribuição automática ao vencedor
-- Login social (Google + Apple) + WalletConnect básico
-- Notificações push para eventos do deal
-- Card de resultado compartilhável (Tela 6)
-- Identificação visual Oficial vs. Privado
-
-### ⏳ Fica para depois do MVP
-
-- Integração com Meta API, TikTok, Apple Health, Google Fit
-- Smart contracts on-chain e custódia descentralizada
-- Pagamento cripto completo
-- Sistema de resolução de disputas
-- Deals oficiais com parceiros
-- Token próprio e SDK para terceiros
+| **Fase 0 — Conceito** | Doc de projeto v0.2, benchmarks, definição de stack |
+| **Fase 1 — MVP** | App funcional: 4 tipos de deal, X API integrada, check-in manual, pagamento Pix, early testers |
+| **Fase 2 — Validação** | 50 deals realizados, NPS, ajustes de UX, todas APIs centralizadas integradas |
+| **Fase 3 — Expansão** | Pagamento cripto on-chain (multichain), smart contracts auditados, sistema de grupos & parceiros |
+| **Fase 4 — Escala** | SDK para terceiros, marketplace de desafios, expansão LatAm |
 
 ---
 
@@ -265,26 +222,14 @@ pnpm install
 pnpm dev
 ```
 
-A aplicação estará disponível em [http://localhost:3000](http://localhost:3000)
-
-### Variáveis de Ambiente
-
-Crie um arquivo `.env.local` na raiz do projeto:
-
-```env
-# Exemplo de variáveis (ajuste conforme necessário)
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-```
+A aplicação estará disponível em 
 
 ---
 
 ## 👤 Founder
 
 **Lukas Rocha** (LKR)
-
-- 📍 Salvador, BA
-- 🌐 Twitter: [@lkrcripto](https://twitter.com/lkrcripto)
-- 🗣️ Inglês C1/C2
+[@lkrcripto](https://twitter.com/lkrcripto)
 
 ### Experiência
 
@@ -292,8 +237,6 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 - **Ex-Marketing & Community Manager** ICP HUB Brasil
 - **Top 3 Arbitrum Ambassador** brasileiro (maior L2 da Ethereum)
 - **Community Manager & Ambassador** TriadMarkets (maior prediction market BR)
-
-O projeto une visão de produto e comunicação do founder com sua rede ativa em Web3, permitindo validação acelerada com comunidades já engajadas na Tríade, Arbitrum e ICP.
 
 ---
 
