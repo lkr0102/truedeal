@@ -6,6 +6,8 @@ import {
   ArrowLeft, Star, Search, X, Plus, Minus, Check,
   ChevronLeft, ChevronRight,
 } from "lucide-react"
+import { createDeal } from "@/lib/actions/deals"
+import type { DealCategory, DealType } from "@/lib/supabase/types"
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -109,16 +111,32 @@ export default function ConfigureDealPage() {
   const router = useRouter()
 
   // From previous step
-  const [dealMode, setDealMode] = useState<"regular" | "super">("regular")
-  useEffect(() => {
-    try {
-      const draft = JSON.parse(sessionStorage.getItem("dealDraft") ?? "{}")
-      if (draft.dealMode) setDealMode(draft.dealMode)
-    } catch { /* ignore */ }
-  }, [])
+  const [dealMode,      setDealMode]      = useState<"regular" | "super">("regular")
+  const [draftStartDate, setDraftStartDate] = useState<string | null>(null)
+  const [draftEndDate,   setDraftEndDate]   = useState<string | null>(null)
+  const [draftPrivacy,   setDraftPrivacy]   = useState<string>("private")
+  const [draftType,      setDraftType]      = useState<string>("free_custom")
+  const [draftCategory,  setDraftCategory]  = useState<DealCategory>("free")
+
+  // Submit state
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError,  setSubmitError]  = useState<string | null>(null)
 
   // Deal name
   const [name, setName] = useState("")
+
+  useEffect(() => {
+    try {
+      const draft = JSON.parse(sessionStorage.getItem("dealDraft") ?? "{}")
+      if (draft.dealMode)      setDealMode(draft.dealMode)
+      if (draft.startDate)     setDraftStartDate(draft.startDate)
+      if (draft.endDate)       setDraftEndDate(draft.endDate)
+      if (draft.privacy)       setDraftPrivacy(draft.privacy)
+      if (draft.selectedType)  setDraftType(draft.selectedType)
+      if (draft.category)      setDraftCategory(draft.category as DealCategory)
+      if (draft.sugTitle)      setName(prev => prev || draft.sugTitle)
+    } catch { /* ignore */ }
+  }, [])
 
   // Participants
   const [query, setQuery] = useState("")
@@ -205,13 +223,57 @@ export default function ConfigureDealPage() {
   // Review balloon
   const [showReview, setShowReview] = useState(false)
 
-  // Pot calculation
+  // Pot calculation — 5% regular, 1% super
   const pot    = effectiveAmount * participants.length
-  const fee    = dealMode === "super" ? 0 : pot * 0.01
+  const fee    = dealMode === "super" ? pot * 0.01 : pot * 0.05
   const netPot = pot - fee
 
   // Validation
   const isValid = name.trim().length >= 3 && effectiveAmount >= 10
+
+  // Confirm & persist deal
+  async function handleConfirm() {
+    if (!isValid || isSubmitting) return
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    const privacyMap: Record<string, DealType> = { private: "privado", public: "publico" }
+    const payMap: Record<string, "pix" | "cripto" | "cartao"> = { Pix: "pix", Cripto: "cripto", "Cartão": "cartao" }
+
+    const startIso = draftStartDate
+      ? new Date(draftStartDate).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0]
+    const endIso = draftEndDate
+      ? new Date(draftEndDate).toISOString().split("T")[0]
+      : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
+
+    const result = await createDeal({
+      title:                 name.trim(),
+      type:                  privacyMap[draftPrivacy] ?? "privado",
+      mode:                  dealMode,
+      category:              draftCategory,
+      verification_type:     draftType,
+      verification_channels: verifMethods,
+      entry_amount:          effectiveAmount,
+      distribution:          distribution as "winner" | "top3" | "proportional",
+      payment_method:        payMap[payMethod] ?? "pix",
+      max_participants:      maxPart,
+      allow_requests:        allowRequests,
+      start_date:            startIso,
+      end_date:              endIso,
+    })
+
+    setIsSubmitting(false)
+
+    if (result.error) {
+      setSubmitError(result.error)
+      return
+    }
+
+    sessionStorage.removeItem("dealDraft")
+    setShowReview(false)
+    router.push("/")
+  }
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -232,27 +294,33 @@ export default function ConfigureDealPage() {
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium">Tipo de Deal</span>
         </button>
-        {dealMode === "super" && (
-          <div
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-            style={{ background: "rgba(255,170,0,0.12)", border: "1px solid rgba(255,170,0,0.3)" }}
-          >
-            <Star className="w-3.5 h-3.5 text-yellow-500" />
-            <span className="text-xs font-bold text-yellow-600">Super Deal · 0%</span>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {dealMode === "super" && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+              style={{ background: "rgba(255,170,0,0.12)", border: "1px solid rgba(255,170,0,0.3)" }}>
+              <Star className="w-3.5 h-3.5 text-yellow-500" />
+              <span className="text-xs font-bold text-yellow-600">Super Deal · 1%</span>
+            </div>
+          )}
+          {dealMode === "regular" && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+              style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
+              <span className="text-xs font-bold text-[#16A34A]">Regular · 5%</span>
+            </div>
+          )}
+        </div>
       </header>
 
       {/* Steps */}
       <div className="flex items-center justify-center gap-2 pb-4">
         <div className="w-8 h-2 rounded-full" style={{ background: "rgba(22,163,74,0.3)" }} />
         <div className="w-8 h-2 rounded-full" style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }} />
-        <div className="w-8 h-2 rounded-full" style={{ background: "rgba(255,255,255,0.4)" }} />
       </div>
 
       {/* Scrollable form */}
       <div className="flex-1 px-5 pb-36 overflow-y-auto">
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Configure o Deal</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-1">Configure o Deal</h1>
+        <p className="text-sm text-gray-500 mb-6">Passo 2 de 2 — Regras, valor e participantes</p>
 
         {/* ── Nome ──────────────────────────────────────────────────────────── */}
         <Section label="Nome do deal">
@@ -389,43 +457,25 @@ export default function ConfigureDealPage() {
           </div>
         </Section>
 
-        {/* ── Período ───────────────────────────────────────────────────────── */}
+        {/* ── Período (read-only, vem do passo 1) ──────────────────────────── */}
         <Section label="Período">
-          <div className="flex gap-2 overflow-x-auto pb-1 mb-3">
-            {PERIOD_PRESETS.map(p => (
-              <button
-                key={p.id}
-                onClick={() => pickPreset(p.id)}
-                className="flex-shrink-0 px-3.5 py-1.5 rounded-full text-sm font-medium transition-all"
-                style={pill(periodPreset === p.id)}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-
           <div className="flex gap-3">
-            <div
-              className="flex-1 p-3 rounded-xl"
-              style={{ background: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.55)" }}
-            >
+            <div className="flex-1 p-3 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.45)", border: "1px solid rgba(255,255,255,0.55)" }}>
               <p className="text-[10px] font-semibold text-gray-400 mb-0.5">INÍCIO</p>
-              <p className="text-sm font-semibold text-gray-800">{fmtDate(TODAY)}</p>
-            </div>
-            <button
-              onClick={() => setShowCal(true)}
-              className="flex-1 p-3 rounded-xl transition-all text-left"
-              style={{
-                background: end ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.45)",
-                border:     end ? "1.5px solid rgba(22,163,74,0.3)" : "1px solid rgba(255,255,255,0.55)",
-              }}
-            >
-              <p className="text-[10px] font-semibold text-gray-400 mb-0.5">FIM</p>
-              <p className="text-sm font-semibold" style={{ color: end ? "#16A34A" : "#D1D5DB" }}>
-                {end ? fmtDate(end) : "Selecionar"}
+              <p className="text-sm font-semibold text-gray-800">
+                {draftStartDate ? new Date(draftStartDate).toLocaleDateString("pt-BR", { day:"2-digit", month:"short", year:"numeric" }) : fmtDate(TODAY)}
               </p>
-            </button>
+            </div>
+            <div className="flex-1 p-3 rounded-xl"
+              style={{ background: "rgba(22,163,74,0.08)", border: "1.5px solid rgba(22,163,74,0.3)" }}>
+              <p className="text-[10px] font-semibold text-gray-400 mb-0.5">FIM</p>
+              <p className="text-sm font-semibold text-[#16A34A]">
+                {draftEndDate ? new Date(draftEndDate).toLocaleDateString("pt-BR", { day:"2-digit", month:"short", year:"numeric" }) : "—"}
+              </p>
+            </div>
           </div>
+          <p className="text-xs text-gray-400 mt-2">← Alterar período: volte ao passo 1</p>
         </Section>
 
         {/* ── Valor por pessoa ──────────────────────────────────────────────── */}
@@ -598,7 +648,7 @@ export default function ConfigureDealPage() {
           </p>
           <p className="text-xs text-gray-500 mt-1">
             {participants.length} participante{participants.length !== 1 ? "s" : ""} × R${effectiveAmount.toFixed(0)}
-            {dealMode === "super" ? " · 0% taxa (Super Deal)" : " · 1% taxa"}
+            {dealMode === "super" ? " · 1% taxa (Super Deal)" : " · 5% taxa"}
           </p>
         </div>
       </div>
@@ -685,7 +735,7 @@ export default function ConfigureDealPage() {
               <div className="flex justify-between">
                 <span className="text-sm text-gray-500">Taxa</span>
                 <span className="text-sm font-semibold text-gray-800">
-                  {dealMode === "super" ? "0%" : "1%"}
+                  {dealMode === "super" ? "1% (Super Deal)" : "5%"}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -702,6 +752,11 @@ export default function ConfigureDealPage() {
               </div>
             </div>
 
+            {/* Error */}
+            {submitError && (
+              <p className="text-xs text-red-500 text-center mb-3 px-1">{submitError}</p>
+            )}
+
             {/* Actions */}
             <div className="flex gap-3">
               <button
@@ -712,11 +767,12 @@ export default function ConfigureDealPage() {
                 Ajustar
               </button>
               <button
-                onClick={() => { setShowReview(false); router.push("/share") }}
-                className="flex-1 py-3 rounded-xl font-semibold text-white text-sm transition-all duration-200"
+                onClick={handleConfirm}
+                disabled={isSubmitting}
+                className="flex-1 py-3 rounded-xl font-semibold text-white text-sm transition-all duration-200 disabled:opacity-60"
                 style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}
               >
-                Confirmar Deal
+                {isSubmitting ? "Criando…" : "Confirmar Deal"}
               </button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import type { ChangeEvent } from "react"
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Camera, AtSign, Hash, ArrowRight } from "lucide-react"
+import { updateProfile } from "@/lib/actions/profile"
 
 function generateHandle(name: string): string {
   const base = name
@@ -53,10 +54,11 @@ export default function ProfileSetupPage() {
     setSocials((prev) => ({ ...prev, [network]: value }))
   }
 
-  function handleContinue() {
+  async function handleContinue() {
     if (!name.trim()) return
-    // TODO: salvar perfil no backend
-    router.push("/onboarding/survey")
+    const username = handle.replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 20) || "user"
+    await updateProfile({ display_name: name.trim(), username })
+    router.push("/")
   }
 
   const isValid = name.trim().length >= 2

@@ -30,6 +30,7 @@ interface Deal {
   myRank?: number
   potentialWin?: number
   color: string
+  daysToStart?: number
 }
 
 // ── Mock de deals ─────────────────────────────────────────────────────────────
@@ -37,13 +38,13 @@ interface Deal {
 const ALL_DEALS: Deal[] = [
   { id: 1,  title: "Meta Mensal de Passos",      type: "oficial",  status: "ativo",     pot: 1200, valuePerPerson: 25,  participants: 48, progress: 0.60, daysGone: 18, daysTotal: 30, verifications: ["health","strava"], myRank: 3,  potentialWin: 980, color: "#16A34A" },
   { id: 2,  title: "Ranking de Corrida — Abril", type: "oficial",  status: "ativo",     pot: 800,  valuePerPerson: 20,  participants: 40, progress: 0.80, daysGone: 24, daysTotal: 30, verifications: ["strava"],          myRank: 11, potentialWin: 0,   color: "#16A34A" },
-  { id: 3,  title: "Desafio Calorias — Maio",    type: "oficial",  status: "pendente",  pot: 0,    valuePerPerson: 30,  participants: 14, progress: 0,    daysGone: 0,  daysTotal: 21, verifications: ["health"],                              color: "#16A34A" },
+  { id: 3,  title: "Desafio Calorias — Maio",    type: "oficial",  status: "pendente",  pot: 0,    valuePerPerson: 30,  participants: 14, progress: 0,    daysGone: 0,  daysTotal: 21, verifications: ["health"],                              color: "#16A34A", daysToStart: 3 },
   { id: 4,  title: "Quem ganha + seguidores",    type: "privado",  status: "ativo",     pot: 150,  valuePerPerson: 75,  participants: 2,  progress: 0.62, daysGone: 18, daysTotal: 30, verifications: ["x"],               myRank: 1,  potentialWin: 145, color: "#3DBF6A" },
   { id: 5,  title: "Academia todo dia",          type: "privado",  status: "ativo",     pot: 500,  valuePerPerson: 100, participants: 5,  progress: 0.35, daysGone: 7,  daysTotal: 21, verifications: ["checkin","strava"], myRank: 2,  potentialWin: 485, color: "#3DBF6A" },
-  { id: 6,  title: "Corrida semanal",            type: "privado",  status: "pendente",  pot: 200,  valuePerPerson: 100, participants: 2,  progress: 0,    daysGone: 0,  daysTotal: 14, verifications: ["health"],                              color: "#C09040" },
+  { id: 6,  title: "Corrida semanal",            type: "privado",  status: "pendente",  pot: 200,  valuePerPerson: 100, participants: 2,  progress: 0,    daysGone: 0,  daysTotal: 14, verifications: ["health"],                              color: "#C09040", daysToStart: 5 },
   { id: 7,  title: "Leitura — 1 livro/mês",     type: "privado",  status: "finalizado",pot: 80,   valuePerPerson: 40,  participants: 2,  progress: 1,    daysGone: 30, daysTotal: 30, verifications: ["manual"],          myRank: 1,  potentialWin: 78,  color: "#9CA3AF" },
   { id: 8,  title: "5k Steps Challenge",         type: "público",  status: "ativo",     pot: 2300, valuePerPerson: 50,  participants: 46, progress: 0.45, daysGone: 9,  daysTotal: 20, verifications: ["health","strava"], myRank: 12, potentialWin: 0,   color: "#8B5CF6" },
-  { id: 9,  title: "Desafio TikTok Viral",       type: "público",  status: "pendente",  pot: 0,    valuePerPerson: 30,  participants: 8,  progress: 0,    daysGone: 0,  daysTotal: 7,  verifications: ["tiktok"],                              color: "#8B5CF6" },
+  { id: 9,  title: "Desafio TikTok Viral",       type: "público",  status: "pendente",  pot: 0,    valuePerPerson: 30,  participants: 8,  progress: 0,    daysGone: 0,  daysTotal: 7,  verifications: ["tiktok"],                              color: "#8B5CF6", daysToStart: 2 },
   { id: 10, title: "Maratona de Posts — X",      type: "público",  status: "ativo",     pot: 450,  valuePerPerson: 50,  participants: 9,  progress: 0.70, daysGone: 14, daysTotal: 20, verifications: ["x","instagram"],   myRank: 2,  potentialWin: 436, color: "#8B5CF6" },
 ]
 
@@ -59,6 +60,18 @@ function StatusDot({ status }: { status: DealStatus }) {
           style={{ backgroundColor: colors[status], opacity: 0.45 }} />
       )}
     </div>
+  )
+}
+
+function StatusBadge({ status }: { status: DealStatus }) {
+  const map: Record<DealStatus, { label: string; bg: string; color: string }> = {
+    ativo:      { label: "Em Jogo",  bg: "rgba(61,191,106,0.12)",  color: "#16A34A" },
+    pendente:   { label: "Formação", bg: "rgba(245,158,11,0.12)",  color: "#D97706" },
+    finalizado: { label: "Encerrado",bg: "rgba(156,163,175,0.15)", color: "#6B7280" },
+  }
+  const { label, bg, color } = map[status]
+  return (
+    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: bg, color }}>{label}</span>
   )
 }
 
@@ -137,12 +150,12 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
         boxShadow: "0 4px 20px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.6)",
       }}>
 
-      {/* Linha 1: status + tipo + ícone */}
+      {/* Linha 1: status + tipo */}
       <div className="flex items-center gap-2 mb-2">
         <StatusDot status={deal.status} />
+        <StatusBadge status={deal.status} />
         <DealTypeIcon type={deal.type} />
         <TypeBadge type={deal.type} />
-        {deal.status === "finalizado" && <span className="text-[10px] text-gray-400 font-medium">Encerrado</span>}
       </div>
 
       {/* Linha 2: título */}
@@ -198,7 +211,18 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
       )}
 
       {deal.status === "pendente" && (
-        <p className="text-[11px] text-amber-600 font-medium mt-1">⏳ Aguardando início</p>
+        <div className="flex items-center justify-between mt-2">
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-3.5 h-3.5 text-amber-500" />
+            <span className="text-[11px] text-amber-600 font-semibold">
+              Inicia em {deal.daysToStart ?? 0}d
+            </span>
+          </div>
+          <span className="text-[11px] font-bold px-2.5 py-1 rounded-full text-white"
+            style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}>
+            Entrar →
+          </span>
+        </div>
       )}
     </button>
   )
@@ -373,7 +397,7 @@ const DEAL_TYPE_FILTERS: { key: DealType; label: string }[] = [
 
 const STATUS_FILTERS: { key: DealStatus; label: string }[] = [
   { key: "ativo",      label: "Ativos" },
-  { key: "pendente",   label: "Pendentes" },
+  { key: "pendente",   label: "Formação" },
   { key: "finalizado", label: "Histórico" },
 ]
 

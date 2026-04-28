@@ -4,6 +4,7 @@ import type { FormEvent } from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, ChevronDown, ChevronUp, X } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 // ── Ícones SVG precisos de cada rede ─────────────────────────────────────────
 
@@ -120,23 +121,34 @@ export default function LoginPage() {
   const [isLoading, setIsLoading]       = useState(false)
   const [showSocials, setShowSocials]   = useState(false)
   const [showWallets, setShowWallets]   = useState(false)
+  const [isSignUp, setIsSignUp]         = useState(false)
+  const [authError, setAuthError]       = useState<string | null>(null)
 
   async function handleEmailLogin(e: FormEvent) {
     e.preventDefault()
     if (!email || !password) return
     setIsLoading(true)
-    await new Promise((r) => setTimeout(r, 800))
-    setIsLoading(false)
-    router.push("/onboarding/profile")
+    setAuthError(null)
+
+    const supabase = createClient()
+
+    if (isSignUp) {
+      const { error } = await supabase.auth.signUp({ email, password })
+      if (error) { setAuthError(error.message); setIsLoading(false); return }
+      router.push("/onboarding/profile")
+    } else {
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) { setAuthError("E-mail ou senha incorretos"); setIsLoading(false); return }
+      router.push("/")
+    }
   }
 
   function handleSocialLogin(key: string) {
     window.location.href = `/api/auth/${key}`
   }
 
-  function handleWalletConnect(key: string) {
+  function handleWalletConnect(_key: string) {
     setShowWallets(false)
-    // TODO: integrar EIP-1193 / WalletConnect por carteira
     router.push("/onboarding/profile")
   }
 
@@ -206,7 +218,7 @@ export default function LoginPage() {
               type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="Senha"
+              placeholder={isSignUp ? "Criar senha (mín. 6 caracteres)" : "Senha"}
               className="w-full px-4 py-3 pr-12 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
               style={glassCard}
               required
@@ -216,19 +228,24 @@ export default function LoginPage() {
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
-          <div className="text-right -mt-1">
-            <button type="button" className="text-xs text-[#16A34A] hover:underline">Esqueci minha senha</button>
-          </div>
+          {!isSignUp && (
+            <div className="text-right -mt-1">
+              <button type="button" className="text-xs text-[#16A34A] hover:underline">Esqueci minha senha</button>
+            </div>
+          )}
+          {authError && (
+            <p className="text-xs text-red-500 text-center px-2">{authError}</p>
+          )}
           <button type="submit" disabled={isLoading}
             className="w-full py-3 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
             style={{ background: "linear-gradient(135deg,#16A34A 0%,#22C55E 100%)", boxShadow: "0 8px 24px rgba(22,163,74,0.35)" }}>
-            {isLoading ? "Entrando…" : "Entrar com e-mail"}
+            {isLoading ? (isSignUp ? "Criando conta…" : "Entrando…") : (isSignUp ? "Criar conta" : "Entrar com e-mail")}
           </button>
           <p className="text-center text-xs text-gray-500">
-            Não tem conta?{" "}
-            <button type="button" onClick={() => router.push("/onboarding/profile")}
+            {isSignUp ? "Já tem conta?" : "Não tem conta?"}{" "}
+            <button type="button" onClick={() => { setIsSignUp(v => !v); setAuthError(null) }}
               className="text-[#16A34A] font-medium hover:underline">
-              Cadastre-se
+              {isSignUp ? "Entrar" : "Cadastre-se"}
             </button>
           </p>
         </form>
