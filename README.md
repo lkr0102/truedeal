@@ -2,247 +2,275 @@
 
 <div align="center">
 
-![Next.js](https://img.shields.io/badge/Next.js-14-black?style=for-the-badge&logo=next.js)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.2-3178C6?style=for-the-badge&logo=typescript)
-![React Native](https://img.shields.io/badge/React_Native-2024a-black?style=for-the-badge&logo=react)
-![Supabase](https://img.shields.io/badge/Supabase-3-181818?style=for-the-badge&logo=supabase)
-![Solidity](https://img.shields.io/badge/Solidity-363636?style=for-the-badge&logo=solidity)
+![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript)
+![Solana](https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white)
+![Anchor](https://img.shields.io/badge/Anchor-Framework-9945FF?style=for-the-badge)
+![Supabase](https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=black)
 
-**True Deal** — O app que faz o seu combinado valer de verdade.
+**True Deal** — Gamifique suas metas e conquistas com quem tem os mesmos desejos que você.
 
 *"Don't trust. Make a True Deal."*
 
+[![Colosseum Frontier Hackathon](https://img.shields.io/badge/Colosseum-Frontier%20Hackathon-9945FF?style=flat-square&logo=solana&logoColor=white)](https://www.colosseum.org/)
+
 </div>
 
-## 📋 Índice
-
-- [Sobre o Projeto](#sobre-o-projeto)
-- [A Visão](#a-visão)
-- [O Problema](#o-problema)
-- [A Solução](#a-solução)
-- [Tipos de Deal](#tipos-de-deal)
-- [Telas do App](#telas-do-app)
-- [Arquitetura Técnica](#arquitetura-técnica)
-- [Análise de Concorrentes](#análise-de-concorrentes)
-- [Roadmap](#roadmap)
-- [Escopo do MVP](#escopo-do-mvp)
-- [Stack Tecnológico](#stack-tecnológico)
-- [Getting Started](#getting-started)
-- [Contribuição](#contribuição)
-- [Licença](#licença)
-
 ---
 
-## 📖 Sobre o Projeto
+## 🎯 Missão
 
-**True Deal** é um aplicativo mobile (iOS/Android) que atua como árbitro digital automatizado em acordos entre duas ou mais pessoas. Usa provas digitais verificáveis — APIs de redes sociais, apps de saúde, GPS, check-ins — combinadas com smart contracts para garantir que o dinheiro fique bloqueado, a verificação seja automática e a distribuição aconteça sem intervenção humana.
+**True Deal** te ajuda a gameficar suas metas e conquistas pessoais com outros amigos que têm os mesmos desejos que você.
 
-### Identidade
+Chega de combinados que ficam só no papo. No True Deal, você aposta dinheiro real na sua própria evolução, o app verifica o resultado automaticamente, e o Solana distribui a premiação sem intermediários.
 
-| Atributo | Valor |
-|----------|-------|
-| **Nome** | True Deal |
-| **Handle** | @truedeal |
-| **Domínio** | truedeal.app |
-| **Tagline Principal** | "Don't trust. Make a True Deal." |
-| **Taglines Alternativas** | "The real deal." / "Make a true Deal." / "True Deal with it." |
-
----
-
-## 👁️ A Visão
-
-True Deal é um aplicativo mobile que atua como **árbitro digital automatizado** em acordos entre duas ou mais pessoas.
-
-> **Posicionamento em uma linha:** O app que faz o seu combinado valer de verdade.
-
-### Diferenciais
-
-- ✅ Provas digitais verificáveis (APIs de redes sociais, saúde, GPS)
-- ✅ Smart contracts para garantir distribuição automática
-- ✅ Pagamento dual (Fiat + Cripto)
-- ✅ UX acessível para público não-nativo Web3
+> *Gamify your personal goals and achievements with friends who share the same desires.*
 
 ---
 
 ## ❌ O Problema
 
-Apostas e combinados entre pessoas dependem 100% de confiança e boa-fé. **Não existe mecanismo que:**
+Apostas e desafios entre amigos dependem 100% de confiança e boa-fé — e sempre terminam em discussão.
 
-- ❌ Prove o estado inicial e final de forma objetiva e incontestável
-- ❌ Guarde e distribua o dinheiro sem favorecer nenhuma parte
-- ❌ Resolva o resultado automaticamente sem depender de julgamento humano
-
-As soluções existentes ou são centralizadas demais, ou restritas a uma única métrica, ou voltadas exclusivamente para usuários cripto nativos — afastando o público geral.
+- Não existe prova objetiva e incontestável do início e fim
+- Não existe árbitro neutro que guarde e distribua o dinheiro sem favorecer ninguém
+- Não existe resolução automática — alguém sempre precisa confiar em alguém
 
 ---
 
 ## 💡 A Solução
 
-### Fluxo de um Deal
+True Deal é o **árbitro digital automatizado** entre você e seus amigos:
 
 | Etapa | O que acontece |
 |-------|----------------|
-| **01 — Criar** | Founder define: nome, tipo de deal, participantes, valor por pessoa, datas de início e fim, fator(es) de verificação |
-| **02 — Convidar** | Participantes recebem link e aceitam os termos do deal |
-| **03 — Pagar stake** | Todos pagam via Pix ou cripto — fundos ficam custodiados pelo app |
-| **04 — Snapshot inicial** | App registra o estado inicial via API (ex: contagem de seguidores no momento do início) |
-| **05 — Monitorar** | Durante o período, app acompanha automaticamente via APIs vinculadas |
-| **06 — Verificar** | Na data final, app coleta dados e determina os resultados com base em provas digitais |
-| **07 — Distribuir** | Smart contract distribui o pot para os vencedores |
-
-### Modelo de Receita
-
-- **Taxa de 3%** sobre o pot de cada Deal
-- Exibida de forma transparente na tela de configuração
-- Ex: 2 participantes × R$50 = R$100 pot · True Deal fee 3%
+| **Criar** | Configure o deal: nome, canal de verificação (X, Strava…), regra, meta, período, valor e tipo de premiação |
+| **Convidar** | Participantes recebem o link e aceitam os termos |
+| **Stake** | Todos depositam via PIX (onramp fiat → USDC) ou diretamente em SOL/USDC |
+| **Snapshot** | App registra o estado inicial via API (ex: seguidores no momento do início) |
+| **Monitorar** | Durante o período, o app acompanha automaticamente via APIs conectadas |
+| **Verificar** | No fim, o app coleta dados e determina o resultado com provas digitais |
+| **Distribuir** | Programa Solana distribui o pot para os vencedores — automático, sem intermediário |
 
 ---
 
-## 🎯 Tipos de Deal
+## ✅ Features Disponíveis Hoje (MVP)
 
-### MVP — 4 Tipos Principais
+### Deal Creation — 2-step flow
+- **Nome** personalizado do deal
+- **Tipo** Regular (fee 5%) ou Super (fee 1%)
+- **Categorias:** Social e Fitness ativos; Gaming, Learning, On-Chain e Free em breve
+- **Canais sociais:** X (Twitter) ativo; Instagram, TikTok, LinkedIn, Discord, YouTube em breve
+- **Canais fitness:** Strava, Wellhub e TotalPass ativos com seleção multi-canal e conector E/OU
+- **Regra:** seleção da métrica verificável por canal (posts, seguidores, km, check-ins…)
+- **Meta:** quantidade + frequência (por dia / semana / mês / ano)
+- **Período:** presets (1 sem, 2 sem, 1 mês, 2 meses) + calendário customizável
+- **Pagamento:** presets R$25/50/100/200/500 ou valor livre, pot estimado em tempo real
+- **Premiação:** Proporcional 🤝 · Ranking 🏅 · Winner Takes All 👑
+- **Visibilidade:** Privado ou Público
+- **Tela de confirmação:** preview hero + resumo de todos os parâmetros + fee info
 
-| Tipo | Exemplos | Fonte de verificação |
-|------|----------|---------------------|
-| **Redes sociais** | Quem ganha mais seguidores em X, Instagram, TikTok em N dias | X API, Meta API, TikTok API (OAuth) |
-| **Check-in diário** | Grupo faz check-in na academia todo dia; quem falha paga pro caixa | GPS + timestamp manual |
-| **Atividade física** | Quem corre mais km em 4 semanas | Apple Health / Google Fit API |
-| **Meta livre** | Quem perde mais peso em 60 dias | Check-in manual com foto verificada |
+### Deal Detail
+- Hero card com gradiente verde, status, progresso e chips de verificação
+- Grid de stats (pote, entrada, participantes, dias)
+- Minha posição + ganho potencial em tempo real
+- Tabs: Participantes (aprovados / pagamento / pedidos) · Cronograma · Distribuição do pote
+- Footer sticky com CTA contextual (tracking / entrar / resultado)
 
-### Tipos: Oficial vs. Privado
+### Deal Result & Share
+- Confetti animado ao entrar na tela
+- Result hero com gradiente escuro→verde e prêmio em destaque
+- Payout banner com confirmação de pagamento
+- Ranking final com linha "você" destacada
+- Distribuição do pote com barras de progresso
+- Share card pronto para story (WhatsApp, Instagram, X, Telegram)
+- Copiar link do deal
 
-| Tipo | Descrição |
-|------|-----------|
-| **Oficial / Plataforma** | Deals criados pelo app ou parceiros. Templates validados, APIs garantidas, identificação visual azul |
-| **Privado / Grupo** | Deals criados entre amigos. Configuração livre, identificação visual verde |
+### Auth & Onboarding
+- Login social (Google, Apple, X) via Supabase Auth
+- Onboarding de perfil e survey de interesses
+- Suporte a OAuth para vinculação de contas (X API, Strava)
 
-### Fatores de Verificação Múltiplos
-
-Um Deal pode combinar mais de um fator de verificação. O usuário seleciona via abas (Redes sociais, Fitness, Check-in, On-chain) e adiciona os fatores disponíveis conforme as contas que já vinculou no perfil.
+### Explore & Home
+- Lista de deals ativos, pendentes e finalizados
+- Filtros por status e categoria
 
 ---
 
 ## 🏗️ Arquitetura Técnica
 
-### Stack MVP
+### Stack
 
-| Camada | Tecnologia | Justificativa |
-|--------|------------|---------------|
-| **Frontend Mobile** | React Native | Cross-platform iOS/Android, grande ecossistema, compatível com vibe coding |
-| **Backend / BaaS** | Supabase | DB + Auth + Realtime + Storage em uma plataforma. Open source |
-| **Pagamento Fiat** | NoxPay / Efí Bank | Pix nativo, custódia de valores, API de webhooks |
-| **Smart Contracts** | Solidity (Arbitrum L2) | Baixo custo de gas, segurança Ethereum |
-| **Custódia** | Centralizada (Supabase) | Para agilizar o MVP. Migrar para on-chain na Fase 2 |
-| **Provas Digitais** | OAuth + REST APIs | X API, Meta API, Apple Health, Google Fit, TikTok API |
-| **Autenticação** | Supabase Auth + WalletConnect | Social login + Web3 wallet em um só fluxo |
-| **Dev Tooling** | Cursor AI + Claude | Vibe coding para acelerar MVP solo |
+| Camada | Tecnologia |
+|--------|------------|
+| **Frontend** | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4, Shadcn UI |
+| **Backend / BaaS** | Supabase (Postgres, Auth, Realtime, Storage, Server Actions) |
+| **Blockchain** | **Solana** — Anchor framework (Rust), Devnet para dev, Mainnet-Beta para produção |
+| **Token de stake** | USDC (SPL Token) + SOL nativo |
+| **Carteira Web3** | Phantom / Backpack (Solana-native) |
+| **Pagamento Fiat** | PIX → USDC via onramp (NoxPay / integrações BR) |
+| **Verificação** | OAuth + REST APIs (X API, Strava, Wellhub, TotalPass) |
+| **Autenticação** | Supabase Auth (social login) + Phantom wallet |
 
----
+### Programa Solana (Anchor)
 
-## 📊 Análise de Concorrentes
+O coração on-chain do True Deal é um programa Anchor que:
 
-| App | Categoria | Stake | Diferencial |
-|-----|-----------|-------|-------------|
-| Moonwalk | Fitness / Hábito | Pot coletivo | UX simples, foco em passos diários |
-| Beeminder | Compromisso pessoal | Stake pessoal | 50+ integrações de dados |
-| StickK | Compromisso | Stake + árbitro humano | Arbitragem humana opcional |
-| Polymarket | Prediction market | Bet em eventos | Líder global, alta liquidez |
-| Kalshi | Prediction market | Bet regulado | Regulado CFTC (EUA) |
-| Kleros | Resolução de disputas | Stake em jurados | Arbitragem descentralizada |
-| TriadMarkets | Prediction market | Bet em eventos | Maior prediction market BR |
+- Cria uma **conta PDA** (Program Derived Address) como escrow para cada deal
+- Aceita stake em **USDC (SPL Token)** ou **SOL nativo**
+- Recebe a resolução do oracle (backend verificador) e distribui o pot automaticamente
+- Suporta 3 modos de distribuição: Proporcional · Top-3 Ranking · Winner Takes All
+- Taxa de plataforma descontada on-chain (Regular 5% · Super 1%)
 
-### Oportunidade de Mercado
+```
+Fluxo on-chain:
 
-**Nenhum concorrente combina:**
-1. ✅ Acordos livres entre amigos — não só eventos globais
-2. ✅ Verificação automática por APIs reais com múltiplos fatores
-3. ✅ Pagamento dual Pix + cripto
-4. ✅ UX desenhada para público não-nativo com opção Web3 para nativos
+[Usuário] --stake--> [PDA Escrow] --resolução (oracle)--> [Distribuição automática]
+                         |
+                    [Programa TrueDeal]
+                    (Anchor / Rust · Solana Devnet)
+```
 
----
+### Configuração Solana
 
-## 🗺️ Roadmap
+```bash
+# Instalar Solana CLI
+sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
 
-| Fase | Período | Entregas principais |
-|------|---------|---------------------|
-| **Fase 0 — Conceito** | Doc de projeto v0.2, benchmarks, definição de stack |
-| **Fase 1 — MVP** | App funcional: 4 tipos de deal, X API integrada, check-in manual, pagamento Pix, early testers |
-| **Fase 2 — Validação** | 50 deals realizados, NPS, ajustes de UX, todas APIs centralizadas integradas |
-| **Fase 3 — Expansão** | Smart contracts auditados, sistema de grupos & parceiros, marketplace de desafios |
-| **Fase 4 — Escala** | SDK para terceiros, AI agent nas redes sociais confirmando e criando True Deals no app por conversas na rede, expansão LatAm |
+# Instalar Anchor CLI
+cargo install --git https://github.com/coral-xyz/anchor avm --force
+avm install latest && avm use latest
 
----
+# Configurar rede (Devnet para desenvolvimento)
+solana config set --url devnet
+solana-keygen new --outfile ~/.config/solana/id.json
+solana airdrop 2  # SOL de teste no Devnet
 
-## 🛠 Stack Tecnológico
+# Build e deploy do programa
+cd contracts/
+anchor build
+anchor deploy --provider.cluster devnet
+```
 
-### Frontend
-- [Next.js 14](https://nextjs.org/) - Framework React full-stack (Web)
-- [React Native](https://reactnative.dev/) - Mobile (iOS/Android)
-- [TypeScript](https://www.typescriptlang.org/) - Tipagem estática
-- [Tailwind CSS](https://tailwindcss.com/) - Framework CSS utilitário
-- [Shadcn UI](https://ui.shadcn.com/) - Componentes UI acessíveis
-
-### Backend
-- [Supabase](https://supabase.com/) - Backend as a Service
-- [Next.js API Routes](https://nextjs.org/docs/app/building-your-application/routing/api-routes) - API integrada
-- [Server Actions](https://nextjs.org/docs/app/building-your-application/data-fetching/server-actions) - Ações server-side
-
-### Blockchain
-- [Solidity](https://soliditylang.org/) - Smart contracts
-- [Arbitrum](https://arbitrum.io/) - L2 Ethereum para baixo custo
-- [WalletConnect](https://walletconnect.com/) - Conexão com carteiras Web3
-
-### Pagamentos
-- [NoxPay](https://noxpay.com.br/) - Pix nativo brasileiro
-- [MetaMask](https://metamask.io/) - Carteira Web3
-- [Phantom](https://phantom.app/) - Carteira Web3 (Solana)
+**Program ID (Devnet):** `TBD — deploy em andamento para o Hackathon`
 
 ---
 
-## 🚀 Getting Started
+## 🛠 Setup Local (Frontend)
 
 ### Pré-requisitos
 
-- Node.js 18+
-- pnpm (gerenciador de pacotes)
+- Node.js 20+
+- pnpm
 
 ### Instalação
 
 ```bash
 # Clone o repositório
 git clone https://github.com/lkr0102/truedeal.git
-
-# Entre no diretório
 cd truedeal
 
-# Instale as dependências
+# Instale dependências
 pnpm install
+
+# Configure as variáveis de ambiente
+cp .env.example .env.local
+# Preencha: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY
+# e NEXT_PUBLIC_SOLANA_NETWORK=devnet
 
 # Inicie o servidor de desenvolvimento
 pnpm dev
 ```
 
-A aplicação estará disponível em 
+Acesse `http://localhost:3000`
+
+### Variáveis de Ambiente
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+
+# Solana
+NEXT_PUBLIC_SOLANA_NETWORK=devnet
+NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+TRUEDEAL_PROGRAM_ID=your_program_id
+
+# APIs de verificação
+X_API_BEARER_TOKEN=your_x_api_token
+STRAVA_CLIENT_ID=your_strava_client_id
+STRAVA_CLIENT_SECRET=your_strava_client_secret
+```
+
+---
+
+## 🗺️ Roadmap
+
+| Fase | Status | Entregas |
+|------|--------|----------|
+| **MVP Frontend** | ✅ Pronto | Deal creation, detail, result, auth, onboarding |
+| **Supabase Backend** | ✅ Pronto | Auth, DB schema, server actions |
+| **Programa Solana** | 🔄 Em progresso | Escrow PDA, stake USDC/SOL, distribuição automática |
+| **X API** | 🔄 Em progresso | OAuth, snapshot inicial, verificação de métricas |
+| **Strava API** | 📋 Planejado | OAuth, km, check-ins, horas de treino |
+| **PIX Onramp** | 📋 Planejado | Fiat → USDC via NoxPay |
+| **Phantom Auth** | 📋 Planejado | Wallet-based login + Supabase Auth |
+| **Wellhub / TotalPass** | 📋 Planejado | OAuth + check-ins |
+| **Mobile (React Native)** | 📋 Fase 2 | iOS/Android nativo |
+| **AI Oracle** | 📋 Fase 3 | Agente que cria deals via conversas nas redes |
+
+---
+
+## 🏆 Colosseum Frontier Hackathon
+
+True Deal foi desenvolvido como projeto para o **[Colosseum Frontier Hackathon](https://www.colosseum.org/)** — a principal competição de builders do ecossistema Solana.
+
+**Track:** Consumer Apps
+
+**Por que Solana?**
+- Fees de transação ~$0,00025 por operação — viável para stakes de qualquer tamanho
+- Finalidade em ~400ms — UX sem espera perceptível
+- USDC nativo como SPL Token — sem bridges, sem fricção
+- Ecossistema de carteiras mobile maduro (Phantom, Backpack)
+- Anchor framework permite contratos auditáveis e testáveis em Rust
+
+**Diferenciais para o hackathon:**
+- Consumer app real com UX polida para público não-nativo Web3
+- Verificação automática via APIs externas + resolução on-chain
+- Modelo de receita sustentável (fee por deal)
+- Mercado LatAm sub-atendido + integração fiat (PIX) como onramp
+
+---
+
+## 📊 Concorrentes
+
+| App | Stake | Verificação | Público |
+|-----|-------|-------------|---------|
+| Moonwalk | Pot coletivo | Passos (iOS Health) | Fitness |
+| Beeminder | Stake pessoal | 50+ integrações | Power users |
+| StickK | Stake + árbitro | Manual / humano | Geral |
+| Polymarket | Cripto | Eventos globais | Cripto nativo |
+
+**Nenhum combina:** accordos livres entre amigos + verificação automática por APIs + UX acessível + on-chain trust-less + mercado LatAm.
 
 ---
 
 ## 👤 Founder
 
-**Lukas Rocha** (LKR)
+**Lukas Rocha**  
 [@lkrcripto](https://twitter.com/lkrcripto)
 
-### Experiência
-
-- **8 anos** de publicidade e comunicação estratégica (Propeg BA, SoloED, Humann, Brain Revolution, OneTarget)
-- **Ex-Marketing & Community Manager** ICP HUB Brasil
-- **Top 3 Arbitrum Ambassador** brasileiro (maior L2 da Ethereum)
-- **Community Manager & Ambassador** TriadMarkets (maior prediction market BR)
+- 8 anos em publicidade e estratégia de comunicação (Propeg, SoloED, Humann, Brain Revolution)
+- Ex-Marketing & Community Manager — ICP HUB Brasil
+- Top 3 Arbitrum Ambassador BR
+- Community Manager — TriadMarkets (maior prediction market BR)
 
 ---
 
 <div align="center">
 
-Desenvolvido com ❤️ por [Lukas Rocha](https://github.com/lkr0102)
+Feito com ❤️ por [Lukas Rocha](https://github.com/lkr0102) para o ecossistema Solana.
 
 *Don't trust. Make a True Deal.*
 
