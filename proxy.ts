@@ -10,7 +10,7 @@ const ONBOARDING_ROUTES = ["/onboarding"]
 // Assets e sistema — nunca interceptar
 const SKIP_PREFIXES = ["/_next", "/api", "/favicon", "/icon", "/apple-icon", "/brand", "/images", "/public"]
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   if (SKIP_PREFIXES.some(p => pathname.startsWith(p))) {

@@ -16,6 +16,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://truedeal.app"),
   title: "True Deal — Don't trust. Make a Deal.",
   description: "Acordos digitais com stake e verificação automática. Árbitro neutro entre pessoas.",
   icons: {
