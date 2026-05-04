@@ -26,6 +26,8 @@ export default function ProfileSetupPage() {
   const [name, setName] = useState("")
   const [handle, setHandle] = useState("")
   const [photo, setPhoto] = useState<string | null>(null)
+  const [photoFile, setPhotoFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
   const [socials, setSocials] = useState({ x: "", instagram: "", tiktok: "", strava: "" })
   const [handleEdited, setHandleEdited] = useState(false)
 
@@ -46,6 +48,7 @@ export default function ProfileSetupPage() {
   function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    setPhotoFile(file)
     const reader = new FileReader()
     reader.onload = (ev) => setPhoto(ev.target?.result as string)
     reader.readAsDataURL(file)
@@ -57,10 +60,26 @@ export default function ProfileSetupPage() {
 
   async function handleContinue() {
     if (!name.trim()) return
-    const username = handle.replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 20) || "user"
-    await updateProfile({ display_name: name.trim(), username })
-    // Marca onboarding como concluído nos metadados do usuário Supabase
+    setUploading(true)
+
     const supabase = createClient()
+    let avatar_url: string | undefined
+
+    if (photoFile) {
+      const ext  = photoFile.name.split(".").pop() ?? "jpg"
+      const { data: { user } } = await supabase.auth.getUser()
+      const path = `${user?.id ?? "anon"}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage
+        .from("avatars")
+        .upload(path, photoFile, { upsert: true })
+      if (!upErr) {
+        const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path)
+        avatar_url = urlData.publicUrl
+      }
+    }
+
+    const username = handle.replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 20) || "user"
+    await updateProfile({ display_name: name.trim(), username, ...(avatar_url ? { avatar_url } : {}) })
     await supabase.auth.updateUser({ data: { onboarding_completed: true } })
     router.push("/onboarding/survey")
   }
@@ -239,17 +258,17 @@ export default function ProfileSetupPage() {
         {/* Botão continuar */}
         <button
           onClick={handleContinue}
-          disabled={!isValid}
+          disabled={!isValid || uploading}
           className={`w-full py-4 rounded-2xl font-semibold text-white flex items-center justify-center gap-2 transition-all duration-300 ${
-            isValid ? "hover:scale-[1.02] active:scale-[0.98]" : "opacity-40 cursor-not-allowed"
+            isValid && !uploading ? "hover:scale-[1.02] active:scale-[0.98]" : "opacity-40 cursor-not-allowed"
           }`}
           style={{
             background: "linear-gradient(135deg, #16A34A 0%, #22C55E 100%)",
             boxShadow: isValid ? "0 8px 32px rgba(22,163,74,0.4)" : "none",
           }}
         >
-          Continuar
-          <ArrowRight className="w-5 h-5" />
+          {uploading ? "Salvando…" : "Continuar"}
+          {!uploading && <ArrowRight className="w-5 h-5" />}
         </button>
       </div>
     </div>
