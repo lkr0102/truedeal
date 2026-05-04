@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, X } from "lucide-react"
 import { useWallet } from "@solana/wallet-adapter-react"
-import { WalletReadyState } from "@solana/wallet-adapter-base"
 import { createClient } from "@/lib/supabase/client"
 import { TrueDealAppIcon } from "@/components/TrueDealLogo"
 
@@ -123,7 +122,9 @@ export default function LoginPage() {
 
   function handleWalletConnect(adapterName: string) {
     const found = wallets.find(w => w.adapter.name === adapterName)
-    if (!found || found.readyState === WalletReadyState.NotDetected) {
+    // Com Wallet Standard: se a carteira não está instalada, ela simplesmente
+    // não aparece em wallets[]. Se !found → abre página de instalação.
+    if (!found) {
       window.open(WALLET_INSTALL[adapterName as keyof typeof WALLET_INSTALL] ?? "#", "_blank")
       return
     }
@@ -325,8 +326,8 @@ export default function LoginPage() {
                 { name: "Phantom",  icon: <IconPhantom />,  bg: "#9945FF", desc: "Solana · Wallet mais popular" },
                 { name: "Solflare", icon: <IconSolflare />, bg: "#FC8C00", desc: "Solana · Suporte multi-conta" },
               ].map(w => {
-                const found       = wallets.find(a => a.adapter.name === w.name)
-                const isInstalled = found && found.readyState === WalletReadyState.Installed
+                const found        = wallets.find(a => a.adapter.name === w.name)
+                const isInstalled  = !!found  // Wallet Standard: se está em wallets[], está instalada
                 const isConnecting = connecting && wallet?.adapter.name === w.name
 
                 return (

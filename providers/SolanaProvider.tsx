@@ -1,23 +1,19 @@
 "use client"
 
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react"
-import { PhantomWalletAdapter, SolflareWalletAdapter } from "@solana/wallet-adapter-wallets"
 import { clusterApiUrl } from "@solana/web3.js"
-import { useMemo } from "react"
 
 const NETWORK = (process.env.NEXT_PUBLIC_SOLANA_NETWORK ?? "devnet") as "devnet" | "mainnet-beta"
 const ENDPOINT = process.env.NEXT_PUBLIC_SOLANA_RPC_URL ?? clusterApiUrl(NETWORK)
 
 export function SolanaProvider({ children }: { children: React.ReactNode }) {
-  const wallets = useMemo(
-    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter()],
-    [],
-  )
-
+  // wallets={[]} — Phantom, Solflare e Backpack implementam o Wallet Standard
+  // e são detectados automaticamente pelo WalletProvider sem adapters explícitos.
+  // Não importamos @solana/wallet-adapter-wallets pois ele traz toda a stack
+  // WalletConnect (viem/ox/pino) que causa erros de webpack no Next.js.
   return (
     <ConnectionProvider endpoint={ENDPOINT}>
-      {/* autoConnect: true → reconecta automaticamente ao recarregar se a carteira já foi aprovada */}
-      <WalletProvider wallets={wallets} autoConnect>
+      <WalletProvider wallets={[]} autoConnect>
         {children}
       </WalletProvider>
     </ConnectionProvider>
