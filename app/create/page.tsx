@@ -365,7 +365,7 @@ export default function CreateDealPage() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 px-5 pb-36">
+        <div className="flex-1 px-5 pb-32">
           <h1 className="text-2xl font-bold text-gray-800 mb-1">Criar Deal</h1>
           <p className="text-sm text-gray-500 mb-6">Configure tudo e inicie</p>
 
@@ -741,43 +741,36 @@ export default function CreateDealPage() {
               </button>
             </div>
           </SectionBlock>
-        </div>
 
-        {/* CTA Screen 1 */}
-        <div
-          className="fixed bottom-0 left-0 right-0 px-5 pb-8 pt-4"
-          style={{
-            background: "linear-gradient(to top, rgba(255,255,255,0.96) 65%, transparent 100%)",
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          <button
-            onClick={() => isValid && setScreen(2)}
-            disabled={!isValid}
-            className={`w-full py-4 rounded-2xl font-bold text-white text-sm transition-all duration-300 ${isValid ? "active:scale-[0.98]" : "opacity-40 cursor-not-allowed"}`}
-            style={{
-              background: dealMode === "super"
-                ? "linear-gradient(135deg,#FFAA00,#FF6B00)"
-                : "linear-gradient(135deg,#16A34A,#22C55E)",
-              boxShadow: isValid
-                ? dealMode === "super" ? "0 8px 32px rgba(255,170,0,0.4)" : "0 8px 32px rgba(22,163,74,0.4)"
-                : "none",
-              letterSpacing: "0.04em",
-            }}
-          >
-            REVISAR DEAL →
-          </button>
-          {!isValid && (
-            <p className="text-center text-xs text-gray-400 mt-2">
-              {name.trim().length < 3          ? "Defina um nome com pelo menos 3 caracteres"
-                : !category                    ? "Escolha uma categoria"
-                : selectedChannels.length === 0 ? "Escolha um canal"
-                : !rule                        ? "Escolha uma regra"
-                : !frequency                   ? "Escolha a frequência"
-                : effectiveAmount < 10         ? "Valor mínimo por pessoa: R$10"
-                : "Preencha todos os campos"}
-            </p>
-          )}
+          <div className="mt-6">
+            <button
+              onClick={() => isValid && setScreen(2)}
+              disabled={!isValid}
+              className={`w-full py-4 rounded-2xl font-bold text-white text-sm transition-all duration-300 ${isValid ? "active:scale-[0.98]" : "opacity-40 cursor-not-allowed"}`}
+              style={{
+                background: dealMode === "super"
+                  ? "linear-gradient(135deg,#FFAA00,#FF6B00)"
+                  : "linear-gradient(135deg,#16A34A,#22C55E)",
+                boxShadow: isValid
+                  ? dealMode === "super" ? "0 8px 32px rgba(255,170,0,0.4)" : "0 8px 32px rgba(22,163,74,0.4)"
+                  : "none",
+                letterSpacing: "0.04em",
+              }}
+            >
+              REVISAR DEAL →
+            </button>
+            {!isValid && (
+              <p className="text-center text-xs text-gray-400 mt-2">
+                {name.trim().length < 3          ? "Defina um nome com pelo menos 3 caracteres"
+                  : !category                    ? "Escolha uma categoria"
+                  : selectedChannels.length === 0 ? "Escolha um canal"
+                  : !rule                        ? "Escolha uma regra"
+                  : !frequency                   ? "Escolha a frequência"
+                  : effectiveAmount < 10         ? "Valor mínimo por pessoa: R$10"
+                  : "Preencha todos os campos"}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -799,7 +792,7 @@ export default function CreateDealPage() {
           </button>
         </header>
 
-        <div className="flex-1 px-5 pb-36">
+        <div className="flex-1 px-5 pb-8">
           <h1 className="text-2xl font-bold text-gray-800 mb-1">Confirmar Deal</h1>
           <p className="text-sm text-gray-500 mb-6">Revise os detalhes antes de confirmar</p>
 
@@ -875,30 +868,23 @@ export default function CreateDealPage() {
           </div>
 
           {submitError && <p className="text-xs text-red-500 text-center mb-3">{submitError}</p>}
-        </div>
 
-        {/* CTA Screen 2 */}
-        <div
-          className="fixed bottom-0 left-0 right-0 px-5 pb-8 pt-4"
-          style={{
-            background: "linear-gradient(to top, rgba(255,255,255,0.96) 65%, transparent 100%)",
-            backdropFilter: "blur(12px)",
-          }}
-        >
-          <button
-            onClick={handleConfirm}
-            disabled={isSubmitting}
-            className="w-full py-4 rounded-2xl font-bold text-white text-sm transition-all active:scale-[0.98] disabled:opacity-60"
-            style={{
-              background: dealMode === "super"
-                ? "linear-gradient(135deg,#FFAA00,#FF6B00)"
-                : "linear-gradient(135deg,#16A34A,#22C55E)",
-              boxShadow: dealMode === "super" ? "0 8px 32px rgba(255,170,0,0.4)" : "0 8px 32px rgba(22,163,74,0.4)",
-              letterSpacing: "0.04em",
-            }}
-          >
-            {isSubmitting ? "PROCESSANDO…" : "PAGAR ENTRADA E INICIAR O DEAL"}
-          </button>
+          <div className="mt-4 mb-12">
+            <button
+              onClick={handleConfirm}
+              disabled={isSubmitting}
+              className="w-full py-4 rounded-2xl font-bold text-white text-sm transition-all active:scale-[0.98] disabled:opacity-60"
+              style={{
+                background: dealMode === "super"
+                  ? "linear-gradient(135deg,#FFAA00,#FF6B00)"
+                  : "linear-gradient(135deg,#16A34A,#22C55E)",
+                boxShadow: dealMode === "super" ? "0 8px 32px rgba(255,170,0,0.4)" : "0 8px 32px rgba(22,163,74,0.4)",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {isSubmitting ? "PROCESSANDO…" : "PAGAR ENTRADA E INICIAR O DEAL"}
+            </button>
+          </div>
         </div>
       </div>
 
