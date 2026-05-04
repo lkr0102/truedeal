@@ -659,7 +659,7 @@ export default function DealDetailPage() {
             {deal.status === "ativo" ? (
               <PrimaryBtn
                 style={{ width: "100%", textAlign: "center", borderRadius: 12 }}
-                onClick={() => router.push("/tracking")}>
+                onClick={() => router.push(`/tracking?id=${id}`)}>
                 Ver Tracking →
               </PrimaryBtn>
             ) : deal.status === "pendente" ? (
