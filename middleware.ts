@@ -1,16 +1,18 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
-// Rotas que não precisam de autenticação
+// Rotas sem autenticação
 const PUBLIC_ROUTES = ["/login", "/auth/callback"]
 
-// Rotas de API e assets que o middleware nunca deve interceptar
+// Rotas autenticadas mas sem exigir onboarding concluído
+const ONBOARDING_ROUTES = ["/onboarding"]
+
+// Assets e sistema — nunca interceptar
 const SKIP_PREFIXES = ["/_next", "/api", "/favicon", "/icon", "/apple-icon", "/brand", "/images", "/public"]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Ignora assets e rotas de sistema
   if (SKIP_PREFIXES.some(p => pathname.startsWith(p))) {
     return NextResponse.next()
   }
@@ -22,7 +24,7 @@ export async function middleware(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll: ()               => request.cookies.getAll(),
+        getAll: () => request.cookies.getAll(),
         setAll: (cookiesToSet) => {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request })
@@ -34,23 +36,34 @@ export async function middleware(request: NextRequest) {
     },
   )
 
-  // Atualiza a sessão (obrigatório para SSR com Supabase)
+  // Atualiza sessão (obrigatório para SSR com Supabase)
   const { data: { user } } = await supabase.auth.getUser()
 
-  const isPublic = PUBLIC_ROUTES.some(r => pathname.startsWith(r))
+  const isPublic      = PUBLIC_ROUTES.some(r => pathname.startsWith(r))
+  const isOnboarding  = ONBOARDING_ROUTES.some(r => pathname.startsWith(r))
 
-  // Não autenticado tentando acessar rota protegida → login
+  // Não autenticado → login
   if (!user && !isPublic) {
-    const loginUrl = request.nextUrl.clone()
-    loginUrl.pathname = "/login"
-    return NextResponse.redirect(loginUrl)
+    const url = request.nextUrl.clone()
+    url.pathname = "/login"
+    return NextResponse.redirect(url)
   }
 
-  // Autenticado tentando acessar login → home
-  if (user && pathname.startsWith("/login")) {
-    const homeUrl = request.nextUrl.clone()
-    homeUrl.pathname = "/"
-    return NextResponse.redirect(homeUrl)
+  if (user) {
+    // Logado tentando acessar login → home
+    if (pathname.startsWith("/login")) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/"
+      return NextResponse.redirect(url)
+    }
+
+    // Onboarding não concluído → redireciona (exceto se já está no onboarding)
+    const onboardingDone = user.user_metadata?.onboarding_completed === true
+    if (!onboardingDone && !isOnboarding) {
+      const url = request.nextUrl.clone()
+      url.pathname = "/onboarding/profile"
+      return NextResponse.redirect(url)
+    }
   }
 
   return response

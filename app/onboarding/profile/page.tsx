@@ -5,6 +5,7 @@ import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Camera, AtSign, Hash, ArrowRight } from "lucide-react"
 import { updateProfile } from "@/lib/actions/profile"
+import { createClient } from "@/lib/supabase/client"
 
 function generateHandle(name: string): string {
   const base = name
@@ -58,7 +59,10 @@ export default function ProfileSetupPage() {
     if (!name.trim()) return
     const username = handle.replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 20) || "user"
     await updateProfile({ display_name: name.trim(), username })
-    router.push("/")
+    // Marca onboarding como concluído nos metadados do usuário Supabase
+    const supabase = createClient()
+    await supabase.auth.updateUser({ data: { onboarding_completed: true } })
+    router.push("/onboarding/survey")
   }
 
   const isValid = name.trim().length >= 2
