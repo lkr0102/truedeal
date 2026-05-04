@@ -1,15 +1,13 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Home, Compass, Wallet, User,
   Eye, EyeOff, ArrowDownToLine, ArrowUpFromLine,
   Trophy, X as XIcon,
-  Copy, Check, AlertCircle,
+  Copy, Check, ExternalLink, ShieldCheck,
 } from "lucide-react"
-import { useConnection, useWallet } from "@solana/wallet-adapter-react"
-import { LAMPORTS_PER_SOL } from "@solana/web3.js"
 import type { Profile, TdpTransaction, TdpReason } from "@/lib/supabase/types"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -99,43 +97,35 @@ interface WalletClientProps {
   profile: Profile | null
   tdpHistory: TdpTransaction[]
   activeDealsValue: number
+  managedPublicKey: string | null
+  solBalance: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Component
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function WalletClient({ profile, tdpHistory, activeDealsValue }: WalletClientProps) {
-  const [showBalance, setShowBalance]   = useState(true)
-  const [activeModal, setActiveModal]   = useState<ModalType>(null)
-  const [pixAmount,   setPixAmount]     = useState("")
-  const [copied,      setCopied]        = useState(false)
-  const [copiedAddr,  setCopiedAddr]    = useState(false)
-
-  // ── Solana real data ──
-  const { connection }                  = useConnection()
-  const { publicKey, connected, disconnect } = useWallet()
-  const [solBalance,  setSolBalance]    = useState<number | null>(null)
-  const [balanceLoading, setBalanceLoading] = useState(false)
-
-  useEffect(() => {
-    if (!publicKey || !connection) { setSolBalance(null); return }
-    setBalanceLoading(true)
-    connection.getBalance(publicKey)
-      .then(lamports => setSolBalance(lamports / LAMPORTS_PER_SOL))
-      .catch(() => setSolBalance(null))
-      .finally(() => setBalanceLoading(false))
-  }, [publicKey, connection])
+export default function WalletClient({ profile, tdpHistory, activeDealsValue, managedPublicKey, solBalance }: WalletClientProps) {
+  const [showBalance, setShowBalance] = useState(true)
+  const [activeModal, setActiveModal] = useState<ModalType>(null)
+  const [pixAmount,   setPixAmount]   = useState("")
+  const [copied,      setCopied]      = useState(false)
+  const [copiedAddr,  setCopiedAddr]  = useState(false)
 
   function truncateAddr(addr: string) {
-    return `${addr.slice(0, 4)}...${addr.slice(-4)}`
+    return `${addr.slice(0, 6)}...${addr.slice(-6)}`
   }
 
   function copyAddr() {
-    if (!publicKey) return
-    navigator.clipboard.writeText(publicKey.toBase58()).catch(() => {})
+    if (!managedPublicKey) return
+    navigator.clipboard.writeText(managedPublicKey).catch(() => {})
     setCopiedAddr(true)
     setTimeout(() => setCopiedAddr(false), 2000)
+  }
+
+  function openExplorer() {
+    if (!managedPublicKey) return
+    window.open(`https://explorer.solana.com/address/${managedPublicKey}?cluster=devnet`, "_blank")
   }
 
   const PIX_KEY = "lukasrocha02@gmail.com"
@@ -178,82 +168,64 @@ export default function WalletClient({ profile, tdpHistory, activeDealsValue }: 
 
       <div className="flex-1 px-5 overflow-y-auto">
 
-        {/* ── Solana Wallet Card ── */}
-        {connected && publicKey ? (
-          <div className="rounded-2xl p-4 mb-4 mt-3"
-            style={{
-              background: "linear-gradient(135deg,rgba(153,69,255,0.08),rgba(252,140,0,0.06))",
-              border:     "1px solid rgba(153,69,255,0.2)",
-              backdropFilter: "blur(20px)",
-            }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                  style={{ background: "linear-gradient(135deg,#9945FF,#FC8C00)" }}>
-                  <span className="text-white text-[11px] font-black">◎</span>
-                </div>
-                <span className="text-sm font-bold text-gray-800">Carteira Solana</span>
+        {/* ── App-Managed Solana Wallet ── */}
+        <div className="rounded-2xl p-4 mb-4 mt-3"
+          style={{
+            background: "linear-gradient(135deg,rgba(153,69,255,0.08),rgba(252,140,0,0.06))",
+            border:     "1px solid rgba(153,69,255,0.2)",
+            backdropFilter: "blur(20px)",
+          }}>
+          {/* Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg,#9945FF,#FC8C00)" }}>
+                <span className="text-white text-[11px] font-black">◎</span>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                  style={{ background: "rgba(22,163,74,0.1)", color: "#16A34A" }}>
-                  Conectada
-                </span>
-                <button onClick={() => disconnect()}
-                  className="text-[10px] text-gray-400 hover:text-red-400 transition-colors">
-                  Desconectar
-                </button>
-              </div>
+              <span className="text-sm font-bold text-gray-800">Carteira Solana</span>
             </div>
-
-            <div className="flex items-center justify-between">
-              {/* Address */}
-              <button onClick={copyAddr}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
-                style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.7)" }}>
-                <span className="text-xs font-mono font-medium text-gray-700">
-                  {truncateAddr(publicKey.toBase58())}
-                </span>
-                {copiedAddr
-                  ? <Check className="w-3 h-3 text-[#16A34A]" />
-                  : <Copy className="w-3 h-3 text-gray-400" />}
-              </button>
-
-              {/* SOL balance */}
-              <div className="text-right">
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saldo SOL</p>
-                {balanceLoading ? (
-                  <p className="text-lg font-black" style={{ color: "#9945FF" }}>…</p>
-                ) : solBalance !== null ? (
-                  <p className="text-lg font-black" style={{ color: "#9945FF" }}>
-                    {solBalance.toFixed(4)} <span className="text-xs font-bold">SOL</span>
-                  </p>
-                ) : (
-                  <p className="text-sm text-gray-400">—</p>
-                )}
-              </div>
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5" style={{ color: "#16A34A" }} />
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(22,163,74,0.1)", color: "#16A34A" }}>
+                Gerenciada pelo app
+              </span>
             </div>
           </div>
-        ) : (
-          <div className="rounded-2xl p-4 mb-4 mt-3 flex items-center gap-3"
-            style={{
-              background: "rgba(255,255,255,0.4)",
-              border: "1px dashed rgba(153,69,255,0.25)",
-              backdropFilter: "blur(20px)",
-            }}>
-            <AlertCircle className="w-5 h-5 flex-shrink-0" style={{ color: "#9945FF" }} />
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-700">Carteira não conectada</p>
-              <p className="text-xs text-gray-400">Conecte sua carteira Solana para ver o saldo on-chain</p>
+
+          {/* Address + balance */}
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={copyAddr}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
+              style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.7)" }}>
+              <span className="text-xs font-mono font-medium text-gray-700">
+                {managedPublicKey ? truncateAddr(managedPublicKey) : "Gerando…"}
+              </span>
+              {copiedAddr
+                ? <Check className="w-3 h-3 text-[#16A34A]" />
+                : <Copy className="w-3 h-3 text-gray-400" />}
+            </button>
+
+            <div className="text-right">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saldo SOL</p>
+              <p className="text-lg font-black" style={{ color: "#9945FF" }}>
+                {solBalance.toFixed(4)} <span className="text-xs font-bold">SOL</span>
+              </p>
             </div>
-            <button
-              onClick={() => (window.location.href = "/login")}
-              className="text-xs font-bold px-3 py-1.5 rounded-lg flex-shrink-0"
-              style={{ background: "rgba(153,69,255,0.12)", color: "#9945FF" }}>
-              Conectar
+          </div>
+
+          {/* Fee abstraction badge + explorer link */}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] text-gray-400">
+              ✓ Fees de rede pagas pelo True Deal
+            </span>
+            <button onClick={openExplorer}
+              className="flex items-center gap-1 text-[10px] font-semibold"
+              style={{ color: "#9945FF" }}>
+              Explorer <ExternalLink className="w-3 h-3" />
             </button>
           </div>
-        )}
+        </div>
 
         {/* User summary card */}
         <div className="rounded-2xl p-4 mb-5 flex items-center gap-4 mt-3"
