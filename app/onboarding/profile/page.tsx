@@ -1,11 +1,13 @@
 "use client"
 
 import type { ChangeEvent } from "react"
-import { useState, useRef } from "react"
-import { useRouter } from "next/navigation"
-import { Camera, Hash, ArrowRight, CheckCircle2, Loader2, Info } from "lucide-react"
-import { updateProfile } from "@/lib/actions/profile"
+import { useState, useRef, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Camera, Hash, ArrowRight, CheckCircle2, Loader2, Info, X, Clock } from "lucide-react"
+import { updateProfile, getMySocialConnections, saveMembershipEmail } from "@/lib/actions/profile"
 import { createClient } from "@/lib/supabase/client"
+
+// ── Handle generator ──────────────────────────────────────────────────────────
 
 function generateHandle(name: string): string {
   const base = name
@@ -19,68 +21,169 @@ function generateHandle(name: string): string {
   return `${base || "user"}#${num}`
 }
 
-// ── Social platform definitions ───────────────────────────────────────────────
+// ── Platform definitions ──────────────────────────────────────────────────────
 
-type SocialKey = "x" | "strava" | "wellhub" | "totalpass"
+type SocialKey    = "x" | "strava" | "wellhub" | "totalpass"
+type ConnectMode  = "oauth" | "email"
+type ConnectState = "idle" | "connected" | "pending"
 
-interface SocialPlatform {
-  key: SocialKey
-  label: string
+interface Platform {
+  key:          SocialKey
+  label:        string
   dealCategory: string
-  whyNeeded: string
-  color: string
-  available: boolean
+  whyNeeded:    string
+  color:        string
+  textColor:    string
+  mode:         ConnectMode
+  oauthPath?:   string
 }
 
-const PLATFORMS: SocialPlatform[] = [
+const PLATFORMS: Platform[] = [
   {
     key:          "x",
     label:        "X (Twitter)",
     dealCategory: "Social Media",
-    whyNeeded:    "Necessário para deals de crescimento de seguidores, posts e engajamento no X.",
+    whyNeeded:    "Necessário para deals de crescimento de seguidores, posts e engajamento no X. O app lê seus dados via API do X para verificar automaticamente o resultado.",
     color:        "#000000",
-    available:    true,
+    textColor:    "#ffffff",
+    mode:         "oauth",
+    oauthPath:    "/api/auth/x",
   },
   {
     key:          "strava",
     label:        "Strava",
     dealCategory: "Corrida & Ciclismo",
-    whyNeeded:    "Necessário para deals de corrida, ciclismo e atividades ao ar livre verificadas por GPS.",
+    whyNeeded:    "Necessário para deals de corrida, ciclismo e atividades ao ar livre. O app lê suas atividades com GPS via API do Strava para verificar distâncias e tempos.",
     color:        "#FC4C02",
-    available:    false,
+    textColor:    "#ffffff",
+    mode:         "oauth",
+    oauthPath:    "/api/auth/strava",
   },
   {
     key:          "wellhub",
     label:        "Wellhub",
     dealCategory: "Academia & Fitness",
-    whyNeeded:    "Necessário para deals de frequência em academias parceiras Wellhub (ex-Gympass).",
+    whyNeeded:    "Necessário para deals de frequência em academias parceiras Wellhub (ex-Gympass). A verificação de check-ins é feita via parceria com a plataforma.",
     color:        "#00A651",
-    available:    false,
+    textColor:    "#ffffff",
+    mode:         "email",
   },
   {
     key:          "totalpass",
     label:        "TotalPass",
     dealCategory: "Academia & Fitness",
-    whyNeeded:    "Necessário para deals de check-in em academias parceiras TotalPass.",
+    whyNeeded:    "Necessário para deals de check-in em academias parceiras TotalPass. A verificação é feita via parceria com a plataforma.",
     color:        "#0047AB",
-    available:    false,
+    textColor:    "#ffffff",
+    mode:         "email",
   },
 ]
 
-// Platform icon — letter badge
-function PlatformIcon({ platform }: { platform: SocialPlatform }) {
-  const letters: Record<SocialKey, string> = {
-    x:         "𝕏",
-    strava:    "S",
-    wellhub:   "W",
-    totalpass: "TP",
-  }
+// Platform icon badge
+function PlatformIcon({ p }: { p: Platform }) {
+  const letters: Record<SocialKey, string> = { x: "𝕏", strava: "S", wellhub: "W", totalpass: "TP" }
   return (
     <div
-      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-black text-sm"
-      style={{ background: platform.color }}
+      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-sm"
+      style={{ background: p.color, color: p.textColor }}
     >
-      {letters[platform.key]}
+      {letters[p.key]}
+    </div>
+  )
+}
+
+// ── Membership email modal (Wellhub / TotalPass) ──────────────────────────────
+
+function MembershipModal({
+  platform,
+  onClose,
+  onSaved,
+}: {
+  platform: Platform
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const [email,   setEmail]   = useState("")
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState<string | null>(null)
+
+  async function handleSave() {
+    if (!email.trim() || !email.includes("@")) { setError("E-mail inválido"); return }
+    setSaving(true)
+    const result = await saveMembershipEmail(platform.key as "wellhub" | "totalpass", email.trim())
+    if (result.error) { setError(result.error); setSaving(false); return }
+    onSaved()
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center"
+      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-t-3xl p-6 pb-10"
+        style={{ background: "rgba(255,255,255,0.97)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <PlatformIcon p={platform} />
+            <div>
+              <p className="font-bold text-gray-800">{platform.label}</p>
+              <p className="text-xs text-gray-400">Verificação de membership</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.07)" }}>
+            <X className="w-4 h-4 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Info box */}
+        <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(0,71,171,0.06)", border: "1px solid rgba(0,71,171,0.12)" }}>
+          <div className="flex gap-2.5">
+            <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: platform.color }} />
+            <div>
+              <p className="text-xs font-bold mb-0.5" style={{ color: platform.color }}>Verificação via parceria</p>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                {platform.label} não possui OAuth público para apps de terceiros. Cadastre o e-mail da sua conta {platform.label} — a verificação automática dos seus check-ins será ativada assim que a parceria estiver ativa.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Email input */}
+        <label className="text-sm font-semibold text-gray-700 block mb-2">
+          E-mail da sua conta {platform.label}
+        </label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => { setEmail(e.target.value); setError(null) }}
+          placeholder={`seu@email.com`}
+          className="w-full px-4 py-3 rounded-xl outline-none text-gray-800 placeholder-gray-400 mb-4"
+          style={{ background: "rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.1)" }}
+        />
+
+        {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
+
+        <button
+          onClick={handleSave}
+          disabled={saving || !email.trim()}
+          className="w-full py-3.5 rounded-2xl font-semibold text-white transition-all active:scale-[0.98]"
+          style={{
+            background: `linear-gradient(135deg, ${platform.color}, ${platform.color}CC)`,
+            opacity: saving || !email.trim() ? 0.6 : 1,
+          }}
+        >
+          {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Salvar e-mail"}
+        </button>
+
+        <p className="text-center text-xs text-gray-400 mt-3">
+          Você poderá atualizar isso no seu perfil a qualquer momento
+        </p>
+      </div>
     </div>
   )
 }
@@ -89,109 +192,120 @@ function PlatformIcon({ platform }: { platform: SocialPlatform }) {
 
 function SocialCard({
   platform,
-  connected,
-  onConnect,
-  connecting,
+  state,
+  username,
+  onOAuth,
+  onEmailSaved,
 }: {
-  platform: SocialPlatform
-  connected: boolean
-  onConnect: () => void
-  connecting: boolean
+  platform:     Platform
+  state:        ConnectState
+  username?:    string | null
+  onOAuth:      () => void
+  onEmailSaved: () => void
 }) {
-  const [showTip, setShowTip] = useState(false)
+  const [showTip,    setShowTip]    = useState(false)
+  const [showModal,  setShowModal]  = useState(false)
+
+  function handleConnect() {
+    if (platform.mode === "oauth")  { onOAuth(); return }
+    if (platform.mode === "email")  { setShowModal(true) }
+  }
 
   return (
-    <div
-      className="rounded-2xl p-4"
-      style={{
-        background:    connected ? "rgba(22,163,74,0.06)" : "rgba(255,255,255,0.55)",
-        backdropFilter: "blur(20px)",
-        border:        connected
-          ? "1px solid rgba(22,163,74,0.25)"
-          : "1px solid rgba(255,255,255,0.55)",
-        transition: "all 0.2s",
-      }}
-    >
-      <div className="flex items-center gap-3">
-        <PlatformIcon platform={platform} />
+    <>
+      <div
+        className="rounded-2xl p-4 transition-all duration-200"
+        style={{
+          background: state === "connected"
+            ? "rgba(22,163,74,0.07)"
+            : state === "pending"
+            ? `${platform.color}0D`
+            : "rgba(255,255,255,0.55)",
+          backdropFilter: "blur(20px)",
+          border: state === "connected"
+            ? "1px solid rgba(22,163,74,0.25)"
+            : state === "pending"
+            ? `1px solid ${platform.color}30`
+            : "1px solid rgba(255,255,255,0.55)",
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <PlatformIcon p={platform} />
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="text-sm font-bold text-gray-800">{platform.label}</span>
-            {!platform.available && (
-              <span
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                style={{ background: "rgba(0,0,0,0.07)", color: "#9CA3AF" }}
-              >
-                Em breve
-              </span>
-            )}
-            <button
-              type="button"
-              onClick={() => setShowTip((v) => !v)}
-              className="text-gray-300 hover:text-gray-500 transition-colors"
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
+              <span className="text-sm font-bold text-gray-800">{platform.label}</span>
+              {state === "connected" && username && (
+                <span className="text-[10px] text-gray-400">@{username}</span>
+              )}
+              <button type="button" onClick={() => setShowTip(v => !v)} className="text-gray-300 hover:text-gray-500">
+                <Info className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <span
+              className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+              style={{ background: `${platform.color}18`, color: platform.color }}
             >
-              <Info className="w-3.5 h-3.5" />
-            </button>
+              {platform.dealCategory}
+            </span>
           </div>
-          <span
-            className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-            style={{ background: `${platform.color}18`, color: platform.color }}
-          >
-            {platform.dealCategory}
-          </span>
+
+          {/* Action button / status */}
+          {state === "connected" ? (
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
+              <span className="text-xs font-bold text-[#16A34A]">Conectado</span>
+            </div>
+          ) : state === "pending" ? (
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <Clock className="w-4 h-4" style={{ color: platform.color }} />
+              <span className="text-xs font-bold" style={{ color: platform.color }}>Pendente</span>
+            </div>
+          ) : (
+            <button
+              onClick={handleConnect}
+              className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-95"
+              style={{ background: `linear-gradient(135deg, ${platform.color}, ${platform.color}CC)` }}
+            >
+              Conectar
+            </button>
+          )}
         </div>
 
-        {/* Action */}
-        {connected ? (
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
-            <span className="text-xs font-bold text-[#16A34A]">Conectado</span>
-          </div>
-        ) : (
-          <button
-            onClick={onConnect}
-            disabled={!platform.available || connecting}
-            className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
-            style={{
-              background: platform.available
-                ? `linear-gradient(135deg, ${platform.color}, ${platform.color}CC)`
-                : "rgba(0,0,0,0.07)",
-              color:   platform.available ? "white" : "#9CA3AF",
-              cursor:  platform.available ? "pointer" : "not-allowed",
-              opacity: connecting ? 0.7 : 1,
-            }}
+        {/* Why needed tooltip */}
+        {showTip && (
+          <div
+            className="mt-3 rounded-xl px-3 py-2.5 text-xs text-gray-600 leading-relaxed"
+            style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
           >
-            {connecting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : platform.available ? (
-              "Conectar"
-            ) : (
-              "Em breve"
+            <span className="font-semibold text-gray-700">Por que verificar? </span>
+            {platform.whyNeeded}
+            {platform.mode === "email" && (
+              <span className="block mt-1.5 text-[11px]" style={{ color: platform.color }}>
+                ⚠ Verificação automática ativa quando a parceria {platform.label} estiver disponível.
+              </span>
             )}
-          </button>
+          </div>
         )}
       </div>
 
-      {/* Tooltip explaining why it's needed */}
-      {showTip && (
-        <div
-          className="mt-3 rounded-xl px-3 py-2.5 text-xs text-gray-600 leading-relaxed"
-          style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
-        >
-          <span className="font-semibold text-gray-700">Por que verificar? </span>
-          {platform.whyNeeded}
-        </div>
+      {showModal && (
+        <MembershipModal
+          platform={platform}
+          onClose={() => setShowModal(false)}
+          onSaved={() => { setShowModal(false); onEmailSaved() }}
+        />
       )}
-    </div>
+    </>
   )
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ProfileSetupPage() {
-  const router  = useRouter()
-  const fileRef = useRef<HTMLInputElement>(null)
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const fileRef      = useRef<HTMLInputElement>(null)
 
   const [name,         setName]         = useState("")
   const [handle,       setHandle]       = useState("")
@@ -199,18 +313,53 @@ export default function ProfileSetupPage() {
   const [photoFile,    setPhotoFile]    = useState<File | null>(null)
   const [uploading,    setUploading]    = useState(false)
   const [handleEdited, setHandleEdited] = useState(false)
-  const [connected,    setConnected]    = useState<Record<SocialKey, boolean>>({
-    x: false, strava: false, wellhub: false, totalpass: false,
-  })
-  const [connecting, setConnecting] = useState<SocialKey | null>(null)
-  const [connectError, setConnectError] = useState<string | null>(null)
+  const [socialError,  setSocialError]  = useState<string | null>(null)
 
-  const initials = name
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .toUpperCase()
-    .slice(0, 2) || "?"
+  const [states, setStates] = useState<Record<SocialKey, ConnectState>>({
+    x: "idle", strava: "idle", wellhub: "idle", totalpass: "idle",
+  })
+  const [usernames, setUsernames] = useState<Record<SocialKey, string | null>>({
+    x: null, strava: null, wellhub: null, totalpass: null,
+  })
+
+  // Load existing connections on mount
+  useEffect(() => {
+    getMySocialConnections().then(({ connections }) => {
+      const newStates    = { ...states }
+      const newUsernames = { ...usernames }
+      for (const c of connections) {
+        const key = c.platform as SocialKey
+        if (key in newStates) {
+          newStates[key]    = c.status === "pending" ? "pending" : "connected"
+          newUsernames[key] = c.username
+        }
+      }
+      setStates(newStates)
+      setUsernames(newUsernames)
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Handle return from OAuth (Strava / X)
+  useEffect(() => {
+    const connected = searchParams.get("social_connected") as SocialKey | null
+    const errParam  = searchParams.get("social_error")
+
+    if (connected && connected in states) {
+      setStates(prev => ({ ...prev, [connected]: "connected" }))
+    }
+    if (errParam) {
+      const messages: Record<string, string> = {
+        strava_denied: "Autorização do Strava cancelada.",
+        strava_token:  "Erro ao conectar com Strava. Tente novamente.",
+        x_denied:      "Autorização do X cancelada.",
+      }
+      setSocialError(messages[errParam] ?? "Erro ao conectar. Tente novamente.")
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  const initials = name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2) || "?"
 
   function handleNameChange(value: string) {
     setName(value)
@@ -226,25 +375,12 @@ export default function ProfileSetupPage() {
     reader.readAsDataURL(file)
   }
 
-  async function handleConnect(key: SocialKey) {
-    setConnectError(null)
-    setConnecting(key)
+  function handleOAuth(platform: Platform) {
+    if (platform.oauthPath) window.location.href = platform.oauthPath
+  }
 
-    if (key === "x") {
-      const supabase = createClient()
-      const { error } = await supabase.auth.linkIdentity({
-        provider: "twitter",
-        options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding/profile` },
-      })
-      if (error) {
-        setConnectError(error.message)
-        setConnecting(null)
-      }
-      // On success the browser redirects — no further action needed here
-      return
-    }
-
-    setConnecting(null)
+  function handleEmailSaved(key: SocialKey) {
+    setStates(prev => ({ ...prev, [key]: "pending" }))
   }
 
   async function handleContinue() {
@@ -279,14 +415,14 @@ export default function ProfileSetupPage() {
     <div
       className="min-h-screen flex flex-col"
       style={{
-        backgroundImage:    "url('/images/gradient-background.jpg')",
-        backgroundSize:     "cover",
-        backgroundPosition: "center",
-        backgroundRepeat:   "no-repeat",
+        backgroundImage:      "url('/images/gradient-background.jpg')",
+        backgroundSize:       "cover",
+        backgroundPosition:   "center",
+        backgroundRepeat:     "no-repeat",
         backgroundAttachment: "fixed",
       }}
     >
-      {/* Progress bar */}
+      {/* Progress */}
       <div className="px-5 pt-12 pb-2">
         <div className="flex items-center gap-2 mb-1">
           <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.3)" }}>
@@ -313,11 +449,9 @@ export default function ProfileSetupPage() {
               border:      "2px solid rgba(255,255,255,0.5)",
             }}
           >
-            {photo ? (
-              <img src={photo} alt="Foto de perfil" className="w-full h-full object-cover" />
-            ) : (
-              <span className="text-blue-300 font-bold text-2xl">{initials}</span>
-            )}
+            {photo
+              ? <img src={photo} alt="Foto de perfil" className="w-full h-full object-cover" />
+              : <span className="text-blue-300 font-bold text-2xl">{initials}</span>}
             <div
               className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 hover:opacity-100 transition-opacity"
               style={{ background: "rgba(0,0,0,0.4)" }}
@@ -354,7 +488,7 @@ export default function ProfileSetupPage() {
             className="flex items-center rounded-xl overflow-hidden"
             style={{ background: "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}
           >
-            <div className="px-3 py-4 flex items-center gap-1" style={{ borderRight: "1px solid rgba(255,255,255,0.5)" }}>
+            <div className="px-3 py-4" style={{ borderRight: "1px solid rgba(255,255,255,0.5)" }}>
               <Hash className="w-4 h-4 text-[#16A34A]" />
             </div>
             <input
@@ -383,8 +517,8 @@ export default function ProfileSetupPage() {
               Verificação de contas <span className="text-gray-400 font-normal">(opcional)</span>
             </label>
             <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-              Vincule suas contas para participar de deals que usam esses canais.
-              Toque no <span className="inline-flex items-center gap-0.5"><Info className="w-3 h-3 inline" /></span> para entender por que cada uma é necessária.
+              Vincule suas contas para desbloquear deals desses canais. Toque no{" "}
+              <Info className="w-3 h-3 inline -mt-0.5" /> para entender a importância de cada verificação.
             </p>
           </div>
 
@@ -393,15 +527,16 @@ export default function ProfileSetupPage() {
               <SocialCard
                 key={platform.key}
                 platform={platform}
-                connected={connected[platform.key]}
-                connecting={connecting === platform.key}
-                onConnect={() => handleConnect(platform.key)}
+                state={states[platform.key]}
+                username={usernames[platform.key]}
+                onOAuth={() => handleOAuth(platform)}
+                onEmailSaved={() => handleEmailSaved(platform.key)}
               />
             ))}
           </div>
 
-          {connectError && (
-            <p className="text-xs text-red-500 mt-2 ml-1">{connectError}</p>
+          {socialError && (
+            <p className="text-xs text-red-500 mt-2 ml-1">{socialError}</p>
           )}
         </div>
 

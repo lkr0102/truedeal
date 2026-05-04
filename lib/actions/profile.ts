@@ -86,6 +86,35 @@ export async function updateProfile(updates: { display_name?: string; username?:
   return { success: true }
 }
 
+// ── Social connections ────────────────────────────────────────────────────────
+
+export async function getMySocialConnections() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { connections: [] }
+
+  const { data } = await (supabase.from("social_connections") as any)
+    .select("platform, status, username, member_email, external_id")
+    .eq("user_id", user.id)
+
+  return { connections: (data ?? []) as { platform: string; status: string; username: string | null; member_email: string | null; external_id: string | null }[] }
+}
+
+export async function saveMembershipEmail(platform: "wellhub" | "totalpass", memberEmail: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Não autenticado" }
+
+  const { error } = await (supabase.from("social_connections") as any).upsert(
+    { user_id: user.id, platform, status: "pending", member_email: memberEmail },
+    { onConflict: "user_id,platform" },
+  )
+
+  if (error) return { error: (error as any).message }
+  revalidatePath("/onboarding/profile")
+  return { success: true }
+}
+
 // ── TDP history ───────────────────────────────────────────────────────────────
 
 export async function getTdpHistory(limit = 30) {
