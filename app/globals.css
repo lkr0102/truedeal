@@ -39,6 +39,50 @@
   --sidebar-border: oklch(0.9 0.01 85);
   --sidebar-ring: oklch(0.65 0.15 45 / 0.5);
   --font-inter: "Inter", sans-serif;
+
+  /* ── True Deal Brand Tokens ───────────────────────── */
+  --td-primary:        #16A34A;
+  --td-primary-mid:    #22C55E;
+  --td-primary-dark:   #0D4F2F;
+  --td-primary-light:  #DCFCE7;
+  --td-primary-alpha:  rgba(22, 163, 74, 0.12);
+
+  --td-status-active:  #16A34A;
+  --td-status-pending: #F59E0B;
+  --td-status-closed:  #9CA3AF;
+  --td-status-blue:    #3B82F6;
+
+  --td-warning:        #D97706;
+  --td-danger:         #EF4444;
+  --td-danger-bg:      rgba(239, 68, 68, 0.10);
+
+  --td-glass-bg:       rgba(255, 255, 255, 0.48);
+  --td-glass-bg-strong:rgba(255, 255, 255, 0.75);
+  --td-glass-border:   rgba(255, 255, 255, 0.60);
+  --td-glass-blur:     blur(30px) saturate(200%);
+  --td-glass-shadow:   0 4px 20px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.70);
+
+  --td-space-xs:     4px;
+  --td-space-sm:     8px;
+  --td-space-md:     12px;
+  --td-space-lg:     16px;
+  --td-space-xl:     24px;
+  --td-space-screen: 24px;
+  --td-space-card:   14px;
+
+  --td-radius-card:   14px;
+  --td-radius-button: 12px;
+  --td-radius-badge:  100px;
+  --td-radius-large:  20px;
+
+  --td-shadow-card:        0 4px 20px rgba(0,0,0,0.07);
+  --td-shadow-hero:        0 12px 40px rgba(22,163,74,0.40);
+  --td-shadow-btn-primary: 0 6px 20px rgba(22,163,74,0.38);
+  --td-shadow-fab:         0 8px 32px rgba(22,163,74,0.45), 0 16px 48px rgba(22,163,74,0.20);
+
+  --td-ease:       cubic-bezier(0.4, 0, 0.2, 1);
+  --td-transition: all 0.3s var(--td-ease);
+  --td-transition-fast: all 0.15s var(--td-ease);
 }
 
 .dark {
@@ -192,3 +236,67 @@
     height: 300px;
   }
 }
+
+/* ── Deal Result & Confetti Animations ────────────────────────────────────── */
+@keyframes confettiFall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(110vh) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+@layer utilities {
+  .confetti-particle {
+    animation: confettiFall 2.5s linear forwards;
+  }
+
+  /* Glass card variants for True Deal */
+  .glass-card {
+    background: var(--td-glass-bg);
+    backdrop-filter: var(--td-glass-blur);
+    border: 1px solid var(--td-glass-border);
+    box-shadow: var(--td-glass-shadow);
+  }
+
+  .glass-card-strong {
+    background: var(--td-glass-bg-strong);
+    backdrop-filter: var(--td-glass-blur);
+    border: 1px solid var(--td-glass-border);
+  }
+
+  /* Hero gradient variants */
+  .hero-gradient {
+    background: linear-gradient(160deg, #0D2E1A 0%, #16A34A 60%, #22C55E 100%);
+    box-shadow: 0 16px 48px rgba(22, 163, 74, 0.45);
+  }
+
+  .hero-gradient-alt {
+    background: linear-gradient(135deg, #16A34A, #22C55E);
+    box-shadow: 0 8px 32px rgba(22, 163, 74, 0.4);
+  }
+
+  /* Smooth transitions */
+  .smooth-transition {
+    transition: var(--td-transition);
+  }
+
+  .smooth-transition-fast {
+    transition: var(--td-transition-fast);
+  }
+
+  /* Text utilities */
+  .text-gradient {
+    background: linear-gradient(135deg, #16A34A, #22C55E);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+

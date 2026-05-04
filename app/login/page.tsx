@@ -72,6 +72,16 @@ export default function LoginPage() {
   // Referência para saber qual carteira o usuário escolheu e acionar o connect()
   // após o estado do WalletProvider atualizar com a nova seleção.
   const pendingRef = useRef<string | null>(null)
+  // Só redireciona se o usuário clicou explicitamente — evita redirect pelo autoConnect
+  const walletInitiatedRef = useRef(false)
+
+  // Redireciona se já há sessão Supabase ativa (login anterior por e-mail/Google)
+  useEffect(() => {
+    const supabase = createClient()
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.push("/")
+    })
+  }, [router])
 
   // Quando o wallet muda (após select()), dispara connect()
   useEffect(() => {
@@ -83,9 +93,10 @@ export default function LoginPage() {
     })
   }, [wallet])
 
-  // Quando conectado com sucesso → redireciona
+  // Quando conectado com sucesso → redireciona apenas se foi o usuário quem iniciou
   useEffect(() => {
-    if (connected && publicKey) {
+    if (connected && publicKey && walletInitiatedRef.current) {
+      walletInitiatedRef.current = false
       setShowWallets(false)
       router.push("/")
     }
@@ -122,13 +133,12 @@ export default function LoginPage() {
 
   function handleWalletConnect(adapterName: string) {
     const found = wallets.find(w => w.adapter.name === adapterName)
-    // Com Wallet Standard: se a carteira não está instalada, ela simplesmente
-    // não aparece em wallets[]. Se !found → abre página de instalação.
     if (!found) {
       window.open(WALLET_INSTALL[adapterName as keyof typeof WALLET_INSTALL] ?? "#", "_blank")
       return
     }
     setWalletError(null)
+    walletInitiatedRef.current = true
     pendingRef.current = adapterName
     select(found.adapter.name)
   }

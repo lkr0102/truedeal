@@ -4,9 +4,9 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   Bell, Home, Compass, Wallet, User, Plus,
-  Users, DollarSign, Clock, Activity,
+  Clock, Activity,
   Trophy, Star,
-  Lock, LockOpen, CheckCircle2, ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight,
   PieChart, Award, Search,
 } from "lucide-react"
 
@@ -145,12 +145,14 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
 
   return (
     <button onClick={onClick}
-      className="w-full text-left rounded-2xl p-4 transition-all duration-300 hover:scale-[1.015] active:scale-[0.98]"
+      className="w-full text-left p-4 transition-all duration-300 hover:scale-[1.015] active:scale-[0.98]"
       style={{
-        background: `rgba(255,255,255,0.42)`,
+        background: `rgba(255,255,255,0.48)`,
         backdropFilter: "blur(30px) saturate(200%)",
-        border: `1px solid rgba(255,255,255,0.55)`,
+        WebkitBackdropFilter: "blur(30px) saturate(200%)",
+        border: `1px solid rgba(255,255,255,0.6)`,
         borderLeft: `3.5px solid ${ss.border}`,
+        borderRadius: 16,
         boxShadow: "0 4px 20px rgba(0,0,0,0.07), inset 0 1px 0 rgba(255,255,255,0.6)",
         backgroundColor: ss.bg,
       }}>
@@ -166,32 +168,35 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
       {/* Linha 2: título */}
       <h3 className="text-gray-800 font-bold text-base leading-snug mb-3">{deal.title}</h3>
 
-      {/* Linha 3: ícones de info */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mb-3">
-        <div className="flex items-center gap-1">
-          {deal.verifications.map((v) => <VerifBadge key={v} type={v} />)}
-        </div>
-        <div className="flex items-center gap-1 text-xs text-gray-600">
-          <DollarSign className="w-3 h-3 text-gray-400" />
-          <span className="font-semibold">R${deal.valuePerPerson}</span>
-          <span className="text-gray-400">/pessoa</span>
-        </div>
-        <div className="flex items-center gap-1 text-xs text-gray-600">
-          <Users className="w-3 h-3 text-gray-400" />
-          <span className="font-semibold">{deal.participants}</span>
-        </div>
-        {deal.status !== "pendente" && (
-          <div className="flex items-center gap-1 text-xs text-gray-600">
-            <Clock className="w-3 h-3 text-gray-400" />
-            <span className="font-semibold">{deal.status === "ativo" ? `${daysLeft}d restantes` : `${deal.daysTotal}d`}</span>
+      {/* Info grid 2 colunas */}
+      <div className="grid grid-cols-2 gap-1.5 mb-2.5">
+        {[
+          { label: "Entrada",       value: `R$${deal.valuePerPerson}/pessoa` },
+          { label: "Pot total",     value: deal.pot > 0 ? `R$${deal.pot.toLocaleString("pt-BR")}` : "—", green: true },
+          { label: "Participantes", value: `${deal.participants} players` },
+          {
+            label: deal.status === "pendente" ? "Inicia em" : deal.status === "ativo" ? "Tempo restante" : "Duração",
+            value: deal.status === "pendente" ? `${deal.daysToStart ?? 0}d` : deal.status === "ativo" ? `${daysLeft}d` : `${deal.daysTotal}d`,
+          },
+        ].map((tile) => (
+          <div key={tile.label} style={{
+            background: "rgba(255,255,255,0.5)", borderRadius: 8,
+            padding: "6px 8px", display: "flex", flexDirection: "column", gap: 2,
+          }}>
+            <span style={{ fontSize: 9, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              {tile.label}
+            </span>
+            <span style={{ fontSize: 12, fontWeight: 700, color: tile.green ? "#16A34A" : "#374151" }}>
+              {tile.value}
+            </span>
           </div>
-        )}
-        {deal.pot > 0 && (
-          <div className="flex items-center gap-1 text-xs font-bold" style={{ color: ss.border }}>
-            <span>R${deal.pot.toLocaleString("pt-BR")}</span>
-            <span className="font-normal text-gray-400">pot</span>
-          </div>
-        )}
+        ))}
+      </div>
+
+      {/* Verificado via */}
+      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+        <span style={{ fontSize: 10, color: "#9CA3AF" }}>Verificado via</span>
+        {deal.verifications.map((v) => <VerifBadge key={v} type={v} />)}
       </div>
 
       {/* Progresso + ranking */}
@@ -199,7 +204,7 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
         <div className="space-y-1.5">
           <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.08)" }}>
             <div className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${deal.progress * 100}%`, backgroundColor: ss.border }} />
+              style={{ width: `${deal.progress * 100}%`, background: "linear-gradient(90deg,#16A34A,#22C55E)" }} />
           </div>
           <div className="flex justify-between items-center">
             <span className="text-[10px] text-gray-400">{deal.daysGone}/{deal.daysTotal} dias</span>
@@ -743,7 +748,7 @@ export default function HomePage() {
           ) : (
             <div className="space-y-3 pb-4">
               {filteredDeals.map((deal) => (
-                <DealCard key={deal.id} deal={deal} onClick={() => router.push("/tracking")} />
+                <DealCard key={deal.id} deal={deal} onClick={() => router.push(`/deal/${deal.id}`)} />
               ))}
 
               {/* Resumo financeiro — só em Meus Deals */}

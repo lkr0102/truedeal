@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { SolanaProvider } from "@/providers/SolanaProvider"
@@ -10,6 +10,10 @@ const inter = Inter({
   variable: "--font-inter",
   weight: ["300", "400", "600", "700"],
 })
+
+export const viewport: Viewport = {
+  themeColor: "#16A34A",
+}
 
 export const metadata: Metadata = {
   title: "True Deal — Don't trust. Make a Deal.",
@@ -32,7 +36,6 @@ export const metadata: Metadata = {
     description: "Don't trust. Make a Deal.",
     images: ["/brand/og-banner-1200x630.svg"],
   },
-  themeColor: "#16A34A",
   other: {
     "talentapp:project_verification":
       "1c84902ccdc25a7b437dc5cf23888002ab57bc03a45ff13a6f0119b7e37b1fc9d24e41342ae817cf4fd92283a7ec97972fc68d2a72203c754b5b5f9ebbfe73df",
