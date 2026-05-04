@@ -3,7 +3,7 @@
 import type { ChangeEvent } from "react"
 import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Camera, AtSign, Hash, ArrowRight } from "lucide-react"
+import { Camera, Hash, ArrowRight, CheckCircle2, Loader2, Info } from "lucide-react"
 import { updateProfile } from "@/lib/actions/profile"
 import { createClient } from "@/lib/supabase/client"
 
@@ -19,17 +19,191 @@ function generateHandle(name: string): string {
   return `${base || "user"}#${num}`
 }
 
+// ── Social platform definitions ───────────────────────────────────────────────
+
+type SocialKey = "x" | "strava" | "wellhub" | "totalpass"
+
+interface SocialPlatform {
+  key: SocialKey
+  label: string
+  dealCategory: string
+  whyNeeded: string
+  color: string
+  available: boolean
+}
+
+const PLATFORMS: SocialPlatform[] = [
+  {
+    key:          "x",
+    label:        "X (Twitter)",
+    dealCategory: "Social Media",
+    whyNeeded:    "Necessário para deals de crescimento de seguidores, posts e engajamento no X.",
+    color:        "#000000",
+    available:    true,
+  },
+  {
+    key:          "strava",
+    label:        "Strava",
+    dealCategory: "Corrida & Ciclismo",
+    whyNeeded:    "Necessário para deals de corrida, ciclismo e atividades ao ar livre verificadas por GPS.",
+    color:        "#FC4C02",
+    available:    false,
+  },
+  {
+    key:          "wellhub",
+    label:        "Wellhub",
+    dealCategory: "Academia & Fitness",
+    whyNeeded:    "Necessário para deals de frequência em academias parceiras Wellhub (ex-Gympass).",
+    color:        "#00A651",
+    available:    false,
+  },
+  {
+    key:          "totalpass",
+    label:        "TotalPass",
+    dealCategory: "Academia & Fitness",
+    whyNeeded:    "Necessário para deals de check-in em academias parceiras TotalPass.",
+    color:        "#0047AB",
+    available:    false,
+  },
+]
+
+// Platform icon — letter badge
+function PlatformIcon({ platform }: { platform: SocialPlatform }) {
+  const letters: Record<SocialKey, string> = {
+    x:         "𝕏",
+    strava:    "S",
+    wellhub:   "W",
+    totalpass: "TP",
+  }
+  return (
+    <div
+      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 text-white font-black text-sm"
+      style={{ background: platform.color }}
+    >
+      {letters[platform.key]}
+    </div>
+  )
+}
+
+// ── Social connect card ───────────────────────────────────────────────────────
+
+function SocialCard({
+  platform,
+  connected,
+  onConnect,
+  connecting,
+}: {
+  platform: SocialPlatform
+  connected: boolean
+  onConnect: () => void
+  connecting: boolean
+}) {
+  const [showTip, setShowTip] = useState(false)
+
+  return (
+    <div
+      className="rounded-2xl p-4"
+      style={{
+        background:    connected ? "rgba(22,163,74,0.06)" : "rgba(255,255,255,0.55)",
+        backdropFilter: "blur(20px)",
+        border:        connected
+          ? "1px solid rgba(22,163,74,0.25)"
+          : "1px solid rgba(255,255,255,0.55)",
+        transition: "all 0.2s",
+      }}
+    >
+      <div className="flex items-center gap-3">
+        <PlatformIcon platform={platform} />
+
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <span className="text-sm font-bold text-gray-800">{platform.label}</span>
+            {!platform.available && (
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                style={{ background: "rgba(0,0,0,0.07)", color: "#9CA3AF" }}
+              >
+                Em breve
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowTip((v) => !v)}
+              className="text-gray-300 hover:text-gray-500 transition-colors"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          </div>
+          <span
+            className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
+            style={{ background: `${platform.color}18`, color: platform.color }}
+          >
+            {platform.dealCategory}
+          </span>
+        </div>
+
+        {/* Action */}
+        {connected ? (
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
+            <span className="text-xs font-bold text-[#16A34A]">Conectado</span>
+          </div>
+        ) : (
+          <button
+            onClick={onConnect}
+            disabled={!platform.available || connecting}
+            className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold transition-all active:scale-95"
+            style={{
+              background: platform.available
+                ? `linear-gradient(135deg, ${platform.color}, ${platform.color}CC)`
+                : "rgba(0,0,0,0.07)",
+              color:   platform.available ? "white" : "#9CA3AF",
+              cursor:  platform.available ? "pointer" : "not-allowed",
+              opacity: connecting ? 0.7 : 1,
+            }}
+          >
+            {connecting ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : platform.available ? (
+              "Conectar"
+            ) : (
+              "Em breve"
+            )}
+          </button>
+        )}
+      </div>
+
+      {/* Tooltip explaining why it's needed */}
+      {showTip && (
+        <div
+          className="mt-3 rounded-xl px-3 py-2.5 text-xs text-gray-600 leading-relaxed"
+          style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
+        >
+          <span className="font-semibold text-gray-700">Por que verificar? </span>
+          {platform.whyNeeded}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function ProfileSetupPage() {
-  const router = useRouter()
+  const router  = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const [name, setName] = useState("")
-  const [handle, setHandle] = useState("")
-  const [photo, setPhoto] = useState<string | null>(null)
-  const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
-  const [socials, setSocials] = useState({ x: "", instagram: "", tiktok: "", strava: "" })
+  const [name,         setName]         = useState("")
+  const [handle,       setHandle]       = useState("")
+  const [photo,        setPhoto]        = useState<string | null>(null)
+  const [photoFile,    setPhotoFile]    = useState<File | null>(null)
+  const [uploading,    setUploading]    = useState(false)
   const [handleEdited, setHandleEdited] = useState(false)
+  const [connected,    setConnected]    = useState<Record<SocialKey, boolean>>({
+    x: false, strava: false, wellhub: false, totalpass: false,
+  })
+  const [connecting, setConnecting] = useState<SocialKey | null>(null)
+  const [connectError, setConnectError] = useState<string | null>(null)
 
   const initials = name
     .split(" ")
@@ -40,9 +214,7 @@ export default function ProfileSetupPage() {
 
   function handleNameChange(value: string) {
     setName(value)
-    if (!handleEdited) {
-      setHandle(generateHandle(value))
-    }
+    if (!handleEdited) setHandle(generateHandle(value))
   }
 
   function handlePhotoChange(e: ChangeEvent<HTMLInputElement>) {
@@ -54,8 +226,25 @@ export default function ProfileSetupPage() {
     reader.readAsDataURL(file)
   }
 
-  function handleSocialChange(network: keyof typeof socials, value: string) {
-    setSocials((prev) => ({ ...prev, [network]: value }))
+  async function handleConnect(key: SocialKey) {
+    setConnectError(null)
+    setConnecting(key)
+
+    if (key === "x") {
+      const supabase = createClient()
+      const { error } = await supabase.auth.linkIdentity({
+        provider: "twitter",
+        options: { redirectTo: `${window.location.origin}/auth/callback?next=/onboarding/profile` },
+      })
+      if (error) {
+        setConnectError(error.message)
+        setConnecting(null)
+      }
+      // On success the browser redirects — no further action needed here
+      return
+    }
+
+    setConnecting(null)
   }
 
   async function handleContinue() {
@@ -66,7 +255,7 @@ export default function ProfileSetupPage() {
     let avatar_url: string | undefined
 
     if (photoFile) {
-      const ext  = photoFile.name.split(".").pop() ?? "jpg"
+      const ext = photoFile.name.split(".").pop() ?? "jpg"
       const { data: { user } } = await supabase.auth.getUser()
       const path = `${user?.id ?? "anon"}/${Date.now()}.${ext}`
       const { error: upErr } = await supabase.storage
@@ -86,25 +275,18 @@ export default function ProfileSetupPage() {
 
   const isValid = name.trim().length >= 2
 
-  const socialFields: { key: keyof typeof socials; label: string; prefix: string; color: string }[] = [
-    { key: "x", label: "X (Twitter)", prefix: "@", color: "#111111" },
-    { key: "instagram", label: "Instagram", prefix: "@", color: "#E4405F" },
-    { key: "tiktok", label: "TikTok", prefix: "@", color: "#010101" },
-    { key: "strava", label: "Strava", prefix: "", color: "#FC4C02" },
-  ]
-
   return (
     <div
       className="min-h-screen flex flex-col"
       style={{
-        backgroundImage: "url('/images/gradient-background.jpg')",
-        backgroundSize: "cover",
+        backgroundImage:    "url('/images/gradient-background.jpg')",
+        backgroundSize:     "cover",
         backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
+        backgroundRepeat:   "no-repeat",
         backgroundAttachment: "fixed",
       }}
     >
-      {/* Barra de progresso: etapa 1 de 2 do onboarding */}
+      {/* Progress bar */}
       <div className="px-5 pt-12 pb-2">
         <div className="flex items-center gap-2 mb-1">
           <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.3)" }}>
@@ -126,11 +308,9 @@ export default function ProfileSetupPage() {
             onClick={() => fileRef.current?.click()}
             className="relative w-24 h-24 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105"
             style={{
-              background: photo
-                ? "transparent"
-                : "linear-gradient(135deg, #1A2E3A 0%, #2A4E5A 100%)",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
-              border: "2px solid rgba(255,255,255,0.5)",
+              background:  photo ? "transparent" : "linear-gradient(135deg, #1A2E3A 0%, #2A4E5A 100%)",
+              boxShadow:   "0 8px 24px rgba(0,0,0,0.15)",
+              border:      "2px solid rgba(255,255,255,0.5)",
             }}
           >
             {photo ? (
@@ -145,13 +325,7 @@ export default function ProfileSetupPage() {
               <Camera className="w-5 h-5 text-white" />
             </div>
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            onChange={handlePhotoChange}
-          />
+          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
         </div>
 
         {/* Nome */}
@@ -164,25 +338,21 @@ export default function ProfileSetupPage() {
             placeholder="Seu nome"
             className="w-full p-4 rounded-xl outline-none text-gray-800 placeholder-gray-400 font-medium"
             style={{
-              background: "rgba(255,255,255,0.6)",
+              background:    "rgba(255,255,255,0.6)",
               backdropFilter: "blur(20px)",
-              border: name ? "2px solid rgba(22,163,74,0.4)" : "1px solid rgba(255,255,255,0.6)",
+              border:        name ? "2px solid rgba(22,163,74,0.4)" : "1px solid rgba(255,255,255,0.6)",
             }}
           />
         </div>
 
-        {/* # ID */}
-        <div className="mb-5">
+        {/* Handle */}
+        <div className="mb-8">
           <label className="text-sm font-semibold text-gray-600 mb-2 block">
             Seu identificador <span className="text-gray-400 font-normal">(como amigos te encontram)</span>
           </label>
           <div
             className="flex items-center rounded-xl overflow-hidden"
-            style={{
-              background: "rgba(255,255,255,0.6)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(255,255,255,0.6)",
-            }}
+            style={{ background: "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}
           >
             <div className="px-3 py-4 flex items-center gap-1" style={{ borderRight: "1px solid rgba(255,255,255,0.5)" }}>
               <Hash className="w-4 h-4 text-[#16A34A]" />
@@ -192,13 +362,7 @@ export default function ProfileSetupPage() {
               value={handle.replace(/^[^#]*#?/, "").replace("#", "")}
               onChange={(e) => {
                 setHandleEdited(true)
-                const base = name
-                  .toLowerCase()
-                  .normalize("NFD")
-                  .replace(/[̀-ͯ]/g, "")
-                  .replace(/\s+/g, "")
-                  .replace(/[^a-z0-9]/g, "")
-                  .slice(0, 12) || "user"
+                const base = name.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "").replace(/[^a-z0-9]/g, "").slice(0, 12) || "user"
                 setHandle(`${base}#${e.target.value.replace(/\D/g, "").slice(0, 4)}`)
               }}
               placeholder="0000"
@@ -212,50 +376,36 @@ export default function ProfileSetupPage() {
           </p>
         </div>
 
-        {/* Redes sociais */}
+        {/* Social verification */}
         <div className="mb-8">
-          <label className="text-sm font-semibold text-gray-600 mb-3 block">
-            Suas redes sociais <span className="text-gray-400 font-normal">(opcional)</span>
-          </label>
+          <div className="mb-3">
+            <label className="text-sm font-semibold text-gray-600 block">
+              Verificação de contas <span className="text-gray-400 font-normal">(opcional)</span>
+            </label>
+            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
+              Vincule suas contas para participar de deals que usam esses canais.
+              Toque no <span className="inline-flex items-center gap-0.5"><Info className="w-3 h-3 inline" /></span> para entender por que cada uma é necessária.
+            </p>
+          </div>
+
           <div className="space-y-3">
-            {socialFields.map((field) => (
-              <div
-                key={field.key}
-                className="flex items-center rounded-xl overflow-hidden"
-                style={{
-                  background: "rgba(255,255,255,0.5)",
-                  backdropFilter: "blur(20px)",
-                  border: "1px solid rgba(255,255,255,0.5)",
-                }}
-              >
-                <div
-                  className="w-10 h-10 m-2 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: field.color }}
-                >
-                  <AtSign className="w-4 h-4 text-white" />
-                </div>
-                <div
-                  className="px-2 py-3 text-gray-400 text-sm flex-shrink-0"
-                  style={{ borderRight: "1px solid rgba(255,255,255,0.4)" }}
-                >
-                  {field.label}
-                </div>
-                <input
-                  type="text"
-                  value={socials[field.key]}
-                  onChange={(e) => handleSocialChange(field.key, e.target.value)}
-                  placeholder={`${field.prefix}username`}
-                  className="flex-1 px-3 py-3 outline-none text-gray-700 text-sm bg-transparent"
-                />
-              </div>
+            {PLATFORMS.map((platform) => (
+              <SocialCard
+                key={platform.key}
+                platform={platform}
+                connected={connected[platform.key]}
+                connecting={connecting === platform.key}
+                onConnect={() => handleConnect(platform.key)}
+              />
             ))}
           </div>
-          <p className="text-xs text-gray-400 mt-2 ml-1">
-            Vinculados para verificação automática nos seus Deals
-          </p>
+
+          {connectError && (
+            <p className="text-xs text-red-500 mt-2 ml-1">{connectError}</p>
+          )}
         </div>
 
-        {/* Botão continuar */}
+        {/* Continuar */}
         <button
           onClick={handleContinue}
           disabled={!isValid || uploading}
@@ -264,7 +414,7 @@ export default function ProfileSetupPage() {
           }`}
           style={{
             background: "linear-gradient(135deg, #16A34A 0%, #22C55E 100%)",
-            boxShadow: isValid ? "0 8px 32px rgba(22,163,74,0.4)" : "none",
+            boxShadow:  isValid ? "0 8px 32px rgba(22,163,74,0.4)" : "none",
           }}
         >
           {uploading ? "Salvando…" : "Continuar"}
