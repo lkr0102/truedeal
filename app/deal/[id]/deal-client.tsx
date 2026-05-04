@@ -7,9 +7,10 @@ import { ptBR } from "date-fns/locale"
 import {
   ArrowLeft, Share2, Users, DollarSign, Clock, Activity,
   CheckCircle2, XCircle, ChevronRight, Trophy, PieChart, Award,
-  Lock, Star,
+  Lock, AlertCircle, Loader2,
 } from "lucide-react"
 import { GlassCard, PrimaryBtn, GhostBtn } from "@/components/td-ui"
+import { joinDeal, updateDealStatus } from "@/lib/actions/deals"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -468,7 +469,43 @@ export default function DealClient({
 }) {
   const router  = useRouter()
   const deal    = mapDeal(dealData, userId)
-  const [mainTab, setMainTab] = useState<MainTab>("participantes")
+  const [mainTab,    setMainTab]    = useState<MainTab>("participantes")
+  const [joining,    setJoining]    = useState(false)
+  const [joinError,  setJoinError]  = useState<string | null>(null)
+  const [starting,   setStarting]   = useState(false)
+  const [startError, setStartError] = useState<string | null>(null)
+
+  const isParticipating = userId
+    ? dealData.participants.some(p => p.user_id === userId)
+    : false
+  const isFull      = dealData.participant_count >= dealData.max_participants
+  const isCreator   = userId === dealData.creator_id
+
+  async function handleJoinDeal() {
+    if (joining) return
+    setJoining(true)
+    setJoinError(null)
+    const result = await joinDeal(dealData.id)
+    if (result.error) {
+      setJoinError(result.error)
+      setJoining(false)
+    } else {
+      router.refresh()
+    }
+  }
+
+  async function handleStartDeal() {
+    if (starting) return
+    setStarting(true)
+    setStartError(null)
+    const result = await updateDealStatus(dealData.id, "ativo")
+    if (result.error) {
+      setStartError(result.error)
+      setStarting(false)
+    } else {
+      router.refresh()
+    }
+  }
 
   const daysLeft  = deal.daysTotal - deal.daysGone
   const pct       = Math.round(deal.progress * 100)
@@ -525,6 +562,20 @@ export default function DealClient({
               </div>
               <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.2)" }}>
                 <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "rgba(255,255,255,0.9)" }} />
+              </div>
+            </>
+          )}
+          {deal.status === "pendente" && (
+            <>
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-white/70 text-xs">Vagas preenchidas</span>
+                <span className="text-white font-bold text-xs">
+                  {deal.participants}/{dealData.max_participants}
+                </span>
+              </div>
+              <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.2)" }}>
+                <div className="h-full rounded-full"
+                  style={{ width: `${Math.min(100, (deal.participants / dealData.max_participants) * 100)}%`, background: "rgba(255,255,255,0.9)" }} />
               </div>
             </>
           )}
@@ -667,10 +718,49 @@ export default function DealClient({
                 Ver Tracking →
               </PrimaryBtn>
             ) : deal.status === "pendente" ? (
-              <PrimaryBtn
-                style={{ width: "100%", textAlign: "center", borderRadius: 12 }}>
-                Entrar no Deal →
-              </PrimaryBtn>
+              <div className="flex-1 flex flex-col gap-1.5">
+                {(joinError || startError) && (
+                  <div className="flex items-center gap-1.5 text-red-500 text-xs px-1">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{joinError ?? startError}</span>
+                  </div>
+                )}
+                {isCreator ? (
+                  <PrimaryBtn
+                    disabled={starting}
+                    style={{
+                      width: "100%", textAlign: "center", borderRadius: 12,
+                      opacity: starting ? 0.65 : 1,
+                      cursor: starting ? "not-allowed" : "pointer",
+                    }}
+                    onClick={handleStartDeal}>
+                    {starting ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Iniciando…
+                      </span>
+                    ) : "Iniciar Deal →"}
+                  </PrimaryBtn>
+                ) : (
+                  <PrimaryBtn
+                    disabled={joining || isParticipating || isFull}
+                    style={{
+                      width: "100%", textAlign: "center", borderRadius: 12,
+                      opacity: (joining || isParticipating || isFull) ? 0.65 : 1,
+                      cursor: (joining || isParticipating || isFull) ? "not-allowed" : "pointer",
+                    }}
+                    onClick={handleJoinDeal}>
+                    {joining ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Entrando…
+                      </span>
+                    ) : isParticipating ? "Você já está neste deal"
+                      : isFull         ? "Deal lotado"
+                      : "Entrar no Deal →"}
+                  </PrimaryBtn>
+                )}
+              </div>
             ) : (
               <GhostBtn
                 style={{ width: "100%", textAlign: "center", borderRadius: 12 }}
