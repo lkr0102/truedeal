@@ -1,83 +1,105 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, X } from "lucide-react"
+import { useWallet } from "@solana/wallet-adapter-react"
+import { WalletReadyState } from "@solana/wallet-adapter-base"
 import { createClient } from "@/lib/supabase/client"
 import { TrueDealAppIcon } from "@/components/TrueDealLogo"
 
-// ── Ícones de canal social ─────────────────────────────────────────────────────
+// ── Ícones ─────────────────────────────────────────────────────────────────────
 
-const IconX = () => (
-  <svg className="w-4 h-4" viewBox="0 0 1200 1227" fill="white">
-    <path d="M714.163 519.284L1160.89 0H1055.03L667.137 450.887L357.328 0H0L468.492 681.821L0 1226.37H105.866L515.491 750.218L842.672 1226.37H1200L714.163 519.284ZM569.165 687.828L521.697 619.934L144.011 79.6944H306.615L611.412 515.685L658.88 583.579L1055.08 1150.3H892.476L569.165 687.854V687.828Z" />
+const IconGoogle = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24">
+    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
   </svg>
 )
-
-const IconStrava = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="white">
-    <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169" />
-  </svg>
-)
-
-const IconWellhub = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10" fill="white" fillOpacity="0.2" />
-    <path d="M6 12l3.5 4L12 9l2.5 4L18 8" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
-
-const socialProviders = [
-  { name: "X",       key: "x",       bg: "#000000", icon: <IconX />,       desc: "Entrar com sua conta X" },
-  { name: "Strava",  key: "strava",  bg: "#FC4C02", icon: <IconStrava />,  desc: "Entrar com sua conta Strava" },
-  { name: "Wellhub", key: "wellhub", bg: "#00A651", icon: <IconWellhub />, desc: "Entrar com sua conta Wellhub" },
-]
-
-// ── Carteiras Solana ───────────────────────────────────────────────────────────
 
 const IconPhantom = () => (
-  <svg className="w-5 h-5" viewBox="0 0 128 128" fill="white">
-    <path d="M64 8C33.1 8 8 33.1 8 64s25.1 56 56 56 56-25.1 56-56S94.9 8 64 8zm0 96c-22.1 0-40-17.9-40-40s17.9-40 40-40 40 17.9 40 40-17.9 40-40 40z" opacity="0.3" />
-    <path d="M80 52c0-8.8-7.2-16-16-16s-16 7.2-16 16v4c0 2.2 1.8 4 4 4s4-1.8 4-4v-4c0-4.4 3.6-8 8-8s8 3.6 8 8v24l-8 8H48l-8-8V64c0-2.2-1.8-4-4-4s-4 1.8-4 4v12l12 12h24l12-12V52z" />
-    <circle cx="52" cy="66" r="5" />
-    <circle cx="76" cy="66" r="5" />
+  <svg className="w-5 h-5" viewBox="0 0 128 128" fill="none">
+    <rect width="128" height="128" rx="24" fill="#9945FF" />
+    <path d="M110.5 64c0 25.68-20.82 46.5-46.5 46.5S17.5 89.68 17.5 64 38.32 17.5 64 17.5 110.5 38.32 110.5 64z" fill="url(#phantom_g)" />
+    <ellipse cx="51" cy="63" rx="7" ry="9" fill="white" />
+    <ellipse cx="77" cy="63" rx="7" ry="9" fill="white" />
+    <ellipse cx="51" cy="65" rx="3.5" ry="4.5" fill="#9945FF" />
+    <ellipse cx="77" cy="65" rx="3.5" ry="4.5" fill="#9945FF" />
+    <defs>
+      <linearGradient id="phantom_g" x1="64" y1="17.5" x2="64" y2="110.5" gradientUnits="userSpaceOnUse">
+        <stop stopColor="#534BB1" />
+        <stop offset="1" stopColor="#551BF9" />
+      </linearGradient>
+    </defs>
   </svg>
 )
 
 const IconSolflare = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="5" fill="white" />
-    <path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="white" strokeWidth="2" strokeLinecap="round" />
-    <path d="M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+  <svg className="w-5 h-5" viewBox="0 0 128 128" fill="none">
+    <rect width="128" height="128" rx="24" fill="#FC8C00" />
+    <path d="M64 20 L108 64 L64 108 L20 64 Z" fill="white" fillOpacity="0.2" />
+    <path d="M64 32 L96 64 L64 96 L32 64 Z" fill="white" fillOpacity="0.4" />
+    <circle cx="64" cy="64" r="16" fill="white" />
   </svg>
 )
 
-const wallets = [
-  { name: "Phantom",  key: "phantom",  bg: "#9945FF", icon: <IconPhantom />,  desc: "Solana · Wallet mais popular" },
-  { name: "Solflare", key: "solflare", bg: "#FC8C00", icon: <IconSolflare />, desc: "Solana · Suporte multi-conta"   },
-]
-
 // ─────────────────────────────────────────────────────────────────────────────
+
+const WALLET_INSTALL = {
+  Phantom:  "https://phantom.app/",
+  Solflare: "https://solflare.com/",
+} as const
 
 export default function LoginPage() {
   const router = useRouter()
 
-  const [email, setEmail]               = useState("")
-  const [password, setPassword]         = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading]       = useState(false)
-  const [isSignUp, setIsSignUp]         = useState(false)
-  const [authError, setAuthError]       = useState<string | null>(null)
-  const [showWallets, setShowWallets]   = useState(false)
+  // ── Supabase auth state ──
+  const [email,        setEmail]        = useState("")
+  const [password,     setPassword]     = useState("")
+  const [showPwd,      setShowPwd]      = useState(false)
+  const [isSignUp,     setIsSignUp]     = useState(false)
+  const [isLoading,    setIsLoading]    = useState(false)
+  const [authError,    setAuthError]    = useState<string | null>(null)
 
-  async function handleEmailLogin(e: { preventDefault(): void }) {
+  // ── Wallet state ──
+  const [showWallets,  setShowWallets]  = useState(false)
+  const [walletError,  setWalletError]  = useState<string | null>(null)
+
+  // ── Solana wallet adapter ──
+  const { wallets, select, wallet, connected, publicKey, connecting } = useWallet()
+
+  // Referência para saber qual carteira o usuário escolheu e acionar o connect()
+  // após o estado do WalletProvider atualizar com a nova seleção.
+  const pendingRef = useRef<string | null>(null)
+
+  // Quando o wallet muda (após select()), dispara connect()
+  useEffect(() => {
+    if (!pendingRef.current || !wallet) return
+    if (wallet.adapter.name !== pendingRef.current) return
+    pendingRef.current = null
+    wallet.adapter.connect().catch(() => {
+      setWalletError("Conexão recusada. Tente novamente.")
+    })
+  }, [wallet])
+
+  // Quando conectado com sucesso → redireciona
+  useEffect(() => {
+    if (connected && publicKey) {
+      setShowWallets(false)
+      router.push("/")
+    }
+  }, [connected, publicKey, router])
+
+  // ── Handlers ──
+
+  async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault()
     if (!email || !password) return
     setIsLoading(true)
     setAuthError(null)
-
     const supabase = createClient()
-
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({ email, password })
       if (error) { setAuthError(error.message); setIsLoading(false); return }
@@ -89,29 +111,43 @@ export default function LoginPage() {
     }
   }
 
-  function handleSocialLogin(key: string) {
-    window.location.href = `/api/auth/${key}`
+  async function handleGoogleLogin() {
+    setAuthError(null)
+    const supabase = createClient()
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/api/auth/callback/google` },
+    })
+    if (error) setAuthError(error.message)
   }
 
-  function handleWalletConnect(_key: string) {
-    setShowWallets(false)
-    router.push("/onboarding/profile")
+  function handleWalletConnect(adapterName: string) {
+    const found = wallets.find(w => w.adapter.name === adapterName)
+    if (!found || found.readyState === WalletReadyState.NotDetected) {
+      window.open(WALLET_INSTALL[adapterName as keyof typeof WALLET_INSTALL] ?? "#", "_blank")
+      return
+    }
+    setWalletError(null)
+    pendingRef.current = adapterName
+    select(found.adapter.name)
   }
+
+  // ── Styles ──
 
   const glass = {
-    background: "rgba(255,255,255,0.4)",
+    background:    "rgba(255,255,255,0.4)",
     backdropFilter: "blur(20px)",
-    border: "1px solid rgba(255,255,255,0.5)",
-  }
+    border:        "1px solid rgba(255,255,255,0.5)",
+  } as const
 
   return (
     <div
       className="min-h-screen flex items-center justify-center p-4"
       style={{
-        backgroundImage: "url('/images/gradient-background.jpg')",
-        backgroundSize: "cover",
+        backgroundImage:    "url('/images/gradient-background.jpg')",
+        backgroundSize:     "cover",
         backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
+        backgroundRepeat:   "no-repeat",
       }}
     >
       {/* Orbs decorativos */}
@@ -125,10 +161,10 @@ export default function LoginPage() {
       <div
         className="w-full max-w-md p-8 rounded-3xl relative z-10"
         style={{
-          background: "rgba(255,255,255,0.25)",
+          background:    "rgba(255,255,255,0.25)",
           backdropFilter: "blur(40px) saturate(250%)",
-          border: "1px solid rgba(255,255,255,0.4)",
-          boxShadow: "0 32px 80px rgba(0,0,0,0.3), inset 0 3px 0 rgba(255,255,255,0.6)",
+          border:        "1px solid rgba(255,255,255,0.4)",
+          boxShadow:     "0 32px 80px rgba(0,0,0,0.3), inset 0 3px 0 rgba(255,255,255,0.6)",
         }}
       >
         {/* Logo */}
@@ -140,43 +176,46 @@ export default function LoginPage() {
           <p className="text-gray-600 text-sm mt-1 font-medium">Don&apos;t trust, make a True Deal</p>
         </div>
 
-        {/* Formulário e-mail / senha */}
-        <form onSubmit={handleEmailLogin} className="space-y-3 mb-5">
+        {/* ── E-mail / senha ── */}
+        <form onSubmit={handleEmailLogin} className="space-y-3 mb-4">
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            type="email" value={email} onChange={e => setEmail(e.target.value)}
             placeholder="seu@email.com"
             className="w-full px-4 py-3 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
-            style={glass}
-            required
+            style={glass} required
           />
           <div className="relative">
             <input
-              type={showPassword ? "text" : "password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              type={showPwd ? "text" : "password"}
+              value={password} onChange={e => setPassword(e.target.value)}
               placeholder={isSignUp ? "Criar senha (mín. 6 caracteres)" : "Senha"}
               className="w-full px-4 py-3 pr-12 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
-              style={glass}
-              required
+              style={glass} required
             />
-            <button type="button" onClick={() => setShowPassword(v => !v)}
+            <button type="button" onClick={() => setShowPwd(v => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+
           {!isSignUp && (
             <div className="text-right -mt-1">
-              <button type="button" className="text-xs text-[#16A34A] hover:underline">Esqueci minha senha</button>
+              <button type="button" className="text-xs text-[#16A34A] hover:underline">
+                Esqueci minha senha
+              </button>
             </div>
           )}
+
           {authError && <p className="text-xs text-red-500 text-center px-2">{authError}</p>}
+
           <button type="submit" disabled={isLoading}
             className="w-full py-3 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
             style={{ background: "linear-gradient(135deg,#16A34A 0%,#22C55E 100%)", boxShadow: "0 8px 24px rgba(22,163,74,0.35)" }}>
-            {isLoading ? (isSignUp ? "Criando conta…" : "Entrando…") : (isSignUp ? "Criar conta" : "Entrar com e-mail")}
+            {isLoading
+              ? (isSignUp ? "Criando conta…" : "Entrando…")
+              : (isSignUp ? "Criar conta" : "Entrar com e-mail")}
           </button>
+
           <p className="text-center text-xs text-gray-500">
             {isSignUp ? "Já tem conta?" : "Não tem conta?"}{" "}
             <button type="button" onClick={() => { setIsSignUp(v => !v); setAuthError(null) }}
@@ -186,37 +225,35 @@ export default function LoginPage() {
           </p>
         </form>
 
-        {/* Divisor */}
+        {/* ── Google ── */}
+        <button
+          onClick={handleGoogleLogin}
+          className="w-full flex items-center gap-3 p-3 rounded-xl mb-5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+          style={glass}
+        >
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-white">
+            <IconGoogle />
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold text-gray-800">Continuar com Google</p>
+            <p className="text-xs text-gray-400">Gmail · Google Account</p>
+          </div>
+          <span className="text-gray-400 text-sm">→</span>
+        </button>
+
+        {/* ── Divisor ── */}
         <div className="flex items-center gap-3 mb-4">
           <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.4)" }} />
-          <span className="text-gray-400 text-xs">ou acesse com</span>
+          <span className="text-gray-400 text-xs">ou conecte sua carteira</span>
           <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.4)" }} />
         </div>
 
-        {/* Canais sociais: X, Strava, Wellhub */}
-        <div className="space-y-2 mb-3">
-          {socialProviders.map((p) => (
-            <button key={p.key}
-              onClick={() => handleSocialLogin(p.key)}
-              className="w-full flex items-center gap-3 p-3 rounded-xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-              style={glass}>
-              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: p.bg }}>
-                {p.icon}
-              </div>
-              <div className="flex-1 text-left">
-                <p className="text-sm font-semibold text-gray-800">Continuar com {p.name}</p>
-                <p className="text-xs text-gray-400">{p.desc}</p>
-              </div>
-              <span className="text-gray-400 text-sm">→</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Carteira Solana */}
+        {/* ── Solana wallet button ── */}
         <button
           onClick={() => setShowWallets(true)}
           className="w-full flex items-center gap-3 p-3 rounded-xl mb-5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-          style={{ background: "rgba(153,69,255,0.1)", backdropFilter: "blur(20px)", border: "1px solid rgba(153,69,255,0.25)" }}>
+          style={{ background: "rgba(153,69,255,0.1)", backdropFilter: "blur(20px)", border: "1px solid rgba(153,69,255,0.25)" }}
+        >
           <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: "linear-gradient(135deg,#9945FF,#FC8C00)" }}>
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="white">
@@ -241,14 +278,17 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {/* Modal carteiras Solana */}
+      {/* ── Modal carteiras Solana ── */}
       {showWallets && (
         <div className="fixed inset-0 z-50 flex items-end justify-center"
           style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
           onClick={() => setShowWallets(false)}>
-          <div className="w-full max-w-md p-6 rounded-t-3xl"
+          <div
+            className="w-full max-w-md p-6 rounded-t-3xl"
             style={{ background: "rgba(255,255,255,0.97)", backdropFilter: "blur(40px)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
-            onClick={(e) => e.stopPropagation()}>
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
             <div className="flex items-center justify-between mb-2">
               <div>
                 <h3 className="text-lg font-bold text-gray-800">Carteira Solana</h3>
@@ -261,31 +301,71 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Solana logo strip */}
-            <div className="flex items-center gap-2 mb-5 px-1 py-2 rounded-xl" style={{ background: "linear-gradient(135deg,rgba(153,69,255,0.06),rgba(252,140,0,0.06))" }}>
-              <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: "linear-gradient(135deg,#9945FF,#FC8C00)" }}>
-                <span className="text-white text-[8px] font-black">◎</span>
+            {/* Solana strip */}
+            <div className="flex items-center gap-2 mb-5 px-3 py-2 rounded-xl"
+              style={{ background: "linear-gradient(135deg,rgba(153,69,255,0.06),rgba(252,140,0,0.06))" }}>
+              <div className="w-5 h-5 rounded-full flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg,#9945FF,#FC8C00)" }}>
+                <span className="text-white text-[9px] font-black">◎</span>
               </div>
               <span className="text-xs font-semibold text-gray-600">Rede Solana</span>
+              <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(153,69,255,0.1)", color: "#9945FF" }}>
+                {process.env.NEXT_PUBLIC_SOLANA_NETWORK ?? "devnet"}
+              </span>
             </div>
 
+            {walletError && (
+              <p className="text-xs text-red-500 text-center mb-3 px-2">{walletError}</p>
+            )}
+
+            {/* Wallet buttons */}
             <div className="space-y-3">
-              {wallets.map((w) => (
-                <button key={w.key} onClick={() => handleWalletConnect(w.key)}
-                  className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 hover:scale-[1.02]"
-                  style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}>
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: w.bg }}>
-                    {w.icon}
-                  </div>
-                  <div className="flex-1 text-left">
-                    <p className="font-bold text-gray-800">{w.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{w.desc}</p>
-                  </div>
-                  <span className="text-gray-400 text-lg">→</span>
-                </button>
-              ))}
+              {[
+                { name: "Phantom",  icon: <IconPhantom />,  bg: "#9945FF", desc: "Solana · Wallet mais popular" },
+                { name: "Solflare", icon: <IconSolflare />, bg: "#FC8C00", desc: "Solana · Suporte multi-conta" },
+              ].map(w => {
+                const found       = wallets.find(a => a.adapter.name === w.name)
+                const isInstalled = found && found.readyState === WalletReadyState.Installed
+                const isConnecting = connecting && wallet?.adapter.name === w.name
+
+                return (
+                  <button key={w.name}
+                    onClick={() => handleWalletConnect(w.name)}
+                    disabled={isConnecting}
+                    className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+                    style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
+                  >
+                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                      style={{ background: w.bg }}>
+                      {w.icon}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-gray-800">{w.name}</p>
+                        {isInstalled && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ background: "rgba(22,163,74,0.1)", color: "#16A34A" }}>
+                            Instalado
+                          </span>
+                        )}
+                        {!isInstalled && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                            style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
+                            Instalar
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-400 mt-0.5">{w.desc}</p>
+                    </div>
+                    <span className="text-gray-400 text-lg">
+                      {isConnecting ? "…" : "→"}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
+
             <p className="text-center text-xs text-gray-400 mt-5">
               Ao conectar, você confirma ser titular desta carteira
             </p>
