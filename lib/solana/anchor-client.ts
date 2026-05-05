@@ -34,5 +34,5 @@ export function getProvider(wallet: Keypair) {
 // Note: In a real scenario, we'd import the actual IDL JSON.
 export function getProgram(provider: AnchorProvider) {
   // This is a placeholder until the IDL is properly generated and imported
-  return new Program({} as Idl, PROGRAM_ID, provider)
+  return new Program({ address: PROGRAM_ID.toBase58() } as unknown as Idl, provider)
 }
