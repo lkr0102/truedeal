@@ -10,7 +10,7 @@ import {
   Lock, AlertCircle, Loader2,
 } from "lucide-react"
 import { GlassCard, PrimaryBtn, GhostBtn } from "@/components/td-ui"
-import { joinDeal, updateDealStatus } from "@/lib/actions/deals"
+import { joinDeal, updateDealStatus, depositToEscrow } from "@/lib/actions/deals"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -489,9 +489,18 @@ export default function DealClient({
     if (result.error) {
       setJoinError(result.error)
       setJoining(false)
-    } else {
-      router.refresh()
+      return
     }
+
+    // New: Trigger On-Chain Escrow Deposit
+    const escrowResult = await depositToEscrow(dealData.id)
+    if (escrowResult.error) {
+      setJoinError(escrowResult.error)
+      setJoining(false)
+      return
+    }
+
+    router.refresh()
   }
 
   async function handleStartDeal() {
