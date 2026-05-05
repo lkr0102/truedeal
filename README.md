@@ -121,7 +121,16 @@ anchor build
 anchor deploy --provider.cluster devnet
 ```
 
-**Program ID (Devnet):** `TBD — deploy em andamento para o Hackathon`
+**Program ID (Devnet):** `9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4`
+
+**TDP Reputation Token (Devnet):**
+| Campo | Valor |
+|-------|-------|
+| Mint Address | `3hwgvhV1PBj1N3vrRijqjFmJJLXM7Q2VvpdwLmWeaMbE` |
+| Treasury | `EGcwkr3dgXGxpeRdqiWSG8JpNPoeBybp9xCchXKRepJF` |
+| Supply | 1,000,000 TDP |
+| Decimals | 6 |
+| Explorer | [Ver no Solana Explorer](https://explorer.solana.com/address/3hwgvhV1PBj1N3vrRijqjFmJJLXM7Q2VvpdwLmWeaMbE?cluster=devnet) |
 
 ---
 
@@ -180,7 +189,10 @@ STRAVA_CLIENT_SECRET=your_strava_client_secret
 |------|--------|----------|
 | **MVP Frontend** | ✅ Pronto | Deal creation, detail, result, auth, onboarding |
 | **Supabase Backend** | ✅ Pronto | Auth, DB schema, server actions |
-| **Programa Solana** | ✅ Scaffold | Escrow PDA, multi-sig settlement, on-chain lock |
+| **Programa Solana** | ✅ Deployed (Scaffold) | Escrow PDA, multi-sig settlement, on-chain lock |
+| **TDP Token** | ✅ Minted | SPL Token `3hwgvhV1PBj...` · 1M TDP na devnet |
+| **DealGuard Oracle** | ✅ Implementado | Endpoint `/api/verify/x` com snapshots forenses |
+| **Solana Explorer** | ✅ Integrado | Link de auditoria on-chain em todos os deals |
 | **X API** | 🔄 Em progresso | OAuth, snapshot inicial, verificação de métricas |
 | **Strava API** | 📋 Planejado | OAuth, km, check-ins, horas de treino |
 | **PIX Onramp** | 📋 Planejado | Fiat → USDC via NoxPay |

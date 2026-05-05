@@ -5,10 +5,10 @@ resolution = []
 skip-lint = []
 
 [programs.localnet]
-truedeal = "TrDeaL1111111111111111111111111111111111111"
+truedeal = "9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4"
 
 [programs.devnet]
-truedeal = "TrDeaL1111111111111111111111111111111111111"
+truedeal = "9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4"
 
 [registry]
 url = "https://anchor.projectserum.com"
