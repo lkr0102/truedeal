@@ -1,7 +1,7 @@
 "use client"
 
 import type { ChangeEvent } from "react"
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Camera, Hash, ArrowRight, CheckCircle2, Loader2, Info, X, Clock } from "lucide-react"
 import { updateProfile, getMySocialConnections, saveMembershipEmail } from "@/lib/actions/profile"
@@ -302,7 +302,7 @@ function SocialCard({
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-export default function ProfileSetupPage() {
+function ProfileSetupContent() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const fileRef      = useRef<HTMLInputElement>(null)
@@ -557,5 +557,13 @@ export default function ProfileSetupPage() {
         </button>
       </div>
     </div>
+  )
+}
+
+export default function ProfileSetupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white font-bold bg-[#1A2E3A]">Carregando...</div>}>
+      <ProfileSetupContent />
+    </Suspense>
   )
 }
