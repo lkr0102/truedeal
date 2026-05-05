@@ -17,14 +17,22 @@ CREATE TABLE IF NOT EXISTS social_connections (
 
 ALTER TABLE social_connections ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "social_own_select" ON social_connections
-  FOR SELECT USING (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "social_own_select" ON social_connections
+    FOR SELECT USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "social_own_insert" ON social_connections
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "social_own_insert" ON social_connections
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "social_own_update" ON social_connections
-  FOR UPDATE USING (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "social_own_update" ON social_connections
+    FOR UPDATE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY "social_own_delete" ON social_connections
-  FOR DELETE USING (auth.uid() = user_id);
+DO $$ BEGIN
+  CREATE POLICY "social_own_delete" ON social_connections
+    FOR DELETE USING (auth.uid() = user_id);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
