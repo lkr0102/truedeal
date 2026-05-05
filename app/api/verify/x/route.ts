@@ -16,14 +16,44 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Parâmetros ausentes" }, { status: 400 })
     }
 
-    // SIMULAÇÃO: No hackathon, usaremos um mock ou uma chamada real se a API Key estiver disponível
-    // Para a demo, vamos gerar um número realista baseado no username
-    const mockFollowers = Math.floor(Math.random() * 5000) + 100
+    let followersCount = 0;
+    let source = "x_api_v2_mock";
+
+    // Integração Real com a X API v2
+    if (process.env.X_API_BEARER_TOKEN) {
+      try {
+        const xResponse = await fetch(
+          `https://api.twitter.com/2/users/by/username/${xUsername.replace('@', '')}?user.fields=public_metrics`,
+          {
+            headers: {
+              Authorization: `Bearer ${process.env.X_API_BEARER_TOKEN}`,
+            },
+          }
+        );
+
+        if (xResponse.ok) {
+          const xData = await xResponse.json();
+          if (xData.data && xData.data.public_metrics) {
+            followersCount = xData.data.public_metrics.followers_count;
+            source = "x_api_v2_real";
+          }
+        } else {
+          console.error("X API Error:", await xResponse.text());
+        }
+      } catch (err) {
+        console.error("Failed to fetch from X API:", err);
+      }
+    }
+
+    // Fallback: Se a API falhar ou não tivermos o token (hackathon demo mode)
+    if (followersCount === 0) {
+      followersCount = Math.floor(Math.random() * 5000) + 100;
+    }
     
     const snapshotData = {
-      followers: mockFollowers,
+      followers: followersCount,
       captured_at: new Date().toISOString(),
-      source: "x_api_v2_mock"
+      source: source
     }
 
     // 1. Buscar a participação do usuário no deal
