@@ -226,56 +226,148 @@ function StatusPill({ status }: { status: DealStatus }) {
 
 // ── Deal rules card ───────────────────────────────────────────────────────────
 
-const DISTRIBUTION_LABEL: Record<string, string> = {
-  winner:       "Vencedor leva tudo",
-  top3:         "Top 3 dividem o pote",
-  proportional: "Proporcional ao desempenho",
+const CHANNEL_LABELS: Record<string, string> = {
+  x: "X", instagram: "Instagram", tiktok: "TikTok", linkedin: "LinkedIn",
+  discord: "Discord", youtube: "YouTube", strava: "Strava", wellhub: "Wellhub", totalpass: "TotalPass",
+}
+
+const RULE_LABELS: Record<string, string> = {
+  post: "Post publicado", comment_received: "Comentário recebido",
+  repost_received: "Repost recebido", follower_gained: "Seguidor recebido",
+  impressions: "Impressões", km_run: "Kms percorridos", pace: "Pace médio",
+  workout_hours: "Horas de treino", checkin: "Check-ins", different_venues: "Diferentes ambientes",
+}
+
+const DIST_META: Record<string, { label: string; icon: string; desc: string }> = {
+  winner:       { label: "1º Lugar",      icon: "👑", desc: "Winner takes all" },
+  top3:         { label: "Ranking",        icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% do pote" },
+  proportional: { label: "Proporcional",   icon: "🤝", desc: "Pote ÷ todos que cumprirem a regra" },
 }
 
 function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithParticipants }) {
-  const rows: { label: string; value: React.ReactNode }[] = [
+  const diffDays   = deal.daysTotal
+  const feeRate    = dealData.fee_pct ?? 5
+  const distMeta   = DIST_META[dealData.distribution] ?? DIST_META.winner
+  const channelNames = (dealData.verification_channels ?? [])
+    .map(c => CHANNEL_LABELS[c] ?? c).join(" + ")
+  const ruleLabel  = RULE_LABELS[dealData.verification_type] ?? dealData.verification_type
+
+  const confirmRows = [
     {
-      label: "Verificação",
-      value: (
-        <div className="flex gap-1.5 flex-wrap">
-          {deal.verifications.length > 0
-            ? deal.verifications.map(v => <VerifChip key={v} type={v} />)
-            : <span className="text-sm font-semibold text-gray-700">{dealData.verification_type || "—"}</span>}
-        </div>
-      ),
+      icon: "🛡️", iconBg: "rgba(22,163,74,0.1)",
+      key: "Regra",
+      val: channelNames && ruleLabel ? `${channelNames} · ${ruleLabel}` : ruleLabel || "—",
     },
     {
-      label: "Distribuição",
-      value: <span className="text-sm font-semibold text-gray-700">{DISTRIBUTION_LABEL[dealData.distribution] ?? dealData.distribution}</span>,
+      icon: "📅", iconBg: "rgba(239,68,68,0.08)",
+      key: "Período",
+      val: `${deal.startDate} → ${deal.endDate} (${diffDays}d)`,
     },
     {
-      label: "Período",
-      value: <span className="text-sm font-semibold text-gray-700">{deal.startDate} → {deal.endDate}</span>,
+      icon: "💰", iconBg: "rgba(22,163,74,0.1)",
+      key: "Financeiro",
+      val: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}/pessoa · ${distMeta.label}`,
     },
     {
-      label: "Entrada",
-      value: <span className="text-sm font-semibold text-gray-700">R${deal.valuePerPerson.toLocaleString("pt-BR")} por pessoa</span>,
+      icon: "🔒", iconBg: "rgba(107,114,128,0.1)",
+      key: "Acesso",
+      val: dealData.type === "privado" ? "Privado" : "Público",
     },
   ]
 
   return (
-    <GlassCard style={{ padding: "14px 16px", marginTop: 12 }}>
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Regras do Deal</p>
-      <div className="space-y-3">
-        {rows.map((row, i) => (
-          <div key={i} className="flex items-start justify-between gap-3">
-            <span className="text-xs text-gray-400 font-medium flex-shrink-0 mt-0.5">{row.label}</span>
-            <div className="text-right">{row.value}</div>
+    <div style={{ marginTop: 12 }}>
+      {/* Hero verde — igual ao preview de confirmação */}
+      <div className="rounded-[22px] p-5 mb-3 relative overflow-hidden"
+        style={{
+          background: "linear-gradient(135deg, #0D2E1A, #16A34A 55%, #22C55E)",
+          boxShadow: "0 14px 40px rgba(22,163,74,0.35)",
+        }}>
+        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full"
+          style={{ background: "rgba(255,255,255,0.06)" }} />
+        <div className="relative z-10">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">
+                {(dealData as any).mode === "super" ? "⭐ Super Deal" : "Deal Regular"}
+              </p>
+              <h2 className="text-xl font-bold text-white leading-tight">{deal.title}</h2>
+            </div>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
+              <Lock className="w-4 h-4 text-white" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Entrada",    value: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}` },
+              { label: "Pote atual", value: `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
+              { label: "Duração",    value: `${diffDays} dias` },
+              { label: "Premiação",  value: distMeta.label },
+            ].map(stat => (
+              <div key={stat.label} className="p-2.5 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <p className="text-[9px] text-white/70 uppercase tracking-wider">{stat.label}</p>
+                <p className="text-base font-bold text-white mt-0.5">{stat.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Rows — igual confirmRows */}
+      <div className="space-y-2 mb-3">
+        {confirmRows.map(row => (
+          <div key={row.key}
+            className="flex items-center gap-3 p-3.5 rounded-xl"
+            style={{
+              background: "rgba(255,255,255,0.48)",
+              backdropFilter: "blur(20px)",
+              border: "1px solid rgba(255,255,255,0.6)",
+            }}>
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: row.iconBg }}>
+              <span className="text-base">{row.icon}</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{row.key}</p>
+              <p className="text-[13px] font-bold text-gray-800 mt-0.5">{row.val}</p>
+            </div>
           </div>
         ))}
-        {deal.description && (
-          <div className="pt-2 border-t border-black/5">
-            <p className="text-xs text-gray-400 font-medium mb-1.5">Descrição</p>
-            <p className="text-sm text-gray-700 leading-relaxed">{deal.description}</p>
-          </div>
-        )}
       </div>
-    </GlassCard>
+
+      {/* Distribuição detalhada */}
+      <div className="flex items-center gap-3 p-3.5 rounded-xl mb-3"
+        style={{ background: "rgba(255,255,255,0.48)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+          style={{ background: "rgba(168,85,247,0.1)" }}>
+          <span className="text-base">{distMeta.icon}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Premiação</p>
+          <p className="text-[13px] font-bold text-gray-800 mt-0.5">{distMeta.label}</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{distMeta.desc}</p>
+        </div>
+      </div>
+
+      {/* Fee info */}
+      <div className="p-3.5 rounded-xl"
+        style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
+        <p className="text-xs text-gray-600 leading-relaxed">
+          Taxa de <strong className="text-[#16A34A]">{feeRate}%</strong> cobrada apenas se houver perdedor.
+          Se todos cumprirem, o valor integral é devolvido.
+        </p>
+      </div>
+
+      {deal.description && (
+        <div className="mt-2 p-3.5 rounded-xl"
+          style={{ background: "rgba(255,255,255,0.48)", border: "1px solid rgba(255,255,255,0.6)" }}>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Descrição</p>
+          <p className="text-sm text-gray-700 leading-relaxed">{deal.description}</p>
+        </div>
+      )}
+    </div>
   )
 }
 
