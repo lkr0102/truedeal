@@ -272,7 +272,7 @@ export default function CreateDealPage() {
       entry_amount:          effectiveAmount,
       distribution:          distribution as "winner" | "top3" | "proportional",
       payment_method:        "pix",
-      max_participants:      999999,
+      max_participants:      100,
       allow_requests:        true,
       start_date:            startDate.toISOString().split("T")[0],
       end_date:              endDate.toISOString().split("T")[0],
