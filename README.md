@@ -58,54 +58,50 @@ For full local setup instructions, env variables, roadmap, and competitor analys
 
 ---
 
-## 🎯 Missão
+## 🎯 A Tese (Mission)
 
-**True Deal** te ajuda a gameficar suas metas e conquistas pessoais com outros amigos que têm os mesmos desejos que você.
+O **TrueDeal** é um Protocolo Soberano de Acordos de Performance. Nós resolvemos o problema da quebra de confiança em interações sociais financeiras (Social Wagers). 
 
-Chega de combinados que ficam só no papo. No True Deal, você aposta dinheiro real na sua própria evolução, o app verifica o resultado automaticamente, e o Solana distribui a premiação sem intermediários.
-
-> *Gamify your personal goals and achievements with friends who share the same desires.*
+Em vez de depender da boa-fé para o cumprimento de desafios pessoais, esportivos ou metas de engajamento, o TrueDeal atua como um **Árbitro Digital Trustless**, utilizando Oráculos de IA para verificar dados do mundo real e Smart Contracts na Solana para liquidar pagamentos instantaneamente.
 
 ---
 
-## ❌ O Problema
+## ❌ O Problema (The Problem)
 
-Apostas e desafios entre amigos dependem 100% de confiança e boa-fé — e sempre terminam em discussão.
+O mercado global de apostas sociais e compromissos peer-to-peer (P2P) movimenta bilhões de forma invisível, mas sofre de três falhas estruturais críticas:
 
-- Não existe prova objetiva e incontestável do início e fim
-- Não existe árbitro neutro que guarde e distribua o dinheiro sem favorecer ninguém
-- Não existe resolução automática — alguém sempre precisa confiar em alguém
+1. **Fricção de Liquidação:** A resolução não é automática. O perdedor frequentemente atrasa o pagamento ou desiste do acordo, gerando atrito social.
+2. **Assimetria de Informação:** Não existe prova objetiva e incontestável do início (snapshot) e do fim (conclusão) da meta estabelecida.
+3. **Ausência de Custódia Neutra:** Requer confiança mútua absoluta, limitando o tamanho do capital em risco (stake) e o número de participantes.
 
 ---
 
-## 💡 A Solução
+## 💡 A Solução (The Solution)
 
-True Deal é o **árbitro digital automatizado** entre você e seus amigos:
+O TrueDeal transforma promessas sociais em **Infraestrutura Executável**:
 
-| Camada | Tecnologia |
-|-------|----------------|
-| **Criar** | Configure o deal: nome, canal de verificação (X, Strava…), regra, meta, período, valor e tipo de premiação |
-| **Convidar** | Participantes recebem o link e aceitam os termos |
-| **Stake** | Todos depositam via PIX (onramp fiat → USDC) ou diretamente em SOL/USDC |
-| **Snapshot** | App registra o estado inicial via API (ex: seguidores no momento do início) |
-| **Monitorar** | **Risk Guardian** acompanha sinais em busca de anomalias em tempo real |
-| **Verificar** | **DealGuard Engine** coleta dados e determina o resultado via consenso multi-agente |
-| **Distribuir** | Programa Solana distribui o pot para os vencedores — automático, sem intermediário |
+| Etapa Operacional | Tecnologia & Execução |
+|-------------------|-----------------------|
+| **Criação (Deal)** | O usuário configura as regras do contrato: fonte de dados (X, Strava), meta, prazo e montante financeiro. |
+| **Garantia (Stake)** | Os participantes depositam o valor estipulado no *Sovereign Escrow* via USDC ou SOL. O capital fica criptograficamente travado. |
+| **Snapshot Inicial** | O sistema registra o estado zero inalterável (ex: número exato de seguidores) no momento do aceite. |
+| **Auditoria Forense** | O **DealGuard Oracle** (alimentado pelo *Risk Guardian AI*) consome as APIs e busca anomalias em tempo real. |
+| **Liquidação (Settlement)** | O veredito é processado on-chain. O programa Solana distribui o capital para o vencedor sem intermediários. |
 
 ---
 
 ## 🏗️ Arquitetura Soberana (3-Layer Model)
 
-TrueDeal não é apenas um app de apostas; é uma **Infraestrutura de Acordos Verificáveis**.
+O protocolo foi desenhado sob o paradigma de separação de responsabilidades, garantindo segurança institucional e baixa latência:
 
-### 1. Camada de Inteligência de Risco (Risk Guardian)
-Alimentada por agentes de IA proprietários, monitora a integridade de cada "deal" desde a criação até a liquidação, detectando bots, GPS fake e anomalias estatísticas.
+### 1. Camada de Inteligência de Risco (Risk Guardian AI)
+Um motor de inteligência artificial edge (Edge AI) focado em integridade. Ele monitora a evolução do acordo para detectar anomalias estatísticas, uso de bots (ex: compra de seguidores) e falsificação de localização (GPS spoofing).
 
-### 2. Camada de Consenso e Atestação (DealGuard Engine)
-Um motor de consenso multi-fonte que valida as evidências digitais (APIs, logs, check-ins). O veredito final só é emitido após um quorum de 2/3 de validadores autônomos.
+### 2. Camada de Atestação (DealGuard Oracle)
+Motor de consenso que consome dados Web2 (X API, Strava) e gera provas criptográficas formatadas (Hashes de 32 bytes). O oráculo atua como a única fonte de verdade aceita pelo Smart Contract.
 
-### 3. Camada de Liquidação On-Chain (Solana)
-O coração trust-less do protocolo. Programas Anchor gerenciam contas PDA (Escrow) que só liberam fundos mediante a prova criptográfica gerada pela **DealGuard Engine**.
+### 3. Camada de Liquidação On-Chain (Solana Anchor)
+O coração trust-less do protocolo. Um programa em Rust na Solana que gerencia PDAs (Program Derived Addresses) blindados. Os fundos só são liberados perante a assinatura válida do *DealGuard Oracle*, garantindo liquidação em ~400ms.
 
 ---
 
@@ -264,16 +260,18 @@ True Deal foi desenvolvido como projeto para o **[Colosseum Frontier Hackathon](
 
 ---
 
-## 📊 Concorrentes
+## 📊 Cenário Competitivo (Competitive Landscape)
 
-| App | Stake | Verificação | Público |
-|-----|-------|-------------|---------|
-| Moonwalk | Pot coletivo | Passos (iOS Health) | Fitness |
-| Beeminder | Stake pessoal | 50+ integrações | Power users |
-| StickK | Stake + árbitro | Manual / humano | Geral |
-| Polymarket | Cripto | Eventos globais | Cripto nativo |
+| Plataforma | Natureza do Stake | Validação de Dados | Mercado Alvo (TAM) |
+|------------|-------------------|--------------------|--------------------|
+| **Moonwalk** | Pot Coletivo | Passos (iOS Health) | Nicho Fitness |
+| **Beeminder** | Pessoal (Multa) | +50 APIs | Power Users / Quantified Self |
+| **StickK** | Pessoal + Árbitro | Manual (Humano) | Mercado Tradicional (Web2) |
+| **Polymarket** | Pool Global Cripto | Consenso UMA / Eventos Globais | Cripto Nativos (Traders) |
+| **TrueDeal** | **P2P Escrow** | **Sovereign Oracles (APIs + AI)** | **Consumer Web3 / Social Wagers** |
 
-**Nenhum combina:** accordos livres entre amigos + verificação automática por APIs + UX acessível + on-chain trust-less + mercado LatAm.
+**A Tese de Vantagem Injusta (Unfair Advantage):** 
+Nenhuma solução atual combina o ecossistema de *Sovereign Escrow* (livre de custódia humana) com *Data Oracles* automatizados e uma UX desenhada especificamente para não-nativos Web3 (foco no mercado LatAm via Pix Onramp).
 
 ---
 
