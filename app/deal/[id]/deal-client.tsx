@@ -7,10 +7,10 @@ import { ptBR } from "date-fns/locale"
 import {
   ArrowLeft, Share2, Users, DollarSign, Clock, Activity,
   CheckCircle2, XCircle, ChevronRight, Trophy, PieChart, Award,
-  Lock, AlertCircle, Loader2,
+  Lock, AlertCircle, Loader2, ExternalLink
 } from "lucide-react"
 import { GlassCard, PrimaryBtn, GhostBtn } from "@/components/td-ui"
-import { joinDeal, updateDealStatus } from "@/lib/actions/deals"
+import { joinDeal, updateDealStatus, depositToEscrow } from "@/lib/actions/deals"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -489,9 +489,27 @@ export default function DealClient({
     if (result.error) {
       setJoinError(result.error)
       setJoining(false)
-    } else {
-      router.refresh()
+      return
     }
+
+    // New: Trigger On-Chain Escrow Deposit
+    const escrowResult = await depositToEscrow(dealData.id)
+    if (escrowResult.error) {
+      setJoinError(escrowResult.error)
+      setJoining(false)
+      return
+    }
+
+    // New: Trigger Initial Snapshot (DealGuard Oracle)
+    try {
+      await fetch('/api/verify/x', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dealId: dealData.id, userId, xUsername: "user_twitter" })
+      })
+    } catch (e) { console.warn("Snapshot fail", e) }
+
+    router.refresh()
   }
 
   async function handleStartDeal() {
@@ -548,6 +566,15 @@ export default function DealClient({
 
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <StatusPill status={deal.status} />
+            <a 
+              href={`https://explorer.solana.com/address/9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4?cluster=devnet`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[10px] text-white/80 font-bold transition-all border border-white/10"
+            >
+              <ExternalLink className="w-3 h-3" />
+              BLOCKCHAIN
+            </a>
             {deal.verifications.map((v) => <VerifChip key={v} type={v} />)}
           </div>
 

@@ -90,7 +90,7 @@ const PERIOD_PRESETS = [
 ]
 
 const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
-const TODAY = new Date(2026, 3, 27)
+const TODAY = new Date()
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

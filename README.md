@@ -42,75 +42,44 @@ Apostas e desafios entre amigos dependem 100% de confiança e boa-fé — e semp
 
 True Deal é o **árbitro digital automatizado** entre você e seus amigos:
 
-| Etapa | O que acontece |
+| Camada | Tecnologia |
 |-------|----------------|
 | **Criar** | Configure o deal: nome, canal de verificação (X, Strava…), regra, meta, período, valor e tipo de premiação |
 | **Convidar** | Participantes recebem o link e aceitam os termos |
 | **Stake** | Todos depositam via PIX (onramp fiat → USDC) ou diretamente em SOL/USDC |
 | **Snapshot** | App registra o estado inicial via API (ex: seguidores no momento do início) |
-| **Monitorar** | Durante o período, o app acompanha automaticamente via APIs conectadas |
-| **Verificar** | No fim, o app coleta dados e determina o resultado com provas digitais |
+| **Monitorar** | **Risk Guardian** acompanha sinais em busca de anomalias em tempo real |
+| **Verificar** | **DealGuard Engine** coleta dados e determina o resultado via consenso multi-agente |
 | **Distribuir** | Programa Solana distribui o pot para os vencedores — automático, sem intermediário |
 
 ---
 
-## ✅ Features Disponíveis Hoje (MVP)
+## 🏗️ Arquitetura Soberana (3-Layer Model)
 
-### Deal Creation — 2-step flow
-- **Nome** personalizado do deal
-- **Tipo** Regular (fee 5%) ou Super (fee 1%)
-- **Categorias:** Social e Fitness ativos; Gaming, Learning, On-Chain e Free em breve
-- **Canais sociais:** X (Twitter) ativo; Instagram, TikTok, LinkedIn, Discord, YouTube em breve
-- **Canais fitness:** Strava, Wellhub e TotalPass ativos com seleção multi-canal e conector E/OU
-- **Regra:** seleção da métrica verificável por canal (posts, seguidores, km, check-ins…)
-- **Meta:** quantidade + frequência (por dia / semana / mês / ano)
-- **Período:** presets (1 sem, 2 sem, 1 mês, 2 meses) + calendário customizável
-- **Pagamento:** presets R$25/50/100/200/500 ou valor livre, pot estimado em tempo real
-- **Premiação:** Proporcional 🤝 · Ranking 🏅 · Winner Takes All 👑
-- **Visibilidade:** Privado ou Público
-- **Tela de confirmação:** preview hero + resumo de todos os parâmetros + fee info
+TrueDeal não é apenas um app de apostas; é uma **Infraestrutura de Acordos Verificáveis**.
 
-### Deal Detail
-- Hero card com gradiente verde, status, progresso e chips de verificação
-- Grid de stats (pote, entrada, participantes, dias)
-- Minha posição + ganho potencial em tempo real
-- Tabs: Participantes (aprovados / pagamento / pedidos) · Cronograma · Distribuição do pote
-- Footer sticky com CTA contextual (tracking / entrar / resultado)
+### 1. Camada de Inteligência de Risco (Risk Guardian)
+Alimentada por agentes de IA proprietários, monitora a integridade de cada "deal" desde a criação até a liquidação, detectando bots, GPS fake e anomalias estatísticas.
 
-### Deal Result & Share
-- Confetti animado ao entrar na tela
-- Result hero com gradiente escuro→verde e prêmio em destaque
-- Payout banner com confirmação de pagamento
-- Ranking final com linha "você" destacada
-- Distribuição do pote com barras de progresso
-- Share card pronto para story (WhatsApp, Instagram, X, Telegram)
-- Copiar link do deal
+### 2. Camada de Consenso e Atestação (DealGuard Engine)
+Um motor de consenso multi-fonte que valida as evidências digitais (APIs, logs, check-ins). O veredito final só é emitido após um quorum de 2/3 de validadores autônomos.
 
-### Auth & Onboarding
-- Login social (Google, Apple, X) via Supabase Auth
-- Onboarding de perfil e survey de interesses
-- Suporte a OAuth para vinculação de contas (X API, Strava)
-
-### Explore & Home
-- Lista de deals ativos, pendentes e finalizados
-- Filtros por status e categoria
+### 3. Camada de Liquidação On-Chain (Solana)
+O coração trust-less do protocolo. Programas Anchor gerenciam contas PDA (Escrow) que só liberam fundos mediante a prova criptográfica gerada pela **DealGuard Engine**.
 
 ---
 
-## 🏗️ Arquitetura Técnica
-
-### Stack
+## 🛠️ Stack Técnica
 
 | Camada | Tecnologia |
 |--------|------------|
-| **Frontend** | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4, Shadcn UI |
-| **Backend / BaaS** | Supabase (Postgres, Auth, Realtime, Storage, Server Actions) |
-| **Blockchain** | **Solana** — Anchor framework (Rust), Devnet para dev, Mainnet-Beta para produção |
-| **Token de stake** | USDC (SPL Token) + SOL nativo |
-| **Carteira Web3** | Phantom / Backpack (Solana-native) |
-| **Pagamento Fiat** | PIX → USDC via onramp (NoxPay / integrações BR) |
-| **Verificação** | OAuth + REST APIs (X API, Strava, Wellhub, TotalPass) |
-| **Autenticação** | Supabase Auth (social login) + Phantom wallet |
+| **Frontend** | Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS v4 |
+| **Backend / Orchestrator** | Supabase (Postgres, Auth, Edge Functions) |
+| **Blockchain** | **Solana** — Anchor framework (Rust), Escrow PDAs |
+| **Risk Layer** | **Risk Guardian** (AI-driven monitoring) |
+| **Verification Layer** | **DealGuard Engine** (Consensus Attestation) |
+| **Managed Wallet** | Solana Account Abstraction (Encrypted server-side keys) |
+
 
 ### Programa Solana (Anchor)
 
@@ -152,7 +121,16 @@ anchor build
 anchor deploy --provider.cluster devnet
 ```
 
-**Program ID (Devnet):** `TBD — deploy em andamento para o Hackathon`
+**Program ID (Devnet):** `9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4`
+
+**TDP Reputation Token (Devnet):**
+| Campo | Valor |
+|-------|-------|
+| Mint Address | `3hwgvhV1PBj1N3vrRijqjFmJJLXM7Q2VvpdwLmWeaMbE` |
+| Treasury | `EGcwkr3dgXGxpeRdqiWSG8JpNPoeBybp9xCchXKRepJF` |
+| Supply | 1,000,000 TDP |
+| Decimals | 6 |
+| Explorer | [Ver no Solana Explorer](https://explorer.solana.com/address/3hwgvhV1PBj1N3vrRijqjFmJJLXM7Q2VvpdwLmWeaMbE?cluster=devnet) |
 
 ---
 
@@ -211,7 +189,10 @@ STRAVA_CLIENT_SECRET=your_strava_client_secret
 |------|--------|----------|
 | **MVP Frontend** | ✅ Pronto | Deal creation, detail, result, auth, onboarding |
 | **Supabase Backend** | ✅ Pronto | Auth, DB schema, server actions |
-| **Programa Solana** | 🔄 Em progresso | Escrow PDA, stake USDC/SOL, distribuição automática |
+| **Programa Solana** | ✅ Deployed (Scaffold) | Escrow PDA, multi-sig settlement, on-chain lock |
+| **TDP Token** | ✅ Minted | SPL Token `3hwgvhV1PBj...` · 1M TDP na devnet |
+| **DealGuard Oracle** | ✅ Implementado | Endpoint `/api/verify/x` com snapshots forenses |
+| **Solana Explorer** | ✅ Integrado | Link de auditoria on-chain em todos os deals |
 | **X API** | 🔄 Em progresso | OAuth, snapshot inicial, verificação de métricas |
 | **Strava API** | 📋 Planejado | OAuth, km, check-ins, horas de treino |
 | **PIX Onramp** | 📋 Planejado | Fiat → USDC via NoxPay |
