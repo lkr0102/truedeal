@@ -5,14 +5,12 @@ import { useRouter } from "next/navigation"
 import {
   Home, Compass, Wallet, User,
   Eye, EyeOff, ArrowDownToLine, ArrowUpFromLine,
-  Trophy, X as XIcon,
-  Copy, Check, ExternalLink, ShieldCheck,
+  Trophy, X as XIcon, TrendingDown,
+  Copy, Check, ChevronRight,
 } from "lucide-react"
 import type { Profile, TdpTransaction, TdpReason } from "@/lib/supabase/types"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Bottom nav
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Bottom nav ────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
   { icon: Home,    label: "Deals",    href: "/" },
@@ -46,25 +44,16 @@ function BottomNav({ active }: { active: string }) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// TDP reason labels
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Deal-only history labels ──────────────────────────────────────────────────
 
-const TDP_REASON_LABELS: Record<TdpReason, string> = {
-  deal_create:    "Criou um deal",
-  deal_join:      "Entrou em um deal",
-  deal_win:       "Ganhou um deal",
-  daily_checkin:  "Check-in diário",
-  streak_7d:      "Streak de 7 dias",
-  streak_30d:     "Streak de 30 dias",
-  referral:       "Indicação",
-  social_link:    "Rede social linkada",
-  promo:          "Promoção",
+const DEAL_REASONS: TdpReason[] = ["deal_create", "deal_join", "deal_win"]
+const DEAL_LABELS: Partial<Record<TdpReason, string>> = {
+  deal_create: "Criou um deal",
+  deal_join:   "Entrou em um deal",
+  deal_win:    "Ganhou um deal",
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getInitials(displayName: string): string {
   const words = displayName.trim().split(/\s+/)
@@ -72,85 +61,90 @@ function getInitials(displayName: string): string {
   return (words[0][0] + words[1][0]).toUpperCase()
 }
 
-function formatTdpDate(isoString: string): string {
+function formatDate(isoString: string): string {
   const date = new Date(isoString)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
   const yesterday = new Date(today)
   yesterday.setDate(yesterday.getDate() - 1)
   const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-
   if (itemDate.getTime() === today.getTime()) return "Hoje"
   if (itemDate.getTime() === yesterday.getTime()) return "Ontem"
-
-  const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
-  return `${String(date.getDate()).padStart(2, "0")} ${MONTH_NAMES[date.getMonth()]}`
+  const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
+  return `${String(date.getDate()).padStart(2, "0")} ${MONTHS[date.getMonth()]}`
 }
 
+type Currency = "usd" | "sol" | "brl"
 type ModalType = "deposit" | "withdraw" | null
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Props
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface WalletClientProps {
-  profile: Profile | null
-  tdpHistory: TdpTransaction[]
-  activeDealsValue: number
+  profile:          Profile | null
+  tdpHistory:       TdpTransaction[]
+  activeDealsValue: number           // sum of entry amounts in BRL
   managedPublicKey: string | null
-  solBalance: number
+  solBalance:       number
+  solUsdPrice:      number
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Component
-// ─────────────────────────────────────────────────────────────────────────────
+// ── Component ─────────────────────────────────────────────────────────────────
 
-export default function WalletClient({ profile, tdpHistory, activeDealsValue, managedPublicKey, solBalance }: WalletClientProps) {
+export default function WalletClient({
+  profile,
+  tdpHistory,
+  activeDealsValue,
+  managedPublicKey,
+  solBalance,
+  solUsdPrice,
+}: WalletClientProps) {
   const [showBalance, setShowBalance] = useState(true)
+  const [currency,    setCurrency]    = useState<Currency>("usd")
   const [activeModal, setActiveModal] = useState<ModalType>(null)
-  const [pixAmount,   setPixAmount]   = useState("")
   const [copied,      setCopied]      = useState(false)
-  const [copiedAddr,  setCopiedAddr]  = useState(false)
+  const [pixAmount,   setPixAmount]   = useState("")
 
+  // ── Address helpers
   function truncateAddr(addr: string) {
     return `${addr.slice(0, 6)}...${addr.slice(-6)}`
   }
-
   function copyAddr() {
     if (!managedPublicKey) return
     navigator.clipboard.writeText(managedPublicKey).catch(() => {})
-    setCopiedAddr(true)
-    setTimeout(() => setCopiedAddr(false), 2000)
-  }
-
-  function openExplorer() {
-    if (!managedPublicKey) return
-    window.open(`https://explorer.solana.com/address/${managedPublicKey}?cluster=devnet`, "_blank")
-  }
-
-  const PIX_KEY = "lukasrocha02@gmail.com"
-
-  function copyPix() {
-    navigator.clipboard.writeText(PIX_KEY).catch(() => {})
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
   }
 
-  function fmtBRL(val: number): string {
-    return val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+  // ── Currency conversion
+  const BRL_RATE  = 5.85 // approximate USD → BRL
+
+  const totalUsd     = solBalance * solUsdPrice
+  const frozenUsd    = activeDealsValue / BRL_RATE
+  const availableUsd = Math.max(0, totalUsd - frozenUsd)
+
+  function fmtAmount(usdAmount: number, hide = false): string {
+    if (hide) return "••••"
+    switch (currency) {
+      case "usd": return `$ ${usdAmount.toFixed(2)}`
+      case "sol": return `${(solUsdPrice > 0 ? usdAmount / solUsdPrice : 0).toFixed(4)} SOL`
+      case "brl": return (usdAmount * BRL_RATE).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
+    }
   }
 
-  // Derived values from profile
-  const tdpPoints    = profile?.tdp_points ?? 0
-  const streakDays   = profile?.streak_days ?? 0
-  const displayName  = profile?.display_name ?? "Usuário"
-  const username     = profile?.username ?? ""
-  const initials     = getInitials(displayName)
+  // ── Profile
+  const displayName = profile?.display_name ?? "Usuário"
+  const username    = profile?.username ?? ""
+  const initials    = getInitials(displayName)
 
-  // Balance is TDP points (the "wallet" in this app)
-  const BALANCE  = tdpPoints
-  const FROZEN   = activeDealsValue
-  const AVAILABLE = Math.max(0, BALANCE - FROZEN)
+  // ── Deal-only history
+  const dealHistory = tdpHistory.filter(tx => DEAL_REASONS.includes(tx.reason))
+
+  const CURRENCY_LABELS: Record<Currency, string> = { usd: "USD", sol: "SOL", brl: "BRL" }
+  const CURRENCY_CYCLE: Currency[] = ["usd", "sol", "brl"]
+  function cycleCurrency() {
+    const idx = CURRENCY_CYCLE.indexOf(currency)
+    setCurrency(CURRENCY_CYCLE[(idx + 1) % 3])
+  }
 
   return (
     <div className="min-h-screen flex flex-col pb-24"
@@ -168,123 +162,80 @@ export default function WalletClient({ profile, tdpHistory, activeDealsValue, ma
 
       <div className="flex-1 px-5 overflow-y-auto">
 
-        {/* ── App-Managed Solana Wallet ── */}
-        <div className="rounded-2xl p-4 mb-4 mt-3"
-          style={{
-            background: "linear-gradient(135deg,rgba(153,69,255,0.08),rgba(252,140,0,0.06))",
-            border:     "1px solid rgba(153,69,255,0.2)",
-            backdropFilter: "blur(20px)",
-          }}>
-          {/* Header */}
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg,#9945FF,#FC8C00)" }}>
-                <span className="text-white text-[11px] font-black">◎</span>
-              </div>
-              <span className="text-sm font-bold text-gray-800">Carteira Solana</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5" style={{ color: "#16A34A" }} />
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(22,163,74,0.1)", color: "#16A34A" }}>
-                Gerenciada pelo app
-              </span>
-            </div>
-          </div>
-
-          {/* Address + balance */}
-          <div className="flex items-center justify-between mb-3">
-            <button onClick={copyAddr}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
-              style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.7)" }}>
-              <span className="text-xs font-mono font-medium text-gray-700">
-                {managedPublicKey ? truncateAddr(managedPublicKey) : "Gerando…"}
-              </span>
-              {copiedAddr
-                ? <Check className="w-3 h-3 text-[#16A34A]" />
-                : <Copy className="w-3 h-3 text-gray-400" />}
-            </button>
-
-            <div className="text-right">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wide">Saldo SOL</p>
-              <p className="text-lg font-black" style={{ color: "#9945FF" }}>
-                {solBalance.toFixed(4)} <span className="text-xs font-bold">SOL</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Fee abstraction badge + explorer link */}
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] text-gray-400">
-              ✓ Fees de rede pagas pelo True Deal
-            </span>
-            <button onClick={openExplorer}
-              className="flex items-center gap-1 text-[10px] font-semibold"
-              style={{ color: "#9945FF" }}>
-              Explorer <ExternalLink className="w-3 h-3" />
-            </button>
-          </div>
-        </div>
-
-        {/* User summary card */}
-        <div className="rounded-2xl p-4 mb-5 flex items-center gap-4 mt-3"
+        {/* User mini-card */}
+        <div className="rounded-2xl px-4 py-3 mb-4 mt-3 flex items-center gap-3"
           style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E5A)" }}>
-            <span className="text-blue-300 font-bold text-lg">{initials}</span>
+            <span className="text-blue-300 font-bold text-sm">{initials}</span>
           </div>
           <div className="flex-1">
-            <p className="font-bold text-gray-800">{displayName}</p>
-            <p className="text-xs text-gray-500">{username} · {tdpPoints.toLocaleString("pt-BR")} TDP</p>
-            <div className="flex gap-3 mt-1">
-              <span className="text-[10px] text-green-600 font-semibold">{streakDays}🔥 streak</span>
-            </div>
+            <p className="font-bold text-gray-800 text-sm">{displayName}</p>
+            {username && <p className="text-xs text-gray-400">@{username}</p>}
           </div>
+          <ChevronRight className="w-4 h-4 text-gray-300" />
         </div>
 
-        {/* Balance card */}
+        {/* ── Balance card ── */}
         <div className="rounded-3xl p-6 mb-5 relative overflow-hidden"
           style={{
             background: "linear-gradient(135deg,#0D2E1A 0%,#16A34A 55%,#22C55E 100%)",
             boxShadow: "0 16px 48px rgba(22,163,74,0.45)",
           }}>
-          {/* Subtle grid texture */}
+          {/* Grid texture */}
           <div className="absolute inset-0 opacity-[0.04]"
             style={{ backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(255,255,255,1) 28px,rgba(255,255,255,1) 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,rgba(255,255,255,1) 28px,rgba(255,255,255,1) 29px)" }} />
 
           <div className="relative z-10">
+
+            {/* Balance row */}
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">Saldo Total</p>
                 <p className="text-white text-3xl font-black tracking-tight">
-                  {showBalance ? `${tdpPoints.toLocaleString("pt-BR")} TDP` : "•••• TDP"}
+                  {showBalance ? fmtAmount(totalUsd) : "••••"}
                 </p>
               </div>
-              <button onClick={() => setShowBalance(b => !b)} className="p-2 rounded-full" style={{ background: "rgba(255,255,255,0.15)" }}>
-                {showBalance ? <Eye className="w-5 h-5 text-white" /> : <EyeOff className="w-5 h-5 text-white" />}
-              </button>
+              <div className="flex gap-2">
+                {/* Currency toggle */}
+                <button onClick={cycleCurrency}
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                  style={{ background: "rgba(255,255,255,0.18)", color: "white", border: "1px solid rgba(255,255,255,0.25)" }}>
+                  {CURRENCY_LABELS[currency]}
+                </button>
+                {/* Show/hide */}
+                <button onClick={() => setShowBalance(b => !b)}
+                  className="p-2 rounded-full"
+                  style={{ background: "rgba(255,255,255,0.15)" }}>
+                  {showBalance
+                    ? <Eye className="w-4 h-4 text-white" />
+                    : <EyeOff className="w-4 h-4 text-white" />}
+                </button>
+              </div>
             </div>
 
+            {/* Disponível / Em Deals */}
             <div className="flex gap-4 mb-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               <div>
                 <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Disponível</p>
-                <p className="text-white font-bold">{showBalance ? `${AVAILABLE.toLocaleString("pt-BR")} TDP` : "••••"}</p>
+                <p className="text-white font-bold">{fmtAmount(availableUsd, !showBalance)}</p>
               </div>
               <div className="w-px bg-white/20" />
               <div>
                 <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Em Deals</p>
-                <p className="text-white font-bold">{showBalance ? fmtBRL(FROZEN) : "••••"}</p>
+                <p className="text-white font-bold">{fmtAmount(frozenUsd, !showBalance)}</p>
               </div>
             </div>
 
-            {/* PIX key */}
-            <button onClick={copyPix}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl"
+            {/* Wallet address (replaces PIX) */}
+            <button onClick={copyAddr}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all active:scale-[0.98]"
               style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-white/60 uppercase">Pix</span>
-                <span className="text-xs text-white/90 font-medium">{PIX_KEY}</span>
+                <span className="text-[10px] font-bold text-white/50 uppercase">◎</span>
+                <span className="text-xs text-white/90 font-mono font-medium">
+                  {managedPublicKey ? truncateAddr(managedPublicKey) : "Gerando…"}
+                </span>
               </div>
               {copied
                 ? <Check className="w-4 h-4 text-white" />
@@ -319,39 +270,27 @@ export default function WalletClient({ profile, tdpHistory, activeDealsValue, ma
           })}
         </div>
 
-        {/* Activity header */}
+        {/* Deal history */}
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-bold text-gray-700">Histórico de TDP</p>
-          <div className="flex gap-1.5">
-            {(["Todos","Deals","Movimentos"] as const).map((f, i) => (
-              <button key={f}
-                className="px-2.5 py-1 rounded-full text-[10px] font-semibold transition-all"
-                style={{
-                  background: i === 0 ? "rgba(22,163,74,0.12)" : "rgba(255,255,255,0.4)",
-                  color:      i === 0 ? "#16A34A" : "#9CA3AF",
-                  border:     i === 0 ? "1px solid rgba(22,163,74,0.3)" : "1px solid rgba(255,255,255,0.5)",
-                }}>
-                {f}
-              </button>
-            ))}
-          </div>
+          <p className="text-sm font-bold text-gray-700">Extrato de Deals</p>
         </div>
 
-        {/* TDP history list */}
         <div className="space-y-2.5 mb-4">
-          {tdpHistory.length === 0 ? (
-            <div className="flex items-center justify-center p-8 rounded-2xl"
+          {dealHistory.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-10 rounded-2xl gap-2"
               style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
-              <p className="text-sm text-gray-400">Nenhuma transação ainda</p>
+              <Trophy className="w-8 h-8 text-gray-200" />
+              <p className="text-sm text-gray-400">Nenhum deal ainda</p>
+              <p className="text-xs text-gray-300">Participe de um deal para ver seu histórico</p>
             </div>
           ) : (
-            tdpHistory.map((tx) => {
+            dealHistory.map((tx) => {
               const isPositive = tx.amount > 0
-              const Icon = isPositive ? Trophy : XIcon
+              const Icon  = isPositive ? Trophy : TrendingDown
               const color = isPositive ? "#16A34A" : "#EF4444"
               const bg    = isPositive ? "rgba(22,163,74,0.1)" : "rgba(239,68,68,0.1)"
-              const label = TDP_REASON_LABELS[tx.reason] ?? tx.reason
-              const dateStr = formatTdpDate(tx.created_at)
+              const label = DEAL_LABELS[tx.reason] ?? tx.reason
+              const dateStr = formatDate(tx.created_at)
               return (
                 <div key={tx.id} className="flex items-center gap-3 p-4 rounded-2xl"
                   style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
@@ -361,12 +300,12 @@ export default function WalletClient({ profile, tdpHistory, activeDealsValue, ma
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{label}</p>
+                    <p className="text-[11px] text-gray-400">{dateStr}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
                     <p className="text-sm font-bold" style={{ color }}>
-                      {isPositive ? "+" : ""}{tx.amount} TDP
+                      {isPositive ? "+" : ""}{tx.amount} 🤝
                     </p>
-                    <p className="text-[10px] text-gray-400">{dateStr}</p>
                   </div>
                 </div>
               )
@@ -377,7 +316,7 @@ export default function WalletClient({ profile, tdpHistory, activeDealsValue, ma
 
       <BottomNav active="Wallet" />
 
-      {/* ── Deposit / Withdraw modal ── */}
+      {/* ── Deposit modal ── */}
       {activeModal && (
         <div className="fixed inset-0 z-50 flex items-end"
           style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
@@ -387,7 +326,7 @@ export default function WalletClient({ profile, tdpHistory, activeDealsValue, ma
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-gray-800">
-                {activeModal === "deposit" ? "Depositar via Pix" : "Sacar para Pix"}
+                {activeModal === "deposit" ? "Depositar" : "Sacar"}
               </h2>
               <button onClick={() => setActiveModal(null)}
                 className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.06)" }}>
@@ -397,37 +336,39 @@ export default function WalletClient({ profile, tdpHistory, activeDealsValue, ma
 
             {activeModal === "deposit" ? (
               <div className="space-y-4">
-                <div className="p-4 rounded-2xl text-center"
+                <div className="p-4 rounded-2xl"
                   style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)" }}>
-                  <p className="text-xs text-gray-500 mb-1">Chave Pix True Deal</p>
-                  <p className="font-bold text-gray-800 text-sm">{PIX_KEY}</p>
-                  <button onClick={copyPix}
-                    className="mt-2 flex items-center gap-1.5 mx-auto text-xs font-semibold text-[#16A34A]">
+                  <p className="text-xs text-gray-500 mb-1">Endereço da sua carteira</p>
+                  <p className="font-mono font-bold text-gray-800 text-sm break-all">{managedPublicKey ?? "—"}</p>
+                  <button onClick={copyAddr}
+                    className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#16A34A]">
                     {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                    {copied ? "Copiado!" : "Copiar chave"}
+                    {copied ? "Copiado!" : "Copiar endereço"}
                   </button>
                 </div>
                 <p className="text-xs text-gray-400 text-center leading-relaxed">
-                  Envie qualquer valor via Pix para essa chave. O saldo é creditado em até 5 minutos.
+                  Envie SOL para esse endereço. O saldo é atualizado automaticamente.
                 </p>
               </div>
             ) : (
               <div className="space-y-4">
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Valor a sacar</label>
+                  <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Valor a sacar (USD)</label>
                   <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">R$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">$</span>
                     <input type="number" value={pixAmount} onChange={e => setPixAmount(e.target.value)}
-                      placeholder="0,00" className="w-full pl-10 pr-4 py-3.5 rounded-xl outline-none text-gray-800 placeholder-gray-400 font-medium"
+                      placeholder="0.00" className="w-full pl-8 pr-4 py-3.5 rounded-xl outline-none text-gray-800 placeholder-gray-400 font-medium"
                       style={{ background: "rgba(0,0,0,0.04)", border: "1.5px solid rgba(22,163,74,0.3)" }} />
                   </div>
                   <p className="text-[10px] text-gray-400 mt-1">
-                    Disponível: {AVAILABLE.toLocaleString("pt-BR")} TDP
+                    Disponível: {fmtAmount(availableUsd)}
                   </p>
                 </div>
                 <div className="p-3 rounded-xl" style={{ background: "rgba(0,0,0,0.04)" }}>
-                  <p className="text-[10px] text-gray-500 mb-0.5">Chave Pix de destino</p>
-                  <p className="text-sm font-semibold text-gray-800">{PIX_KEY}</p>
+                  <p className="text-[10px] text-gray-500 mb-0.5">Destino</p>
+                  <p className="text-sm font-mono font-semibold text-gray-800 break-all">
+                    {managedPublicKey ? truncateAddr(managedPublicKey) : "—"}
+                  </p>
                 </div>
                 <button
                   className="w-full py-4 rounded-2xl font-bold text-white transition-all"

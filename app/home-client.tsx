@@ -460,7 +460,7 @@ function ProfilePopover({
               <p className="font-bold text-gray-800">{displayName}</p>
               {username && <p className="text-xs text-gray-500">{username}</p>}
               {profile && (
-                <p className="text-xs text-[#16A34A] font-semibold mt-0.5">{profile.tdp_points} TDP</p>
+                <p className="text-xs text-[#16A34A] font-semibold mt-0.5">{profile.tdp_points} 🤝</p>
               )}
             </div>
           </div>

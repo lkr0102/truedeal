@@ -4,6 +4,19 @@ import { getMyWallet, getSolBalance, ensureUserWallet } from "@/lib/actions/wall
 import { createClient } from "@/lib/supabase/server"
 import WalletClient from "./wallet-client"
 
+async function fetchSolUsdPrice(): Promise<number> {
+  try {
+    const res = await fetch(
+      "https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd",
+      { next: { revalidate: 60 } },
+    )
+    const data = await res.json()
+    return data?.solana?.usd ?? 150
+  } catch {
+    return 150 // fallback price
+  }
+}
+
 export default async function WalletPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -12,20 +25,20 @@ export default async function WalletPage() {
     { profile },
     { transactions: tdpHistory = [] },
     { deals = [] },
+    solUsdPrice,
   ] = await Promise.all([
     getMyProfile(),
-    getTdpHistory(20),
+    getTdpHistory(30),
     fetchDeals(),
+    fetchSolUsdPrice(),
   ])
 
-  // Ensure the user has a managed wallet (fallback if auth callback was skipped)
   let { publicKey: managedPublicKey } = await getMyWallet()
   if (!managedPublicKey) {
     const created = await ensureUserWallet()
     managedPublicKey = created.publicKey
   }
 
-  // Fetch SOL balance server-side from Solana RPC
   const solBalance = managedPublicKey ? await getSolBalance(managedPublicKey) : 0
 
   const activeDealsValue = deals
@@ -42,6 +55,7 @@ export default async function WalletPage() {
       activeDealsValue={activeDealsValue}
       managedPublicKey={managedPublicKey}
       solBalance={solBalance}
+      solUsdPrice={solUsdPrice}
     />
   )
 }

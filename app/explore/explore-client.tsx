@@ -6,7 +6,7 @@ import {
   Home, Compass, Wallet, User,
   Star, Zap, Gift, UserPlus, Trophy, Search,
   X, TrendingUp, Award, Bell, MapPin, Clock, Flame,
-  ChevronUp, ChevronDown, Minus,
+  ChevronUp, ChevronDown, Minus, Handshake, Lock,
 } from "lucide-react"
 import { doCheckin } from "@/lib/actions/profile"
 import type { Profile } from "@/lib/supabase/types"
@@ -45,25 +45,26 @@ function BottomNav({ active }: { active: string }) {
   )
 }
 
-// ── Points sources / uses (static) ────────────────────────────────────────────
+// ── Points sources (static) ───────────────────────────────────────────────────
 
 const POINTS_SOURCES = [
-  { icon: Zap,        label: "Participar de um Deal",    pts: "+75 TDP",  color: "#16A34A" },
-  { icon: Star,       label: "Criar um Deal",            pts: "+100 TDP", color: "#F59E0B" },
-  { icon: Trophy,     label: "Ganhar um Deal",           pts: "+200 TDP", color: "#3DBF6A" },
-  { icon: MapPin,     label: "Check-in diário",          pts: "+50 TDP",  color: "#3B82F6" },
-  { icon: TrendingUp, label: "Streak de 7 dias",         pts: "+150 TDP", color: "#8B5CF6" },
-  { icon: TrendingUp, label: "Streak de 30 dias",        pts: "+500 TDP", color: "#EC4899" },
-  { icon: UserPlus,   label: "Indicar um amigo",         pts: "+300 TDP", color: "#10B981" },
+  { icon: Zap,        label: "Participar de um Deal",    pts: "+75 🤝",  color: "#16A34A" },
+  { icon: Star,       label: "Criar um Deal",            pts: "+100 🤝", color: "#F59E0B" },
+  { icon: Trophy,     label: "Ganhar um Deal",           pts: "+200 🤝", color: "#3DBF6A" },
+  { icon: MapPin,     label: "Check-in diário",          pts: "até 300 🤝", color: "#3B82F6" },
+  { icon: TrendingUp, label: "Streak de 7 dias",         pts: "+150 🤝", color: "#8B5CF6" },
+  { icon: TrendingUp, label: "Streak de 30 dias",        pts: "+500 🤝", color: "#EC4899" },
+  { icon: UserPlus,   label: "Indicar um amigo",         pts: "+300 🤝", color: "#10B981" },
   { icon: Gift,       label: "Cupom promocional",        pts: "variável", color: "#EF4444" },
 ]
 
-const POINTS_USES = [
-  { label: "Ativar Super Deal extra",         cost: "5.000 TDP" },
-  { label: "Destaque no feed da comunidade",  cost: "500 TDP"   },
-  { label: "Badge exclusivo de perfil",       cost: "1.000 TDP" },
-  { label: "Extensão de prazo em Deal ativo", cost: "800 TDP"   },
-]
+// ── Progressive check-in rewards ─────────────────────────────────────────────
+
+const CHECKIN_REWARDS = [50, 70, 100, 150, 200, 250, 300] // day 1 → day 7+
+
+function getCheckinReward(currentStreak: number): number {
+  return CHECKIN_REWARDS[Math.min(currentStreak, 6)]
+}
 
 // ── Check-in helpers ──────────────────────────────────────────────────────────
 
@@ -108,6 +109,8 @@ function CheckInCard({
   const mm = String(Math.floor((secondsLeft % 3600) / 60)).padStart(2, "0")
   const ss = String(secondsLeft % 60).padStart(2, "0")
 
+  const nextReward = getCheckinReward(initialStreak)
+
   async function handleCheckIn() {
     if (!canCheckIn || loading) return
     setLoading(true)
@@ -139,7 +142,32 @@ function CheckInCard({
           <span className="text-sm font-bold text-gray-800">{initialStreak}🔥</span>
         </div>
       </div>
-      <div className="px-4 py-4">
+
+      {/* Progressive reward track */}
+      <div className="px-4 pt-3 pb-0">
+        <div className="flex items-center gap-1">
+          {CHECKIN_REWARDS.map((reward, i) => {
+            const dayStreak = i + 1
+            const isCurrentOrPast = initialStreak >= dayStreak
+            const isNext = initialStreak === i
+            return (
+              <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
+                <div className="w-full h-1 rounded-full transition-all"
+                  style={{ background: isCurrentOrPast ? "#16A34A" : isNext ? "rgba(22,163,74,0.3)" : "rgba(0,0,0,0.08)" }} />
+                <span className="text-[8px] font-bold" style={{ color: isCurrentOrPast ? "#16A34A" : isNext ? "#16A34A" : "#D1D5DB" }}>
+                  {reward}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+        <div className="flex justify-between mt-0.5 mb-2">
+          <span className="text-[8px] text-gray-400">Dia 1</span>
+          <span className="text-[8px] text-gray-400">Dia 7+</span>
+        </div>
+      </div>
+
+      <div className="px-4 pb-4">
         {canCheckIn ? (
           <p className="text-sm text-[#16A34A] font-semibold text-center mb-3">✅ Disponível agora!</p>
         ) : (
@@ -157,12 +185,12 @@ function CheckInCard({
             boxShadow: canCheckIn ? "0 4px 16px rgba(22,163,74,0.35)" : "none",
             cursor: canCheckIn ? "pointer" : "not-allowed",
           }}>
-          {done ? "✅ Check-in feito! +50 TDP" : loading ? "Registrando..." : canCheckIn ? "Fazer Check-in · +50 TDP" : "Check-in indisponível"}
+          {done ? `✅ Check-in feito! +${nextReward} 🤝` : loading ? "Registrando..." : canCheckIn ? `Fazer Check-in · +${nextReward} 🤝` : "Check-in indisponível"}
         </button>
         <button disabled className="w-full py-2.5 rounded-xl font-medium text-xs mt-2 flex items-center justify-center gap-2"
           style={{ background: "rgba(0,0,0,0.04)", color: "#C4C4C4", border: "1px dashed rgba(0,0,0,0.1)", cursor: "not-allowed" }}>
           <Flame className="w-3.5 h-3.5 text-gray-300" />
-          Reparar streak — 2.500 TDP
+          Reparar streak — 2.500 🤝
           <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: "rgba(0,0,0,0.06)", color: "#C4C4C4" }}>INDISPONÍVEL</span>
         </button>
       </div>
@@ -170,9 +198,9 @@ function CheckInCard({
   )
 }
 
-// ── TDPoints Tab ──────────────────────────────────────────────────────────────
+// ── Points Tab ────────────────────────────────────────────────────────────────
 
-function TDPointsTab({
+function PointsTab({
   profile,
   totalCheckins,
 }: {
@@ -181,20 +209,22 @@ function TDPointsTab({
 }) {
   const [showHowModal,  setShowHowModal]  = useState(false)
   const superDealAvailable = !(profile?.super_deal_used ?? false)
-  const tdpPoints   = profile?.tdp_points  ?? 0
-  const streak      = profile?.streak_days ?? 0
-  const lastCheckin = profile?.last_checkin ?? null
+  const shakesPoints = profile?.tdp_points  ?? 0
+  const streak       = profile?.streak_days ?? 0
+  const lastCheckin  = profile?.last_checkin ?? null
 
   return (
     <div className="px-5 pb-8 space-y-4">
       {/* Hero card */}
       <div className="rounded-3xl p-6 text-center"
         style={{ background: "linear-gradient(135deg,#0D2E1A 0%,#16A34A 60%,#22C55E 100%)", boxShadow: "0 12px 40px rgba(22,163,74,0.4)" }}>
-        <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-2">Seus TDPoints</p>
-        <p className="text-white text-5xl font-black mb-1">
-          {tdpPoints.toLocaleString("pt-BR")}
-          <span className="text-2xl font-bold text-white/60 ml-1">TDP</span>
-        </p>
+        <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-2">Seus Shakes</p>
+        <div className="flex items-center justify-center gap-2 mb-1">
+          <p className="text-white text-5xl font-black">
+            {shakesPoints.toLocaleString("pt-BR")}
+          </p>
+          <Handshake className="w-8 h-8 text-white/70 mt-1" />
+        </div>
         <div className="flex justify-center gap-4 mt-4">
           <div className="text-center">
             <p className="text-white text-base font-bold">{streak} 🔥</p>
@@ -226,7 +256,7 @@ function TDPointsTab({
             {superDealAvailable ? "Disponível" : "Em uso"}
           </span>
         </div>
-        <p className="text-xs text-gray-500">1 Super Deal gratuito por conta (sem taxa). Quer um segundo? Custa 5.000 TDP.</p>
+        <p className="text-xs text-gray-500">1 Super Deal gratuito por conta (sem taxa). Quer um segundo? Custa 5.000 🤝.</p>
         {superDealAvailable && (
           <button className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-white"
             style={{ background: "linear-gradient(135deg,#3DBF6A,#2DA050)" }}>
@@ -235,40 +265,44 @@ function TDPointsTab({
         )}
       </div>
 
-      {/* Como ganhar */}
+      {/* Como ganhar Shakes — com overlay "em breve" */}
       <div>
         <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-bold text-gray-700">Como ganhar TDP</p>
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-bold text-gray-700">Como ganhar Shakes</p>
+            <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
+              style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}>
+              <Lock className="w-2.5 h-2.5" />
+              Claim em breve
+            </span>
+          </div>
           <button onClick={() => setShowHowModal(true)} className="text-[10px] text-[#16A34A] font-semibold">Ver tudo</button>
         </div>
+
+        {/* "em breve" notice */}
+        <div className="mb-2 px-3 py-2 rounded-xl flex items-center gap-2"
+          style={{ background: "rgba(139,92,246,0.07)", border: "1px dashed rgba(139,92,246,0.3)" }}>
+          <Handshake className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#8B5CF6" }} />
+          <p className="text-[11px] text-gray-500">
+            Bata as metas e faça o <strong style={{ color: "#8B5CF6" }}>claim</strong> dos seus Shakes. Disponível em breve.
+          </p>
+        </div>
+
         <div className="space-y-2">
           {POINTS_SOURCES.map((src) => {
             const Icon = src.icon
             return (
-              <div key={src.label} className="flex items-center gap-3 p-3 rounded-xl"
-                style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.5)" }}>
+              <div key={src.label} className="flex items-center gap-3 p-3 rounded-xl relative overflow-hidden"
+                style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.5)", opacity: 0.75 }}>
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${src.color}20` }}>
                   <Icon className="w-4 h-4" style={{ color: src.color }} />
                 </div>
                 <span className="flex-1 text-sm text-gray-700">{src.label}</span>
                 <span className="text-xs font-bold" style={{ color: src.color }}>{src.pts}</span>
+                <Lock className="w-3 h-3 ml-1 flex-shrink-0" style={{ color: "#C4C4C4" }} />
               </div>
             )
           })}
-        </div>
-      </div>
-
-      {/* Para que serve */}
-      <div>
-        <p className="text-sm font-bold text-gray-700 mb-3">Para que serve</p>
-        <div className="space-y-2">
-          {POINTS_USES.map((u) => (
-            <div key={u.label} className="flex items-center justify-between p-3 rounded-xl"
-              style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.5)" }}>
-              <span className="text-sm text-gray-700">{u.label}</span>
-              <span className="text-xs font-bold text-[#16A34A]">{u.cost}</span>
-            </div>
-          ))}
         </div>
       </div>
 
@@ -280,12 +314,15 @@ function TDPointsTab({
             style={{ background: "rgba(255,255,255,0.97)", maxHeight: "80vh", overflowY: "auto" }}
             onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-gray-800">O que são TDPoints?</h3>
+              <div className="flex items-center gap-2">
+                <Handshake className="w-5 h-5 text-[#16A34A]" />
+                <h3 className="text-lg font-bold text-gray-800">O que são Shakes?</h3>
+              </div>
               <button onClick={() => setShowHowModal(false)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.08)" }}>
                 <X className="w-4 h-4 text-gray-600" />
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4"><strong>TDPoints (TDP)</strong> são a moeda de engajamento do True Deal. Você ganha ao participar da plataforma e usa para desbloquear benefícios.</p>
+            <p className="text-sm text-gray-600 mb-4"><strong>Shakes 🤝</strong> são a moeda de engajamento do True Deal — como apertos de mão digitais. Você ganha ao participar da plataforma e usa para desbloquear benefícios.</p>
             <p className="text-sm font-semibold text-gray-700 mb-2">Ranking e prêmios</p>
             <p className="text-sm text-gray-600">O <strong>Top 5</strong> do ranking mensal divide <strong>R$100</strong> proporcionalmente.</p>
           </div>
@@ -297,7 +334,7 @@ function TDPointsTab({
 
 // ── Hall of Fame Tab ──────────────────────────────────────────────────────────
 
-type HofFilter = "tdp" | "streak"
+type HofFilter = "mensal" | "streak"
 
 function userColor(id: string): string {
   const colors = ["#4AABFF", "#BF4ADF", "#16A34A", "#F59E0B", "#EF4444", "#10B981", "#8B5CF6", "#EC4899"]
@@ -364,11 +401,11 @@ function HallOfFameTab({
   hofProfiles: Profile[]
   userId: string | null
 }) {
-  const [filter, setFilter] = useState<HofFilter>("tdp")
+  const [filter, setFilter] = useState<HofFilter>("mensal")
   const [search, setSearch] = useState("")
 
   const sorted = [...hofProfiles].sort((a, b) =>
-    filter === "tdp" ? b.tdp_points - a.tdp_points : b.streak_days - a.streak_days,
+    filter === "mensal" ? b.tdp_points - a.tdp_points : b.streak_days - a.streak_days,
   )
 
   const filtered = sorted.filter(u =>
@@ -378,16 +415,15 @@ function HallOfFameTab({
 
   const top3   = sorted.slice(0, 3)
   const podium = [top3[1], top3[0], top3[2]].filter(Boolean) // silver, gold, bronze
-  const rest   = filtered.filter((_, i) => sorted.indexOf(_) >= 3)
 
   const FILTERS: { key: HofFilter; label: string }[] = [
-    { key: "tdp",    label: "TDPoints" },
-    { key: "streak", label: "Streak"   },
+    { key: "mensal",  label: "Mensal"  },
+    { key: "streak",  label: "Streak"  },
   ]
 
   const metricValue = (p: Profile) =>
-    filter === "tdp"
-      ? `${p.tdp_points.toLocaleString("pt-BR")} TDP`
+    filter === "mensal"
+      ? `${p.tdp_points.toLocaleString("pt-BR")} 🤝`
       : `${p.streak_days}🔥`
 
   return (
@@ -396,7 +432,10 @@ function HallOfFameTab({
       {podium.length >= 3 && (
         <div className="rounded-3xl p-5 overflow-hidden"
           style={{ background: "rgba(255,255,255,0.45)", backdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest text-center mb-5">🏆 Hall of Fame</p>
+          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest text-center mb-1">🏆 Hall of Fame</p>
+          <p className="text-[10px] text-gray-400 text-center mb-5">
+            {filter === "mensal" ? "Ranking mensal · Shakes ganhos em deals" : "Ranking de streak · dias consecutivos"}
+          </p>
           <div className="flex items-end justify-center gap-3">
             <PodiumCard profile={podium[0]} rank={2} medal="🥈" height={64} />
             <PodiumCard profile={podium[1]} rank={1} medal="👑" height={90} />
@@ -432,7 +471,7 @@ function HallOfFameTab({
 
       {/* Ranking list */}
       <div className="space-y-2">
-        {filtered.map((u, listIdx) => {
+        {filtered.map((u) => {
           const globalRank = sorted.indexOf(u) + 1
           const isMe       = u.id === userId
           const color      = userColor(u.id)
@@ -487,7 +526,7 @@ function HallOfFameTab({
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
-type SubTab = "tdpoints" | "halloffame"
+type SubTab = "points" | "halloffame"
 
 export default function ExploreClient({
   profile,
@@ -500,11 +539,11 @@ export default function ExploreClient({
   hofProfiles: Profile[]
   userId: string | null
 }) {
-  const [subTab, setSubTab] = useState<SubTab>("tdpoints")
+  const [subTab, setSubTab] = useState<SubTab>("points")
 
   const SUB_TABS: { key: SubTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
-    { key: "tdpoints",   label: "TDPoints",    Icon: Star  },
-    { key: "halloffame", label: "Hall of Fame", Icon: Trophy },
+    { key: "points",     label: "Points",       Icon: Handshake },
+    { key: "halloffame", label: "Hall of Fame",  Icon: Trophy    },
   ]
 
   return (
@@ -516,7 +555,7 @@ export default function ExploreClient({
       }}>
       <header className="px-5 pt-12 pb-4">
         <h1 className="text-2xl font-bold text-gray-800">Explorar</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Pontos e ranking global</p>
+        <p className="text-gray-500 text-sm mt-0.5">Shakes e ranking global</p>
       </header>
 
       <div className="px-5 mb-5">
@@ -542,7 +581,7 @@ export default function ExploreClient({
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        {subTab === "tdpoints"   && <TDPointsTab profile={profile} totalCheckins={totalCheckins} />}
+        {subTab === "points"     && <PointsTab profile={profile} totalCheckins={totalCheckins} />}
         {subTab === "halloffame" && <HallOfFameTab hofProfiles={hofProfiles} userId={userId} />}
       </div>
 

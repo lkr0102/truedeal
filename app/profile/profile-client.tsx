@@ -147,7 +147,7 @@ function DashboardTab({ user }: DashboardTabProps) {
           {[
             { label: "Total ganho",  value: user.totalWon,  positive: true },
             { label: "PnL líquido",  value: user.pnl,       positive: user.pnlPositive },
-            { label: "TDPoints",     value: `${user.tdp.toLocaleString("pt-BR")} TDP`, positive: true },
+            { label: "Shakes",        value: `${user.tdp.toLocaleString("pt-BR")} 🤝`,  positive: true },
           ].map(({ label, value, positive }) => (
             <div key={label} className="flex items-center justify-between py-2"
               style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
@@ -181,7 +181,7 @@ function DashboardTab({ user }: DashboardTabProps) {
       <div className="rounded-2xl p-5"
         style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Redes Sociais</p>
-        <p className="text-xs text-gray-400 mb-4">+100 TDP por rede linkada e verificada</p>
+        <p className="text-xs text-gray-400 mb-4">+100 🤝 por rede linkada e verificada</p>
         <div className="space-y-2">
           {SOCIALS.map(({ key, icon: Icon, label, handle, linked, pts }) => (
             <div key={key} className="flex items-center gap-3 p-3 rounded-xl transition-all"
@@ -201,7 +201,7 @@ function DashboardTab({ user }: DashboardTabProps) {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-gray-400">+{pts} TDP</span>
+                  <span className="text-[10px] font-bold text-gray-400">+{pts} 🤝</span>
                   <button className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
                     style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}>
                     Linkar
@@ -237,7 +237,7 @@ function DashboardTab({ user }: DashboardTabProps) {
         <div className="relative">
           <div className="absolute -top-2 right-4 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
             style={{ background: "#16A34A" }}>
-            +100 TDP por indicado
+            +100 🤝 por indicado
           </div>
           <button onClick={copyReferral} className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
             style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(22,163,74,0.3)", color: "#16A34A", backdropFilter: "blur(10px)" }}>
