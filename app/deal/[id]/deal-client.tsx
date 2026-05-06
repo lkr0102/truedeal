@@ -6,11 +6,11 @@ import { differenceInCalendarDays, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import {
   ArrowLeft, Share2, Users, DollarSign, Clock, Activity,
-  CheckCircle2, XCircle, ChevronRight, Trophy, PieChart, Award,
-  Lock, AlertCircle, Loader2, ExternalLink
+  CheckCircle2, XCircle, Trophy,
+  Lock, AlertCircle, Loader2, ExternalLink, CalendarDays, Hourglass
 } from "lucide-react"
 import { GlassCard, PrimaryBtn, GhostBtn } from "@/components/td-ui"
-import { joinDeal, updateDealStatus, depositToEscrow } from "@/lib/actions/deals"
+import { joinDeal, depositToEscrow } from "@/lib/actions/deals"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -199,11 +199,6 @@ const VERIF_META: Record<VerifType, { bg: string; label: string; text?: string; 
   gympass: { bg: "#00A651", label: "Gympass", text: "GP"  },
 }
 
-const PRIZE_META: Record<PrizeType, { label: string; color: string; Icon: React.FC<{ className?: string; color?: string }> }> = {
-  proporcional: { label: "Proporcional", color: "#7C3AED", Icon: PieChart },
-  primeiro:     { label: "1º Lugar",     color: "#D97706", Icon: Trophy   },
-  ranking:      { label: "Ranking",      color: "#2563EB", Icon: Award    },
-}
 
 function VerifChip({ type }: { type: VerifType }) {
   const m = VERIF_META[type]
@@ -229,236 +224,99 @@ function StatusPill({ status }: { status: DealStatus }) {
   )
 }
 
-// ── Tab: Participantes ────────────────────────────────────────────────────────
+// ── Deal rules card ───────────────────────────────────────────────────────────
 
-type ParticipantTab = "aprovados" | "pagamento" | "pedidos"
+const DISTRIBUTION_LABEL: Record<string, string> = {
+  winner:       "Vencedor leva tudo",
+  top3:         "Top 3 dividem o pote",
+  proportional: "Proporcional ao desempenho",
+}
 
-function ParticipantsTab({ deal }: { deal: DealView }) {
-  const [activeTab, setActiveTab] = useState<ParticipantTab>("aprovados")
-
-  const tabs: { key: ParticipantTab; label: string }[] = [
-    { key: "aprovados", label: "Aprovados" },
-    { key: "pagamento", label: "Pagamento" },
-    { key: "pedidos",   label: "Pedidos"   },
+function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithParticipants }) {
+  const rows: { label: string; value: React.ReactNode }[] = [
+    {
+      label: "Verificação",
+      value: (
+        <div className="flex gap-1.5 flex-wrap">
+          {deal.verifications.length > 0
+            ? deal.verifications.map(v => <VerifChip key={v} type={v} />)
+            : <span className="text-sm font-semibold text-gray-700">{dealData.verification_type || "—"}</span>}
+        </div>
+      ),
+    },
+    {
+      label: "Distribuição",
+      value: <span className="text-sm font-semibold text-gray-700">{DISTRIBUTION_LABEL[dealData.distribution] ?? dealData.distribution}</span>,
+    },
+    {
+      label: "Período",
+      value: <span className="text-sm font-semibold text-gray-700">{deal.startDate} → {deal.endDate}</span>,
+    },
+    {
+      label: "Entrada",
+      value: <span className="text-sm font-semibold text-gray-700">R${deal.valuePerPerson.toLocaleString("pt-BR")} por pessoa</span>,
+    },
   ]
 
-  const pending = deal.participants_list.filter(p => !p.approved)
-
   return (
-    <div>
-      <div className="flex gap-1 mb-4">
-        {tabs.map((t) => (
-          <button key={t.key}
-            onClick={() => setActiveTab(t.key)}
-            className="transition-all duration-150"
-            style={{
-              padding: "4px 10px", borderRadius: 100,
-              fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "Inter, sans-serif",
-              background: activeTab === t.key ? "rgba(22,163,74,0.12)" : "rgba(0,0,0,0.05)",
-              color: activeTab === t.key ? "#16A34A" : "#9CA3AF",
-            }}>
-            {t.label}
-          </button>
+    <GlassCard style={{ padding: "14px 16px", marginTop: 12 }}>
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Regras do Deal</p>
+      <div className="space-y-3">
+        {rows.map((row, i) => (
+          <div key={i} className="flex items-start justify-between gap-3">
+            <span className="text-xs text-gray-400 font-medium flex-shrink-0 mt-0.5">{row.label}</span>
+            <div className="text-right">{row.value}</div>
+          </div>
         ))}
+        {deal.description && (
+          <div className="pt-2 border-t border-black/5">
+            <p className="text-xs text-gray-400 font-medium mb-1.5">Descrição</p>
+            <p className="text-sm text-gray-700 leading-relaxed">{deal.description}</p>
+          </div>
+        )}
       </div>
-
-      {activeTab === "aprovados" && (
-        <div className="space-y-2">
-          {deal.participants_list.sort((a, b) => a.rank - b.rank).map((p) => (
-            <div key={p.id}
-              className="flex items-center gap-3 p-3 rounded-2xl"
-              style={{ background: p.isMe ? "rgba(37,99,235,0.06)" : "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.7)" }}>
-              <span className="text-[11px] font-black w-6 text-center"
-                style={{ color: p.rank === 1 ? "#F59E0B" : p.rank === 2 ? "#9CA3AF" : p.rank === 3 ? "#D97706" : "#9CA3AF" }}>
-                {p.rank}º
-              </span>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: p.bg, border: `2px solid ${p.color}` }}>
-                <span className="text-xs font-bold" style={{ color: p.color }}>{p.initials}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-semibold text-gray-800 truncate">{p.name}</span>
-                  {p.isMe && <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(37,99,235,0.12)", color: "#2563EB" }}>Você</span>}
-                </div>
-                <span className="text-[11px] text-gray-400">{p.username}</span>
-              </div>
-              {p.value > 0 && (
-                <div className="text-right">
-                  <p className="text-sm font-bold text-gray-800">{p.value.toLocaleString("pt-BR")}</p>
-                  <p className="text-[10px] text-gray-400">pts</p>
-                </div>
-              )}
-              {p.approved
-                ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#16A34A" }} />
-                : <XCircle className="w-4 h-4 flex-shrink-0 text-gray-300" />}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeTab === "pagamento" && (
-        <div className="space-y-2">
-          {deal.participants_list.map((p) => (
-            <div key={p.id}
-              className="flex items-center gap-3 p-3 rounded-2xl"
-              style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.7)" }}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: p.bg, border: `2px solid ${p.color}` }}>
-                <span className="text-xs font-bold" style={{ color: p.color }}>{p.initials}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <span className="text-sm font-semibold text-gray-800 truncate block">{p.name}</span>
-                <span className="text-[11px] text-gray-400">{p.username}</span>
-              </div>
-              <span className="text-sm font-bold text-gray-800">R${deal.valuePerPerson.toLocaleString("pt-BR")}</span>
-              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full" style={{ background: "rgba(22,163,74,0.12)", color: "#16A34A" }}>
-                Pago
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {activeTab === "pedidos" && (
-        <div className="space-y-2">
-          {pending.length === 0 ? (
-            <div className="text-center py-8">
-              <CheckCircle2 className="w-10 h-10 mx-auto mb-2" style={{ color: "#16A34A" }} />
-              <p className="text-sm font-semibold text-gray-600">Nenhum pedido pendente</p>
-              <p className="text-xs text-gray-400 mt-1">Todos os participantes foram aprovados</p>
-            </div>
-          ) : (
-            pending.map((p) => (
-              <div key={p.id}
-                className="flex items-center gap-3 p-3 rounded-2xl"
-                style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.7)" }}>
-                <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                  style={{ background: p.bg, border: `2px solid ${p.color}` }}>
-                  <span className="text-xs font-bold" style={{ color: p.color }}>{p.initials}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-semibold text-gray-800 block truncate">{p.name}</span>
-                  <span className="text-[11px] text-gray-400">{p.username} · {p.joinedDaysAgo}d atrás</span>
-                </div>
-                <div className="flex gap-2">
-                  <button className="text-[11px] font-bold px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(22,163,74,0.12)", color: "#16A34A" }}>
-                    Aprovar
-                  </button>
-                  <button className="text-[11px] font-bold px-2.5 py-1 rounded-full"
-                    style={{ background: "rgba(220,38,38,0.1)", color: "#DC2626" }}>
-                    Recusar
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
-    </div>
+    </GlassCard>
   )
 }
 
-// ── Tab: Cronograma ───────────────────────────────────────────────────────────
+// ── Participants list ─────────────────────────────────────────────────────────
 
-function TimelineTab({ deal }: { deal: DealView }) {
+function ParticipantsList({ deal }: { deal: DealView }) {
   return (
-    <div className="relative pl-6">
-      <div className="absolute left-2.5 top-3 bottom-3 w-px" style={{ background: "rgba(0,0,0,0.1)" }} />
-      <div className="space-y-5">
-        {deal.timeline.map((ev, i) => (
-          <div key={i} className="relative flex items-start gap-4">
-            <div className="absolute -left-3.5 flex items-center justify-center">
-              {ev.current ? (
-                <div className="relative">
-                  <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "#16A34A" }}>
-                    <div className="w-2 h-2 rounded-full bg-white" />
-                  </div>
-                  <div className="absolute inset-0 rounded-full animate-ping" style={{ background: "rgba(22,163,74,0.35)" }} />
-                </div>
-              ) : ev.done ? (
-                <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ background: "rgba(22,163,74,0.15)" }}>
-                  <CheckCircle2 className="w-3.5 h-3.5" style={{ color: "#16A34A" }} />
-                </div>
-              ) : (
-                <div className="w-5 h-5 rounded-full" style={{ background: "rgba(0,0,0,0.06)", border: "2px solid rgba(0,0,0,0.1)" }} />
-              )}
+    <GlassCard style={{ padding: "14px 16px", marginTop: 12, marginBottom: 4 }}>
+      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+        Participantes · {deal.participants_list.length}
+      </p>
+      <div className="space-y-2">
+        {deal.participants_list.sort((a, b) => a.rank - b.rank).map((p) => (
+          <div key={p.id}
+            className="flex items-center gap-3 p-2.5 rounded-xl"
+            style={{ background: p.isMe ? "rgba(37,99,235,0.06)" : "rgba(0,0,0,0.03)" }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: p.bg, border: `2px solid ${p.color}` }}>
+              <span className="text-xs font-bold" style={{ color: p.color }}>{p.initials}</span>
             </div>
-            <div className="pt-0.5">
-              <p className={`text-sm font-semibold ${ev.done || ev.current ? "text-gray-800" : "text-gray-400"}`}>
-                {ev.label}
-                {ev.current && (
-                  <span className="ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full" style={{ background: "rgba(22,163,74,0.12)", color: "#16A34A" }}>
-                    Agora
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-semibold text-gray-800 truncate">{p.name}</span>
+                {p.isMe && (
+                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
+                    style={{ background: "rgba(37,99,235,0.12)", color: "#2563EB" }}>
+                    Você
                   </span>
                 )}
-              </p>
-              <p className="text-[11px] text-gray-400 mt-0.5">{ev.date}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ── Tab: Distribuição ─────────────────────────────────────────────────────────
-
-function DistributionTab({ deal }: { deal: DealView }) {
-  return (
-    <div className="space-y-4">
-      <div className="p-4 rounded-2xl text-center"
-        style={{ background: "linear-gradient(135deg, #064E3B, #16A34A)", boxShadow: "0 8px 24px rgba(22,163,74,0.25)" }}>
-        <p className="text-white/70 text-[11px] font-medium uppercase tracking-wider mb-1">Pote Total</p>
-        <p className="text-white text-3xl font-black">R${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
-        <p className="text-white/60 text-xs mt-1">{deal.participants} participantes · R${deal.valuePerPerson.toLocaleString("pt-BR")} cada</p>
-      </div>
-
-      <div className="space-y-3">
-        {deal.prizeSlices.map((slice, i) => (
-          <div key={i}>
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-sm font-semibold text-gray-700">{slice.label}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-400">{Math.round(slice.pct * 100)}%</span>
-                <span className="text-sm font-bold text-gray-800">R${slice.amount.toLocaleString("pt-BR")}</span>
               </div>
+              <span className="text-[11px] text-gray-400">{p.username}</span>
             </div>
-            <div className="h-2.5 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.06)" }}>
-              <div className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${slice.pct * 100}%`, background: slice.color }} />
-            </div>
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#16A34A" }} />
           </div>
         ))}
       </div>
-
-      <div className="p-4 rounded-2xl" style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.7)" }}>
-        <div className="flex items-center gap-2 mb-2">
-          {(() => {
-            const meta = PRIZE_META[deal.prizeType]
-            const Icon = meta.Icon
-            return (
-              <>
-                <Icon className="w-4 h-4" color={meta.color} />
-                <span className="text-sm font-bold" style={{ color: meta.color }}>{meta.label}</span>
-              </>
-            )
-          })()}
-        </div>
-        <p className="text-xs text-gray-500 leading-relaxed">
-          {deal.prizeType === "ranking"      && "O pote é dividido proporcionalmente entre os primeiros colocados ao final do período."}
-          {deal.prizeType === "primeiro"     && "O vencedor leva todo o pote. Em caso de empate, o pote é dividido igualmente."}
-          {deal.prizeType === "proporcional" && "Cada participante recebe de volta uma proporção do que apostou conforme seu desempenho."}
-        </p>
-      </div>
-    </div>
+    </GlassCard>
   )
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-
-type MainTab = "participantes" | "cronograma" | "distribuicao"
 
 export default function DealClient({
   deal: dealData,
@@ -469,11 +327,8 @@ export default function DealClient({
 }) {
   const router  = useRouter()
   const deal    = mapDeal(dealData, userId)
-  const [mainTab,    setMainTab]    = useState<MainTab>("participantes")
-  const [joining,    setJoining]    = useState(false)
-  const [joinError,  setJoinError]  = useState<string | null>(null)
-  const [starting,   setStarting]   = useState(false)
-  const [startError, setStartError] = useState<string | null>(null)
+  const [joining,   setJoining]   = useState(false)
+  const [joinError, setJoinError] = useState<string | null>(null)
 
   const isParticipating = userId
     ? dealData.participants.some(p => p.user_id === userId)
@@ -512,28 +367,9 @@ export default function DealClient({
     router.refresh()
   }
 
-  async function handleStartDeal() {
-    if (starting) return
-    setStarting(true)
-    setStartError(null)
-    const result = await updateDealStatus(dealData.id, "ativo")
-    if (result.error) {
-      setStartError(result.error)
-      setStarting(false)
-    } else {
-      router.refresh()
-    }
-  }
-
   const daysLeft  = deal.daysTotal - deal.daysGone
   const pct       = Math.round(deal.progress * 100)
   const isWinning = deal.myRank != null && deal.myRank <= Math.ceil(deal.participants * 0.3)
-
-  const MAIN_TABS: { key: MainTab; label: string }[] = [
-    { key: "participantes", label: "Participantes" },
-    { key: "cronograma",    label: "Cronograma"    },
-    { key: "distribuicao",  label: "Distribuição"  },
-  ]
 
   const myInitials = userId
     ? deal.participants_list.find(p => p.isMe)?.initials ?? "EU"
@@ -661,62 +497,9 @@ export default function DealClient({
             </GlassCard>
           )}
 
-          {/* Description */}
-          {deal.description && (
-            <GlassCard style={{ padding: "14px 16px", marginTop: 12 }}>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Sobre o deal</p>
-              <p className="text-sm text-gray-700 leading-relaxed">{deal.description}</p>
-            </GlassCard>
-          )}
-
-          {/* Rules */}
-          {deal.rules.length > 0 && (
-            <GlassCard style={{ padding: "14px 16px", marginTop: 12, marginBottom: 4 }}>
-              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Regras</p>
-              <div className="space-y-2">
-                {deal.rules.map((rule, i) => (
-                  <div key={i} className="flex items-start gap-2.5">
-                    <div className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: "rgba(22,163,74,0.12)" }}>
-                      <span className="text-[8px] font-black" style={{ color: "#16A34A" }}>{i + 1}</span>
-                    </div>
-                    <p className="text-sm text-gray-700">{rule}</p>
-                  </div>
-                ))}
-              </div>
-            </GlassCard>
-          )}
+          <DealRulesCard deal={deal} dealData={dealData} />
+          <ParticipantsList deal={deal} />
         </div>
-      </div>
-
-      {/* Tab switcher */}
-      <div className="px-5 mt-6 mb-4">
-        <div className="flex gap-1.5 p-1.5 rounded-2xl"
-          style={{ background: "rgba(255,255,255,0.40)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
-          {MAIN_TABS.map((tab) => {
-            const isActive = mainTab === tab.key
-            return (
-              <button key={tab.key}
-                onClick={() => setMainTab(tab.key)}
-                className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all duration-200"
-                style={{
-                  background: isActive ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent",
-                  color: isActive ? "white" : "#9CA3AF",
-                  boxShadow: isActive ? "0 4px 14px rgba(22,163,74,0.35)" : "none",
-                  border: "none", cursor: "pointer", fontFamily: "Inter, sans-serif",
-                }}>
-                {tab.label}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* Tab content */}
-      <div className="px-5">
-        {mainTab === "participantes" && <ParticipantsTab deal={deal} />}
-        {mainTab === "cronograma"    && <TimelineTab    deal={deal} />}
-        {mainTab === "distribuicao"  && <DistributionTab deal={deal} />}
       </div>
 
       {/* Sticky footer */}
@@ -746,35 +529,28 @@ export default function DealClient({
               </PrimaryBtn>
             ) : deal.status === "pendente" ? (
               <div className="flex-1 flex flex-col gap-1.5">
-                {(joinError || startError) && (
+                {joinError && (
                   <div className="flex items-center gap-1.5 text-red-500 text-xs px-1">
                     <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>{joinError ?? startError}</span>
+                    <span>{joinError}</span>
                   </div>
                 )}
-                {isCreator ? (
-                  <PrimaryBtn
-                    disabled={starting}
-                    style={{
-                      width: "100%", textAlign: "center", borderRadius: 12,
-                      opacity: starting ? 0.65 : 1,
-                      cursor: starting ? "not-allowed" : "pointer",
-                    }}
-                    onClick={handleStartDeal}>
-                    {starting ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Iniciando…
-                      </span>
-                    ) : "Iniciar Deal →"}
-                  </PrimaryBtn>
+                {isCreator || isParticipating ? (
+                  <div className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl"
+                    style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.25)" }}>
+                    <Hourglass className="w-4 h-4 flex-shrink-0" style={{ color: "#D97706" }} />
+                    <div>
+                      <p className="text-xs font-bold" style={{ color: "#D97706" }}>Aguardando participantes</p>
+                      <p className="text-[10px] text-gray-400">O deal inicia quando o período começar</p>
+                    </div>
+                  </div>
                 ) : (
                   <PrimaryBtn
-                    disabled={joining || isParticipating || isFull}
+                    disabled={joining || isFull}
                     style={{
                       width: "100%", textAlign: "center", borderRadius: 12,
-                      opacity: (joining || isParticipating || isFull) ? 0.65 : 1,
-                      cursor: (joining || isParticipating || isFull) ? "not-allowed" : "pointer",
+                      opacity: (joining || isFull) ? 0.65 : 1,
+                      cursor: (joining || isFull) ? "not-allowed" : "pointer",
                     }}
                     onClick={handleJoinDeal}>
                     {joining ? (
@@ -782,9 +558,7 @@ export default function DealClient({
                         <Loader2 className="w-4 h-4 animate-spin" />
                         Entrando…
                       </span>
-                    ) : isParticipating ? "Você já está neste deal"
-                      : isFull         ? "Deal lotado"
-                      : "Entrar no Deal →"}
+                    ) : isFull ? "Deal lotado" : "Entrar no Deal →"}
                   </PrimaryBtn>
                 )}
               </div>
