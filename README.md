@@ -288,7 +288,7 @@ True Deal foi desenvolvido como projeto para o **[Colosseum Frontier Hackathon](
 - Community Manager — TriadMarkets (maior prediction market BR)
 
 **João (SH1W4)** | CTO & AI-Augmented Systems Architect  
-[GitHub /SH1W4](https://github.com/SH1W4)
+[GitHub /SH1W4](https://github.com/SH1W4) · [X @symbeon01](https://twitter.com/symbeon01)
 
 - Web3 Infrastructure & Anchor Smart Contracts (Sovereign Escrow)
 - DealGuard Oracle & Edge AI Integration (Qwen 3B)
