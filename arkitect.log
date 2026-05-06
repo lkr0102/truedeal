@@ -1,0 +1,5 @@
+2026-05-06 08:58:34,547 - arkitect.main - INFO - Iniciando sistema ARKITECT
+2026-05-06 08:58:34,606 - arkitect.main - INFO - Servidor de métricas iniciado na porta 9090
+2026-05-06 08:58:34,608 - development.orchestrator - INFO - Iniciando orquestrador de desenvolvimento
+2026-05-06 08:58:34,610 - integration.eon_framework - INFO - Conectado ao serviço: eon_framework
+2026-05-06 08:58:34,610 - task_executor - INFO - Iniciando executor de tarefas

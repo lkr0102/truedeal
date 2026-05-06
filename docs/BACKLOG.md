@@ -8,27 +8,28 @@ This backlog merges the blocking tasks from the Founder (Lukas) with the Soverei
 - [ ] **Task INF-03**: Fee-payer SOL Airdrop (2+ SOL on Devnet).
 
 ## 2. Blockchain (Solana / Anchor) [CRITICAL]
-- [ ] **Task SC-01**: Initialize Anchor Project in `/contracts/solana`.
-- [ ] **Task SC-02**: Implement Escrow PDA Logic:
-    - `init_deal`: Create state account and vault.
-    - `join_deal`: Transfer SOL/USDC from managed wallet to vault.
-    - `cancel_deal`: Refund participants if criteria aren't met.
-- [ ] **Task SC-03**: Implement Verified Settlement:
-    - `settle_deal`: Instruction that requires a **DealGuard Engine** proof hash to release funds.
-- [ ] **Task SC-04**: Royalty Distributor (3% platform fee + 20% Symbeon treasury hook).
+- [ ] **Task SC-01**: Inicializar Projeto Anchor em `/contracts/solana`.
+- [ ] **Task SC-02**: Implementar Lógica de PDA para Escrow:
+    - `init_performance_agreement`: Criar conta de estado e vault de garantia.
+    - `join_agreement`: Transferir SOL/USDC da carteira gerenciada para o vault.
+    - `cancel_agreement`: Reembolsar participantes caso critérios não sejam atingidos.
+- [ ] **Task SC-03**: Implementar Liquidação de Performance:
+    - `settle_performance_agreement`: Instrução que exige o proof hash do **DEALGUARD Engine**.
+- [ ] **Task SC-04**: Distribuidor de Royalties (3% taxa plataforma + 20% Symbeon treasury).
 
-## 3. Orchestration & Intelligence (The "Arsenal")
-- [ ] **Task RG-01**: **Risk Guardian Hook**: Integrate Sentinel-01 logic to pre-audit deals before escrow activation.
-- [ ] **Task DG-01**: **DealGuard Engine Interface**: Edge Function to coordinate multi-agent consensus on X/Strava data.
-- [ ] **Task EV-01**: Snapshot System: Automated recording of state at `start_date` and `end_date`.
+## 3. Orquestração e Inteligência (The "Arsenal")
+- [x] **Task RG-01**: **Risk Guardian Core**: Motor de Auditoria de Integridade (Sentinel-01) implementado em repo próprio.
+- [x] **Task DG-01**: **DEALGUARD Engine**: Lógica de consenso BFT e interface agnóstica OpenClaw implementadas (Powered by **Risk Guardian Core**).
+- [/] **Task EV-01**: Sistema de Snapshots: Lógica de prova de fluxo validada, pendente integração com job agendado.
+- [x] **Task IP-01**: **Fundação Aethel**: DNA, Constituição e Tese de Soberania ratificadas e comitadas.
 
-## 4. Frontend & UX Integration
-- [ ] **Task FE-01**: Managed Wallet Wiring: Ensure frontend signs via server actions using decrypted keys.
-- [ ] **Task FE-02**: Join/Stake Flow: Real-time UI feedback for on-chain deposit.
-- [ ] **Task FE-03**: Dynamic Results: Replace placeholders on `/result` with data from the **ValidationArtifact**.
-- [ ] **Task FE-04**: Consolidate Creation: Merge `/create` and `/deals/create` into a single, clean route.
+## 4. Frontend & Integração de UX
+- [ ] **Task FE-01**: Conexão de Managed Wallets: Garantir que o frontend assine via server actions.
+- [ ] **Task FE-02**: Fluxo de Alocação (Join): Feedback em tempo real para depósito on-chain de garantia.
+- [ ] **Task FE-03**: Atestações de Performance: Substituir placeholders em `/result` por dados reais do **ValidationArtifact**.
+- [ ] **Task FE-04**: Consolidação de Criação: Unificar `/create` e `/deals/create` em uma rota única e limpa.
 
 ## 5. QA & Deployment
-- [ ] **Task QA-01**: Simulated Fraud Test: Verify **Risk Guardian** blocks anomalous signals.
-- [ ] **Task QA-02**: Consensus Test: Verify **DealGuard Engine** requires 2/3 agreement before payout.
-- [ ] **Task QA-03**: Devnet End-to-End Walkthrough.
+- [ ] **Task QA-01**: Teste de Simulação de Fraude: Verificar se o **Auditor de Integridade** bloqueia sinais anômalos.
+- [ ] **Task QA-02**: Teste de Consenso: Verificar se o **DEALGUARD Engine** exige quorum antes da liquidação de escrow.
+- [ ] **Task QA-03**: Walkthrough End-to-End em Devnet (Nomenclatura Institucional).
