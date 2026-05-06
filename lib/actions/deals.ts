@@ -227,6 +227,19 @@ export async function updateDealStatus(dealId: string, status: DealStatus) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { error: "Não autenticado" }
 
+  // Check minimum participants before starting
+  if (status === "ativo") {
+    const { count } = await (supabase.from("deal_participants") as any)
+      .select("*", { count: "exact", head: true })
+      .eq("deal_id", dealId)
+
+    if ((count ?? 0) < 2) {
+      // Se não tem 2 pessoas, bloqueia ou cancela
+      // Vamos retornar um erro claro para o frontend para que o criador saiba que precisa convidar
+      return { error: "São necessários no mínimo 2 participantes para iniciar o acordo." }
+    }
+  }
+
   const { error } = await (supabase.from("deals") as any)
     .update({ status })
     .eq("id", dealId)
