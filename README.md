@@ -277,9 +277,9 @@ True Deal foi desenvolvido como projeto para o **[Colosseum Frontier Hackathon](
 
 ---
 
-## 👤 Founder
+## 👥 Founders & Core Team
 
-**Lukas Rocha**  
+**Lukas Rocha** | CEO & Product  
 [@lkrcripto](https://twitter.com/lkrcripto)
 
 - 8 anos em publicidade e estratégia de comunicação (Propeg, SoloED, Humann, Brain Revolution)
@@ -287,11 +287,18 @@ True Deal foi desenvolvido como projeto para o **[Colosseum Frontier Hackathon](
 - Top 3 Arbitrum Ambassador BR
 - Community Manager — TriadMarkets (maior prediction market BR)
 
+**João (SH1W4)** | CTO & AI-Augmented Systems Architect  
+[GitHub /SH1W4](https://github.com/SH1W4)
+
+- Web3 Infrastructure & Anchor Smart Contracts (Sovereign Escrow)
+- DealGuard Oracle & Edge AI Integration (Qwen 3B)
+- Architect of Symbiotic Human-AI Workflows at Symbeon Labs
+
 ---
 
 <div align="center">
 
-Feito com ❤️ por [Lukas Rocha](https://github.com/lkr0102) para o ecossistema Solana.
+Feito com ❤️ por [Lukas Rocha](https://github.com/lkr0102) & [SH1W4](https://github.com/SH1W4) para o ecossistema Solana.
 
 *Don't trust. Make a True Deal.*
 
