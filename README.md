@@ -30,24 +30,24 @@
 
 ```mermaid
 graph TD
-    subgraph Web2 UI [1. Interface Layer]
-        A[User A] -->|Create Deal| C(Next.js App)
-        B[User B] -->|Join & Stake| C
+    subgraph Layer1 ["1. Interface Layer"]
+        A["User A"] -->|"Create Deal"| C("Next.js App")
+        B["User B"] -->|"Join & Stake"| C
     end
 
-    subgraph Sovereign Oracle [2. Verification Layer]
-        C -->|Trigger Verification| D{DealGuard Engine}
-        D -->|Fetch Data| E[X / Strava APIs]
-        D -->|Fraud Analysis| F((Risk Guardian AI))
+    subgraph Layer2 ["2. Verification Layer"]
+        C -->|"Trigger Verification"| D{"DealGuard Engine"}
+        D -->|"Fetch Data"| E["X / Strava APIs"]
+        D -->|"Fraud Analysis"| F(("Risk Guardian AI"))
     end
 
-    subgraph Solana Blockchain [3. Settlement Layer]
-        F -->|Sign Valid Proof| G[TrueDeal Anchor Program]
-        G -->|Lock Funds| H[(Escrow PDA)]
-        G -->|Distribute Winner| I[Winner Wallet]
+    subgraph Layer3 ["3. Settlement Layer"]
+        F -->|"Sign Valid Proof"| G["TrueDeal Anchor Program"]
+        G -->|"Lock Funds"| H[("Escrow PDA")]
+        G -->|"Distribute Winner"| I["Winner Wallet"]
     end
 
-    C -.->|Managed Wallet| G
+    C -.->|"Managed Wallet"| G
 ```
 
 For full local setup instructions, env variables, roadmap, and competitor analysis, please refer to the detailed Portuguese section below.
