@@ -15,7 +15,7 @@ Este documento registra o progresso do desenvolvimento do produto **TrueDeal** e
 - [x] **Revisão de Backlog:** Sincronização total dos termos (*Acordo de Performance*, *Alocação de Garantia*, *Liquidação*).
 - [x] **DEALGUARD Integration:** Nomenclatura do motor de consenso atualizada no `BACKLOG.md` e `ARCHITECTURE.md`.
 - [x] **UX Audit:** Levantamento do estado das rotas `/create`, `/wallet` e `/tracking`. Identificada necessidade de refatoração de strings.
-- [x] **Memorando Themis:** Criação do [THEMIS_INTEGRATION_MEMO.md](file:///c:/Users/João/Desktop/Hackertons/TrueDeal/docs/THEMIS_INTEGRATION_MEMO.md) definindo a estratégia de IP e revelação.
+- [x] **Memorando Themis:** Criação do [THEMIS_INTEGRATION_MEMO.md](./THEMIS_INTEGRATION_MEMO.md) definindo a estratégia de IP e revelação.
 
 ### ⚖️ Auditoria de Produto
 - **Status da Marca:** TrueDeal (Public Face) está 100% alinhado com o contrato de parceria.
