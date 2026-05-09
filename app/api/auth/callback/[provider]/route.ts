@@ -58,14 +58,61 @@ export async function GET(
     return NextResponse.redirect(`${baseUrl}/login?error=no_code`)
   }
 
-  // TODO: trocar o `code` pelo access_token no servidor usando as credenciais de cada provedor.
-  // Exemplo para X (requer code_verifier):
-  // const codeVerifier = req.cookies.get("x_code_verifier")?.value
-  // const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", { ... })
+  if (provider === "x") {
+    const codeVerifier = req.cookies.get("x_code_verifier")?.value
+    if (!codeVerifier) {
+      return NextResponse.redirect(`${baseUrl}/login?error=no_verifier`)
+    }
 
-  // TODO: criar/buscar o usuário no banco de dados.
-  // Se novo usuário → /onboarding/profile
-  // Se usuário existente → /
+    try {
+      const basicAuth = Buffer.from(`${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`).toString("base64")
+      const tokenRes = await fetch("https://api.twitter.com/2/oauth2/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: `Basic ${basicAuth}`,
+        },
+        body: new URLSearchParams({
+          code,
+          grant_type: "authorization_code",
+          redirect_uri: `${baseUrl}/api/auth/callback/x`,
+          code_verifier: codeVerifier,
+        }),
+      })
+
+      if (!tokenRes.ok) {
+        return NextResponse.redirect(`${baseUrl}/login?error=x_token_failed`)
+      }
+
+      const tokenData = await tokenRes.json()
+      
+      const userRes = await fetch("https://api.twitter.com/2/users/me?user.fields=profile_image_url,username", {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      })
+      const { data: xUser } = await userRes.json()
+
+      const { createClient } = await import("@/lib/supabase/server")
+      const supabase = await createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+
+      if (user) {
+        await (supabase.from("social_connections") as any).upsert({
+          user_id:          user.id,
+          platform:         "x",
+          status:           "connected",
+          external_id:      xUser.id,
+          username:         xUser.username,
+          access_token:     tokenData.access_token,
+          refresh_token:    tokenData.refresh_token,
+          token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+          metadata:         { profile_image_url: xUser.profile_image_url },
+        }, { onConflict: "user_id,platform" })
+      }
+    } catch (err) {
+      console.error("OAuth Error:", err)
+      return NextResponse.redirect(`${baseUrl}/login?error=oauth_exception`)
+    }
+  }
 
   const redirect = NextResponse.redirect(`${baseUrl}/onboarding/profile`)
   redirect.cookies.delete("oauth_state")
