@@ -4,6 +4,8 @@ import { getMyWallet, getSolBalance, ensureUserWallet } from "@/lib/actions/wall
 import { createClient } from "@/lib/supabase/server"
 import WalletClient from "./wallet-client"
 
+export const dynamic = "force-dynamic"
+
 async function fetchSolUsdPrice(): Promise<number> {
   try {
     const res = await fetch(
