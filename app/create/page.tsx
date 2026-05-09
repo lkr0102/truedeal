@@ -77,9 +77,9 @@ const FREQUENCIES = [
 const AMOUNT_PRESETS = [25, 50, 100, 200, 500]
 
 const DISTRIBUTION_TYPES = [
-  { id: "proportional", label: "Proporcional", icon: "🤝", desc: "Pote ÷ todos que cumprirem a regra"     },
-  { id: "top3",         label: "Ranking",       icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% do pote"    },
-  { id: "winner",       label: "1º Lugar",      icon: "👑", desc: "Winner takes all"                      },
+  { id: "proportional", label: "Proporcional", icon: "🤝", desc: "Pote final dividido entre todos que cumprirem o acordo.", available: true  },
+  { id: "top3",         label: "Ranking",       icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% do pote",                       available: false },
+  { id: "winner",       label: "1º Lugar",      icon: "👑", desc: "Winner takes all",                                        available: false },
 ]
 
 const PERIOD_PRESETS = [
@@ -178,10 +178,11 @@ export default function CreateDealPage() {
   const [amount,       setAmount]       = useState(50)
   const [isCustomAmt,  setIsCustomAmt]  = useState(false)
   const [customAmtStr, setCustomAmtStr] = useState("")
-  const [distribution, setDistribution] = useState("winner")
+  const [distribution, setDistribution] = useState("proportional")
 
-  const [screen,       setScreen]       = useState<1 | 2>(1)
-  const [showInfo,     setShowInfo]     = useState(false)
+  const [screen,          setScreen]          = useState<1 | 2>(1)
+  const [showInfo,        setShowInfo]        = useState(false)
+  const [showPrivacyInfo, setShowPrivacyInfo] = useState<"private" | "public" | null>(null)
   const [isSubmitting,  setIsSubmitting]  = useState(false)
   const [submitError,   setSubmitError]   = useState<string | null>(null)
 
@@ -660,18 +661,29 @@ export default function CreateDealPage() {
             <div className="space-y-2">
               {DISTRIBUTION_TYPES.map(d => (
                 <button key={d.id}
-                  onClick={() => setDistribution(d.id)}
+                  onClick={() => d.available && setDistribution(d.id)}
+                  disabled={!d.available}
                   className="w-full flex items-center gap-3 p-3.5 rounded-xl transition-all"
                   style={{
-                    background: distribution === d.id ? "rgba(22,163,74,0.07)" : "rgba(255,255,255,0.5)",
-                    border: distribution === d.id ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
+                    background: !d.available ? "rgba(255,255,255,0.3)" : distribution === d.id ? "rgba(22,163,74,0.07)" : "rgba(255,255,255,0.5)",
+                    border: !d.available ? "1.5px solid rgba(0,0,0,0.05)" : distribution === d.id ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
+                    opacity: !d.available ? 0.55 : 1,
+                    cursor: !d.available ? "default" : "pointer",
                   }}>
                   <span className="text-xl flex-shrink-0">{d.icon}</span>
                   <div className="flex-1 text-left">
-                    <p className="text-sm font-semibold text-gray-800">{d.label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-gray-800">{d.label}</p>
+                      {!d.available && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
+                          em breve
+                        </span>
+                      )}
+                    </div>
                     <p className="text-[10px] text-gray-400 mt-0.5">{d.desc}</p>
                   </div>
-                  {distribution === d.id && <Check className="w-4 h-4 text-[#16A34A] flex-shrink-0" />}
+                  {d.available && distribution === d.id && <Check className="w-4 h-4 text-[#16A34A] flex-shrink-0" />}
                 </button>
               ))}
             </div>
@@ -680,30 +692,26 @@ export default function CreateDealPage() {
           {/* ── 9. Visibilidade ── */}
           <SectionBlock icon={<span className="text-base">👁️</span>} iconBg="rgba(107,114,128,0.1)" title="Visibilidade" sub="Quem pode ver e participar deste deal">
             <div className="flex gap-2.5">
-              <button
-                onClick={() => setPrivacy("private")}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all"
-                style={{
-                  background: privacy === "private" ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.5)",
-                  border: privacy === "private" ? "1.5px solid rgba(0,0,0,0.15)" : "1.5px solid rgba(0,0,0,0.07)",
-                  fontWeight: 700, fontSize: 13,
-                  color: privacy === "private" ? "#374151" : "#9CA3AF",
-                }}>
-                <Lock className="w-4 h-4" />
-                Privado
-              </button>
-              <button
-                onClick={() => setPrivacy("public")}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all"
-                style={{
-                  background: privacy === "public" ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.5)",
-                  border: privacy === "public" ? "1.5px solid rgba(0,0,0,0.15)" : "1.5px solid rgba(0,0,0,0.07)",
-                  fontWeight: 700, fontSize: 13,
-                  color: privacy === "public" ? "#374151" : "#9CA3AF",
-                }}>
-                <Globe className="w-4 h-4" />
-                Público
-              </button>
+              {(["private", "public"] as const).map(type => (
+                <button
+                  key={type}
+                  onClick={() => setPrivacy(type)}
+                  className="flex-1 flex items-center gap-2 py-3.5 px-3 rounded-xl transition-all"
+                  style={{
+                    background: privacy === type ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.5)",
+                    border: privacy === type ? "1.5px solid rgba(0,0,0,0.15)" : "1.5px solid rgba(0,0,0,0.07)",
+                    fontWeight: 700, fontSize: 13,
+                    color: privacy === type ? "#374151" : "#9CA3AF",
+                  }}>
+                  {type === "private" ? <Lock className="w-4 h-4 flex-shrink-0" /> : <Globe className="w-4 h-4 flex-shrink-0" />}
+                  <span className="flex-1">{type === "private" ? "Privado" : "Público"}</span>
+                  <Info
+                    className="w-3.5 h-3.5 flex-shrink-0"
+                    style={{ color: privacy === type ? "#6B7280" : "#D1D5DB" }}
+                    onClick={e => { e.stopPropagation(); setShowPrivacyInfo(type) }}
+                  />
+                </button>
+              ))}
             </div>
           </SectionBlock>
 
@@ -937,6 +945,69 @@ export default function CreateDealPage() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Privacy info sheet ────────────────────────────────────────────────── */}
+      {showPrivacyInfo && (
+        <div className="fixed inset-0 z-50 flex items-end"
+          style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+          onClick={() => setShowPrivacyInfo(null)}>
+          <div className="w-full rounded-t-3xl px-5 pt-5 pb-8"
+            style={{ background: "rgba(255,255,255,0.98)" }}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                {showPrivacyInfo === "private"
+                  ? <Lock className="w-4 h-4 text-gray-700" />
+                  : <Globe className="w-4 h-4 text-[#16A34A]" />}
+                <h3 className="text-base font-bold text-gray-800">
+                  {showPrivacyInfo === "private" ? "Deal Privado" : "Deal Público"}
+                </h3>
+              </div>
+              <button onClick={() => setShowPrivacyInfo(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.06)" }}>
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+
+            {showPrivacyInfo === "private" ? (
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl"
+                  style={{ background: "rgba(107,114,128,0.06)", border: "1px solid rgba(107,114,128,0.15)" }}>
+                  <p className="text-xs font-bold text-gray-700 mb-1.5">🔒 Acesso por aprovação do criador</p>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Qualquer usuário pode ver o deal e solicitar participação — mas só o criador pode aceitar ou recusar cada entrada.
+                  </p>
+                </div>
+                <div className="p-4 rounded-2xl"
+                  style={{ background: "rgba(107,114,128,0.06)", border: "1px solid rgba(107,114,128,0.15)" }}>
+                  <p className="text-xs font-bold text-gray-700 mb-1.5">🔗 Link de compartilhamento</p>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    O link permite que qualquer pessoa encontre e solicite entrar no deal, mas a participação só é confirmada após a aprovação do criador.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl"
+                  style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
+                  <p className="text-xs font-bold text-[#16A34A] mb-1.5">🌐 Acesso livre</p>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Qualquer usuário pode entrar no deal diretamente, sem precisar de aprovação. O deal aparece na listagem pública do app.
+                  </p>
+                </div>
+                <div className="p-4 rounded-2xl"
+                  style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
+                  <p className="text-xs font-bold text-[#16A34A] mb-1.5">🔗 Link de compartilhamento</p>
+                  <p className="text-sm text-gray-600 leading-relaxed">
+                    Quem acessar o link entra diretamente no deal, sem etapas de aprovação.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

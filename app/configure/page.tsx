@@ -11,9 +11,9 @@ import type { DealCategory, DealType } from "@/lib/supabase/types"
 const AMOUNT_PRESETS = [25, 50, 100, 200, 500]
 
 const DISTRIBUTION_TYPES = [
-  { id: "proportional", label: "Proporcional", desc: "Pote final dividido entre todos que cumprirem o acordo." },
-  { id: "top3",         label: "Ranking",       desc: "Top 3: 60% · 30% · 10%"         },
-  { id: "winner",       label: "1º Lugar",      desc: "100% para quem chegar na frente" },
+  { id: "proportional", label: "Proporcional", desc: "Pote final dividido entre todos que cumprirem o acordo.", available: true  },
+  { id: "top3",         label: "Ranking",       desc: "Top 3: 60% · 30% · 10%",                               available: false },
+  { id: "winner",       label: "1º Lugar",      desc: "100% para quem chegar na frente",                       available: false },
 ]
 
 const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
@@ -43,7 +43,7 @@ export default function ConfigureDealPage() {
   const [amount,       setAmount]       = useState(50)
   const [customAmtStr, setCustomAmtStr] = useState("")
   const [isCustomAmt,  setIsCustomAmt]  = useState(false)
-  const [distribution, setDistribution] = useState("winner")
+  const [distribution, setDistribution] = useState("proportional")
 
   // Submit
   const [showReview,   setShowReview]   = useState(false)
@@ -222,22 +222,33 @@ export default function ConfigureDealPage() {
             {DISTRIBUTION_TYPES.map(d => (
               <button
                 key={d.id}
-                onClick={() => setDistribution(d.id)}
+                onClick={() => d.available && setDistribution(d.id)}
+                disabled={!d.available}
                 className="w-full flex items-center justify-between p-4 rounded-2xl transition-all"
                 style={{
-                  background: distribution === d.id ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.45)",
-                  border:     distribution === d.id ? "1.5px solid rgba(22,163,74,0.3)" : "1px solid rgba(255,255,255,0.6)",
+                  background: !d.available ? "rgba(255,255,255,0.3)" : distribution === d.id ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.45)",
+                  border:     !d.available ? "1px solid rgba(0,0,0,0.05)" : distribution === d.id ? "1.5px solid rgba(22,163,74,0.3)" : "1px solid rgba(255,255,255,0.6)",
+                  opacity:    !d.available ? 0.55 : 1,
+                  cursor:     !d.available ? "default" : "pointer",
                 }}
               >
                 <div className="flex items-center gap-3">
                   <div
                     className="w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0"
-                    style={{ borderColor: distribution === d.id ? "#16A34A" : "#D1D5DB" }}
+                    style={{ borderColor: d.available && distribution === d.id ? "#16A34A" : "#D1D5DB" }}
                   >
-                    {distribution === d.id && <div className="w-2 h-2 rounded-full bg-[#16A34A]" />}
+                    {d.available && distribution === d.id && <div className="w-2 h-2 rounded-full bg-[#16A34A]" />}
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-bold text-gray-800">{d.label}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-bold text-gray-800">{d.label}</p>
+                      {!d.available && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                          style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
+                          em breve
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500">{d.desc}</p>
                   </div>
                 </div>
