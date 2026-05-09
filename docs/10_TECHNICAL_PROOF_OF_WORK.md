@@ -26,8 +26,18 @@ The frontend implements a seamless bridge between the "Shakes" social UI and the
 - **`anchor-client.ts`**: Implements the Anchor protocol for calling `init_performance_agreement` and `settle_performance_agreement`.
 - **`deal-client.tsx`**: The primary user interface for deal management, fully integrated with on-chain state updates.
 
-## 4. Security & Consensus (DealGuard)
+## 4. Security & Consensus (DealGuard Engine)
 Settlements are protected by the **DealGuard Consensus Engine**, requiring multi-signature verification from independent Oracles before funds are released from the Program PDA.
+
+- **Forensic Hash:** Every settlement includes a `proof_hash` (SHA-256) representing the audit audit evidence.
+- **On-Chain Slacker Tax:** The program automatically calculates a 3% platform fee from the losers' pool, ensuring protocol sustainability without taxing winners.
+- **Proportional Distribution:** Real-time on-chain calculation of rewards based on participant performance.
+
+## 5. Shakes Reputation System (TDP)
+The "Shakes" reputation system is integrated into the application lifecycle:
+- **`deal_activate`**: Grants +500 TDP to creators and +200 TDP to participants upon successful deal quorum (min 2 users).
+- **Audit Consistency**: Sentinel AI (Risk Guardian) analyzes behavioral data to prevent fraudulent Shakes accumulation.
+- **On-Chain Proof**: Final wins are recorded with the transaction signature directly in the user's history.
 
 ---
 **Status:** Operational | **Environment:** Devnet | **Integrity:** Verified
