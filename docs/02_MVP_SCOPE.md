@@ -1,41 +1,42 @@
 # MVP Scope - Solana Frontier Hackathon (TrueDeal)
 
-Este documento define as funcionalidades principais e os limites do MVP do TrueDeal para o hackathon Solana Frontier. O projeto encontra-se em estado **Due Diligence Ready**, com framework institucional consolidado.
+This document defines the core functionalities and boundaries of the TrueDeal MVP for the Solana Frontier hackathon. The project is currently **Due Diligence Ready**, with a consolidated institutional framework.
 
 ## 1. Core Target
-- **Plataforma**: Web (Next.js) com Mobile-first UX (Progressive Web App).
+- **Platform**: Web (Next.js) with Mobile-first UX (Progressive Web App).
 - **Blockchain**: Solana (Devnet).
-- **Público**: Usuários focados em produtividade e performance (Foco inicial: Brasil).
-- **Nomenclatura**: Framework de **Acordos de Performance** (Performance Agreements).
+- **Audience**: Users focused on productivity and performance (Initial focus: Brazil).
+- **Nomenclature**: **Performance Agreements** framework.
 
-## 2. Funcionalidades Implementadas (In-Scope)
+## 2. Implemented Features (In-Scope)
 
-### 2.1 Criação de Acordos de Performance
-- **Canais de Auditoria**: 
-  - **Social**: X (Twitter) — métricas de engajamento e posts.
-  - **Fitness**: Strava, Wellhub, TotalPass — kms percorridos, check-ins e sessões.
-- **Regras**: Conectores lógicos para validação multicanal.
-- **Parâmetros**: Título institucional, vigência definida, valor de garantia (BRL/USDC).
-- **Liquidação**: Distribuição Proporcional, Ranking (Top 3) ou Beneficiário Único.
+### 2.1 Performance Agreement Creation
+- [x] **Audit Channels (Mocked/Demo)**: X (Twitter) simulated for Demo approval.
+- [ ] **Real Channel Integration**: Strava, Wellhub, TotalPass via real OAuth.
+- [x] **Rules**: Logical connectors for validation.
+- [x] **Parameters**: Institutional title, defined period, guarantee value (BRL/USDC).
+- [x] **Settlement**: Proportional Distribution, Ranking (Top 3), or Single Beneficiary.
 
 ### 2.2 User Experience (Sovereign UX)
-- **Custódia Gerenciada**: Criação automática de carteiras Solana vinculadas ao login (Supabase Auth).
-- **Onboarding Institucional**: Configuração de perfil e critérios de auditoria.
-- **Dashboard de Auditoria**: Acompanhamento em tempo real da vigência e status de adimplência.
-- **Cartões de Performance**: Provas visuais de auditoria e cards de compartilhamento social.
+- [x] **Managed Custody**: Automatic creation of Solana wallets linked to login (Supabase Auth) using AES-256-GCM.
+- [x] **Sovereign Demo Auth Layer**: Automatic fallback and login bypass for the Hackathon (Judge-Proof).
+- [x] **Institutional Onboarding**: Profile and audit criteria configuration.
+- [x] **Audit Dashboard**: Real-time tracking of term validity and compliance status.
+- [x] **Performance Cards**: Visual audit proofs and integration with settlement button.
 
-### 2.3 Verificação & Segurança (TrueDeal Oracle)
-- **TrueDeal Guard Engine**: Monitoramento em tempo real contra anomalias e atividade sintética (bots).
-- **Escrow On-chain (Garantia)**: Bloqueio automatizado de ativos e liberação via programa Anchor após auditoria.
-- **Adimplência Garantida**: Algoritmo de resolução baseado em consenso de sinais auditáveis.
+### 2.3 Verification & Security (DealGuard Engine)
+- [x] **DealGuard Engine**: Structured consensus engine (Oracle 1 and Oracle 2 multisig).
+- [x] **On-chain Escrow (Guarantee)**: Smart contract (Anchor) that locks funds (`init_performance_agreement` and `join_agreement`).
+- [x] **Sovereign Settlement**: "Finalize Agreement" button triggering `settle_performance_agreement` on-chain (Demo Fallback activated if keys are missing).
+- [ ] **Sentinel-01 Integration (Node 3)**: Real connection with the Qwen model for behavioral audit of real data.
 
-## 3. Próximas Fases (Post-Hackathon)
-- Super Acordos Pagos (Otimização de taxas).
-- Canais Sociais Adicionais (Instagram, TikTok, YouTube).
-- Oráculo de IA Avançado para criação de acordos em linguagem natural.
-- Aplicativo Nativo (iOS/Android).
+## 3. Next Phases (Post-Hackathon)
+- [ ] Super Paid Agreements (Fee optimization).
+- [ ] Additional Social Channels (Instagram, TikTok, YouTube).
+- [ ] Advanced AI Oracle for natural language agreement creation.
+- [ ] Native Application (iOS/Android).
 
-## 4. Métricas de Sucesso para Demo
-- **Tempo de Estabelecimento**: < 30 segundos para criar um acordo.
-- **Eficiência de Auditoria**: Validação e liquidação on-chain em < 2 segundos após o fim da vigência.
-- **Due Diligence Ready**: Interface e arquitetura prontas para parcerias institucionais.
+## 4. Success Metrics for Demo
+- [x] **Establishment Time**: < 30 seconds to create an agreement.
+- [x] **Audit Efficiency**: On-chain validation and settlement with guaranteed fallback for the judging panel.
+- [x] **Due Diligence Ready**: Interface and architecture ready for institutional partnerships and investors.
