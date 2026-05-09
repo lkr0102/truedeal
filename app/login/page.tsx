@@ -220,139 +220,149 @@ export default function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
+      className="min-h-screen flex items-center justify-center p-4"
       style={{
-        background: "#0A0F0D",
+        backgroundImage:    "url('/images/gradient-background.jpg')",
+        backgroundSize:     "cover",
+        backgroundPosition: "center",
+        backgroundRepeat:   "no-repeat",
       }}
     >
-      {/* Sovereign Glows */}
-      <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full opacity-20 blur-[120px] pointer-events-none"
-        style={{ background: "radial-gradient(circle, #00D26A 0%, transparent 70%)" }} />
-      <div className="absolute bottom-[-20%] right-[-10%] w-[50%] h-[50%] rounded-full opacity-10 blur-[100px] pointer-events-none"
-        style={{ background: "radial-gradient(circle, #9945FF 0%, transparent 70%)" }} />
+      {/* Orbs decorativos */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full opacity-50 animate-pulse"
+          style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(20px)", border: "2px solid rgba(255,255,255,0.3)" }} />
+        <div className="absolute top-3/4 right-1/4 w-24 h-24 rounded-full opacity-40 animate-pulse"
+          style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(20px)", border: "2px solid rgba(255,255,255,0.3)", animationDelay: "1s" }} />
+      </div>
 
       <div
-        className="w-full max-w-md p-10 rounded-[32px] relative z-10"
+        className="w-full max-w-md p-8 rounded-3xl relative z-10"
         style={{
-          background: "rgba(255,255,255,0.03)",
-          backdropFilter: "blur(40px) saturate(180%)",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 40px 100px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.1)",
+          background:    "rgba(255,255,255,0.25)",
+          backdropFilter: "blur(40px) saturate(250%)",
+          border:        "1px solid rgba(255,255,255,0.4)",
+          boxShadow:     "0 32px 80px rgba(0,0,0,0.3), inset 0 3px 0 rgba(255,255,255,0.6)",
         }}
       >
-        {/* Logo Section */}
-        <div className="text-center mb-10">
-          <div className="flex justify-center mb-6">
-            <div className="relative">
-               <div className="absolute inset-0 bg-[#00D26A] blur-2xl opacity-20 rounded-full animate-pulse" />
-               <TrueDealAppIcon size={72} />
-            </div>
+        {/* Logo */}
+        <div className="text-center mb-7">
+          <div className="flex justify-center mb-4">
+            <TrueDealAppIcon size={80} />
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tighter">TRUEDEAL</h1>
-          <div className="flex items-center justify-center gap-2 mt-2">
-            <div className="h-[1px] w-4 bg-[#00D26A]" />
-            <p className="text-[10px] text-[#00D26A] font-black uppercase tracking-[0.3em]">Institutional Protocol</p>
-            <div className="h-[1px] w-4 bg-[#00D26A]" />
-          </div>
+          <h1 className="text-2xl font-bold text-gray-800">True Deal</h1>
+          <p className="text-gray-600 text-sm mt-1 font-medium">Don&apos;t trust, make a True Deal</p>
         </div>
 
         {/* ── E-mail / senha ── */}
-        <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Endereço de Acesso</label>
+        <form onSubmit={handleEmailLogin} className="space-y-3 mb-4">
+          <input
+            type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="seu@email.com"
+            className="w-full px-4 py-3 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
+            style={glass} required
+          />
+          <div className="relative">
             <input
-              type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="seu@email.com"
-              className="w-full px-5 py-4 rounded-2xl bg-white/5 border border-white/10 outline-none text-white placeholder-gray-600 text-sm focus:border-[#00D26A]/50 transition-all"
-              required
+              type={showPwd ? "text" : "password"}
+              value={password} onChange={e => setPassword(e.target.value)}
+              placeholder={isSignUp ? "Criar senha (mín. 6 caracteres)" : "Senha"}
+              className="w-full px-4 py-3 pr-12 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
+              style={glass} required
             />
+            <button type="button" onClick={() => setShowPwd(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+              {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
           </div>
-          
-          <div className="space-y-2">
-            <div className="flex justify-between items-center ml-1">
-              <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Credencial Privada</label>
-              {!isSignUp && (
-                <button type="button" className="text-[9px] font-bold text-[#00D26A] hover:underline uppercase tracking-tighter opacity-70">
-                  Esqueci minha senha
-                </button>
-              )}
-            </div>
-            <div className="relative">
-              <input
-                type={showPwd ? "text" : "password"}
-                value={password} onChange={e => setPassword(e.target.value)}
-                placeholder={isSignUp ? "Mínimo 6 caracteres" : "••••••••"}
-                className="w-full px-5 py-4 pr-14 rounded-2xl bg-white/5 border border-white/10 outline-none text-white placeholder-gray-700 text-sm focus:border-[#00D26A]/50 transition-all"
-                required
-              />
-              <button type="button" onClick={() => setShowPwd(v => !v)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-600 hover:text-white transition-colors">
-                {showPwd ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+
+          {!isSignUp && (
+            <div className="text-right -mt-1">
+              <button type="button" className="text-xs text-[#00D26A] hover:underline">
+                Esqueci minha senha
               </button>
             </div>
-          </div>
+          )}
 
-          {authError && <p className="text-[11px] text-red-400 font-medium text-center bg-red-400/10 py-2 rounded-xl border border-red-400/20">{authError}</p>}
+          {authError && <p className="text-xs text-red-500 text-center px-2">{authError}</p>}
 
           <button type="submit" disabled={isLoading}
-            className="w-full py-4 rounded-2xl font-black text-black uppercase tracking-widest text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:scale-100"
-            style={{ background: "#00D26A", boxShadow: "0 12px 32px rgba(0,210,106,0.3)" }}>
+            className="w-full py-3 rounded-xl font-bold text-black transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+            style={{ background: "#00D26A", boxShadow: "0 8px 24px rgba(0,210,106,0.25)" }}>
             {isLoading
-              ? (isSignUp ? "Processando…" : "Autenticando…")
-              : (isSignUp ? "Criar Identidade" : "Iniciar Sessão")}
+              ? (isSignUp ? "Criando conta…" : "Entrando…")
+              : (isSignUp ? "Criar conta" : "Entrar com e-mail")}
           </button>
 
-          <p className="text-center text-[11px] text-gray-500 font-medium">
-            {isSignUp ? "Já possui credenciais?" : "Ainda não possui acesso?"}{" "}
+          <p className="text-center text-xs text-gray-500">
+            {isSignUp ? "Já tem conta?" : "Não tem conta?"}{" "}
             <button type="button" onClick={() => { setIsSignUp(v => !v); setAuthError(null) }}
-              className="text-[#00D26A] font-bold hover:underline">
-              {isSignUp ? "Fazer Login" : "Criar Conta"}
+              className="text-[#00D26A] font-medium hover:underline">
+              {isSignUp ? "Entrar" : "Cadastre-se"}
             </button>
           </p>
         </form>
 
-        {/* ── Social / Wallet Section ── */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-4 py-2">
-            <div className="flex-1 h-[1px] bg-white/5" />
-            <span className="text-[9px] font-black text-gray-600 uppercase tracking-[0.2em]">External Auth</span>
-            <div className="flex-1 h-[1px] bg-white/5" />
+        {/* ── Google ── */}
+        <button
+          onClick={handleGoogleLogin}
+          className="w-full flex items-center gap-3 p-3 rounded-xl mb-5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+          style={glass}
+        >
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-white">
+            <IconGoogle />
           </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={handleGoogleLogin}
-              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
-            >
-              <IconGoogle />
-              <span className="text-xs font-bold text-gray-300 group-hover:text-white">Google</span>
-            </button>
-
-            <button
-              onClick={() => setShowWallets(true)}
-              className="flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
-            >
-              <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-[#9945FF] to-[#FC8C00]" />
-              <span className="text-xs font-bold text-gray-300 group-hover:text-white">Solana</span>
-            </button>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold text-gray-800">Continuar com Google</p>
+            <p className="text-xs text-gray-400">Gmail · Google Account</p>
           </div>
+          <span className="text-gray-400 text-sm">→</span>
+        </button>
+
+        {/* ── Divisor ── */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.4)" }} />
+          <span className="text-gray-400 text-xs">ou conecte sua carteira</span>
+          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.4)" }} />
         </div>
 
-        {/* ── Judge Protocol (Refined) ── */}
-        <div className="mt-10 pt-8 border-t border-white/5 text-center space-y-4">
-           <div className="inline-block p-[1px] rounded-xl bg-gradient-to-r from-transparent via-[#00D26A]/30 to-transparent">
-             <button 
-                type="button"
-                onClick={handleDemoLogin}
-                className="px-6 py-2 rounded-xl bg-[#0A0F0D] text-[9px] font-black text-[#00D26A] uppercase tracking-[0.3em] hover:bg-[#00D26A] hover:text-black transition-all"
-              >
-                Protocol Override: Demo v1.1
-              </button>
-           </div>
-          
-          <p className="text-[9px] text-gray-600 font-medium leading-relaxed max-w-[240px] mx-auto">
-            Ao acessar o protocolo, você concorda com nossos{" "}
-            <a href="#" className="text-gray-400 hover:text-[#00D26A]">Termos de Governança</a>.
+        {/* ── Solana wallet button ── */}
+        <button
+          onClick={() => setShowWallets(true)}
+          className="w-full flex items-center gap-3 p-3 rounded-xl mb-5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+          style={{ background: "rgba(153,69,255,0.1)", backdropFilter: "blur(20px)", border: "1px solid rgba(153,69,255,0.25)" }}
+        >
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "linear-gradient(135deg,#9945FF,#FC8C00)" }}>
+            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="white">
+              <path d="M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+            </svg>
+          </div>
+          <div className="flex-1 text-left">
+            <p className="text-sm font-semibold" style={{ color: "#9945FF" }}>Carteira Solana</p>
+            <div className="flex gap-1.5 mt-0.5">
+              <span className="text-[10px] font-bold text-gray-500 px-1.5 py-0.5 rounded-full bg-purple-100">Phantom</span>
+              <span className="text-[10px] font-bold text-gray-500 px-1.5 py-0.5 rounded-full bg-orange-100">Solflare</span>
+            </div>
+          </div>
+          <span style={{ color: "#9945FF" }}>→</span>
+        </button>
+
+        {/* Termos e Acesso Juiz */}
+        <div className="text-center space-y-4">
+          <p className="text-[10px] text-gray-500 uppercase tracking-tighter opacity-50 hover:opacity-100 transition-opacity">
+            Institutional Access: <button 
+              type="button"
+              onClick={handleDemoLogin}
+              className="underline hover:text-[#00D26A]"
+            >
+              Demo Protocol v1.1
+            </button>
+          </p>
+          <p className="text-[10px] text-gray-400">
+            Ao continuar, você aceita os{" "}
+            <a href="#" className="text-blue-600 hover:underline">Termos de Uso</a> e a{" "}
+            <a href="#" className="text-blue-600 hover:underline">Política de Privacidade</a>
           </p>
         </div>
       </div>
