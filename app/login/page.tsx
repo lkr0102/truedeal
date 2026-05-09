@@ -224,7 +224,7 @@ export default function LoginPage() {
             style={{ background: "#00D26A", boxShadow: "0 8px 24px rgba(0,210,106,0.25)" }}>
             {isLoading
               ? (isSignUp ? "Criando conta…" : "Entrando…")
-              : (isSignUp ? "Entrar na Plataforma")}
+              : (isSignUp ? "Criar conta" : "Entrar com e-mail")}
           </button>
 
           <p className="text-center text-xs text-gray-500">
