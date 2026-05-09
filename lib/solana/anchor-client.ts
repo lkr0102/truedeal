@@ -1,19 +1,11 @@
-import { AnchorProvider, Program, Idl } from "@coral-xyz/anchor"
-import { Connection, Keypair, PublicKey } from "@solana/web3.js"
-import { getConnection } from "./fee-payer"
-
-// We will need the IDL. For now, we'll define a minimal one or load it from a JSON.
-// Since we just created the program, I'll provide a placeholder or wait for build.
-// For the sake of unblocking, I'll use the generated IDL if I can, but I can't build yet.
-// I'll define the Program ID and use a Proxy pattern for now.
+import idl from "./idl.json"
 
 export const PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_TRUEDEAL_PROGRAM_ID ?? "TrDeaL1111111111111111111111111111111111111"
+  process.env.NEXT_PUBLIC_TRUEDEAL_PROGRAM_ID ?? "9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4"
 )
 
 export function getProvider(wallet: Keypair) {
   const connection = getConnection()
-  // Mock wallet for AnchorProvider
   const anchorWallet = {
     publicKey: wallet.publicKey,
     signTransaction: async (tx: any) => {
@@ -31,8 +23,6 @@ export function getProvider(wallet: Keypair) {
   })
 }
 
-// Note: In a real scenario, we'd import the actual IDL JSON.
 export function getProgram(provider: AnchorProvider) {
-  // This is a placeholder until the IDL is properly generated and imported
-  return new Program({ address: PROGRAM_ID.toBase58() } as unknown as Idl, provider)
+  return new Program(idl as Idl, provider)
 }

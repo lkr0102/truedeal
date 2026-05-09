@@ -7,28 +7,30 @@ declare_id!("9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4");
 pub mod truedeal {
     use super::*;
 
-    pub fn initialize_deal(
-        ctx: Context<InitializeDeal>,
-        deal_id: String,
-        stake_amount: u64,
+    /// Initializes a new Performance Agreement (Acordo).
+    pub fn init_performance_agreement(
+        ctx: Context<InitPerformanceAgreement>,
+        agreement_id: String,
+        guarantee_amount: u64,
         rule_hash: [u8; 32],
     ) -> Result<()> {
-        let deal = &mut ctx.accounts.deal_account;
-        deal.creator = *ctx.accounts.creator.key;
-        deal.deal_id = deal_id;
-        deal.stake_amount = stake_amount;
-        deal.rule_hash = rule_hash;
-        deal.status = DealStatus::Formation;
-        deal.total_pot = 0;
+        let agreement = &mut ctx.accounts.agreement_account;
+        agreement.creator = *ctx.accounts.creator.key;
+        agreement.agreement_id = agreement_id;
+        agreement.guarantee_amount = guarantee_amount;
+        agreement.rule_hash = rule_hash;
+        agreement.status = AgreementStatus::Formation;
+        agreement.total_guarantee = 0;
         
-        msg!("Deal Initialized: {}", deal.deal_id);
+        msg!("Performance Agreement Initialized: {}", agreement.agreement_id);
         Ok(())
     }
 
-    pub fn join_deal(ctx: Context<JoinDeal>) -> Result<()> {
-        let deal = &mut ctx.accounts.deal_account;
+    /// Participants join the agreement by locking their guarantee (stake) in the PDA Escrow.
+    pub fn join_agreement(ctx: Context<JoinAgreement>) -> Result<()> {
+        let agreement = &mut ctx.accounts.agreement_account;
         
-        // Transfer funds from participant to vault
+        // Transfer guarantee from participant to the Vault (Escrow)
         let cpi_accounts = Transfer {
             from: ctx.accounts.participant_token_account.to_account_info(),
             to: ctx.accounts.vault.to_account_info(),
@@ -36,90 +38,89 @@ pub mod truedeal {
         };
         let cpi_program = ctx.accounts.token_program.to_account_info();
         let cpi_ctx = CpiContext::new(cpi_program, cpi_accounts);
-        token::transfer(cpi_ctx, deal.stake_amount)?;
+        token::transfer(cpi_ctx, agreement.guarantee_amount)?;
 
-        deal.total_pot += deal.stake_amount;
+        agreement.total_guarantee += agreement.guarantee_amount;
         
-        msg!("Participant joined deal. New pot: {}", deal.total_pot);
+        msg!("Participant joined agreement. Total Guarantee in Escrow: {}", agreement.total_guarantee);
         Ok(())
     }
 
-    /// Settle the deal based on evidence from the DealGuard Engine.
-    /// JURIDICAL HOOK: Requires multi-sig approval (2+ oracles) for sovereign attestation.
-    pub fn settle_deal(
-        ctx: Context<SettleDeal>,
-        winner_pubkey: Pubkey,
-        verification_proof: [u8; 32],
+    /// Settle the agreement based on the DEALGUARD Engine consensus.
+    /// Requires signatures from authorized oracles (Multi-sig Attestation).
+    pub fn settle_performance_agreement(
+        ctx: Context<SettlePerformanceAgreement>,
+        beneficiary_pubkey: Pubkey,
+        proof_hash: [u8; 32],
     ) -> Result<()> {
-        let deal = &mut ctx.accounts.deal_account;
+        let agreement = &mut ctx.accounts.agreement_account;
         
         require!(
-            deal.status == DealStatus::Active || deal.status == DealStatus::Formation,
-            DealError::InvalidStatus
+            agreement.status == AgreementStatus::Formation || agreement.status == AgreementStatus::Active,
+            AgreementError::InvalidStatus
         );
 
-        // Verification logic: Check if the calling oracles are authorized
-        // In this MVP version, we expect the instruction to be signed by 2 authorized keys
-        // Note: Anchor handles individual Signers. For 2-of-N, we usually use a custom multi-sig logic.
+        // TODO: Implement multi-sig verification for DEALGUARD Oracles (oracle_1 and oracle_2)
         
-        deal.status = DealStatus::Settled;
-        deal.verification_hash = Some(verification_proof);
+        agreement.status = AgreementStatus::Settled;
+        agreement.proof_hash = Some(proof_hash);
         
-        msg!("Deal Soverignly Settled. Winner: {}", winner_pubkey);
+        msg!("Agreement Settled via DEALGUARD. Beneficiary: {}", beneficiary_pubkey);
         Ok(())
     }
 }
 
 #[derive(Accounts)]
-#[instruction(deal_id: String)]
-pub struct InitializeDeal<'info> {
+#[instruction(agreement_id: String)]
+pub struct InitPerformanceAgreement<'info> {
     #[account(
         init,
         payer = creator,
-        space = 8 + 32 + 64 + 8 + 32 + 1 + 8 + 33,
-        seeds = [b"deal", deal_id.as_bytes()],
+        space = 8 + 32 + 64 + 8 + 8 + 32 + 33 + 1,
+        seeds = [b"agreement", agreement_id.as_bytes()],
         bump
     )]
-    pub deal_account: Account<'info, DealAccount>,
+    pub agreement_account: Account<'info, AgreementAccount>,
     #[account(mut)]
     pub creator: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
-pub struct JoinDeal<'info> {
-    #[account(mut, seeds = [b"deal", deal_account.deal_id.as_bytes()], bump)]
-    pub deal_account: Account<'info, DealAccount>,
+pub struct JoinAgreement<'info> {
+    #[account(mut, seeds = [b"agreement", agreement_account.agreement_id.as_bytes()], bump)]
+    pub agreement_account: Account<'info, AgreementAccount>,
     #[account(mut)]
     pub participant: Signer<'info>,
     #[account(mut)]
     pub participant_token_account: Account<'info, TokenAccount>,
+    /// CHECK: PDA Escrow for the agreement funds
     #[account(mut)]
     pub vault: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
-pub struct SettleDeal<'info> {
-    #[account(mut, seeds = [b"deal", deal_account.deal_id.as_bytes()], bump)]
-    pub deal_account: Account<'info, DealAccount>,
-    pub oracle_1: Signer<'info>, // DealGuard Oracle 1
-    pub oracle_2: Signer<'info>, // DealGuard Oracle 2
+pub struct SettlePerformanceAgreement<'info> {
+    #[account(mut, seeds = [b"agreement", agreement_account.agreement_id.as_bytes()], bump)]
+    pub agreement_account: Account<'info, AgreementAccount>,
+    pub oracle_1: Signer<'info>, // DEALGUARD Oracle 1
+    pub oracle_2: Signer<'info>, // DEALGUARD Oracle 2
 }
 
 #[account]
-pub struct DealAccount {
+pub struct AgreementAccount {
     pub creator: Pubkey,
-    pub deal_id: String,
-    pub stake_amount: u64,
-    pub total_pot: u64,
+    pub agreement_id: String,
+    pub guarantee_amount: u64,
+    pub total_guarantee: u64,
     pub rule_hash: [u8; 32],
-    pub verification_hash: Option<[u8; 32]>,
-    pub status: DealStatus,
+    pub proof_hash: Option<[u8; 32]>,
+    pub status: AgreementStatus,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq, Eq)]
-pub enum DealStatus {
+pub enum AgreementStatus {
     Formation,
     Active,
     Settled,
@@ -127,7 +128,7 @@ pub enum DealStatus {
 }
 
 #[error_code]
-pub enum DealError {
-    #[msg("The deal is not in a valid status for this operation.")]
+pub enum AgreementError {
+    #[msg("The agreement is not in a valid status for this operation.")]
     InvalidStatus,
 }

@@ -1,0 +1,80 @@
+{
+  "version": "0.1.0",
+  "name": "truedeal",
+  "instructions": [
+    {
+      "name": "initPerformanceAgreement",
+      "accounts": [
+        { "name": "agreementAccount", "isMut": true, "isSigner": false },
+        { "name": "creator", "isMut": true, "isSigner": true },
+        { "name": "systemProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": [
+        { "name": "agreementId", "type": "string" },
+        { "name": "guaranteeAmount", "type": "u64" },
+        { "name": "ruleHash", "type": { "array": ["u8", 32] } }
+      ]
+    },
+    {
+      "name": "joinAgreement",
+      "accounts": [
+        { "name": "agreementAccount", "isMut": true, "isSigner": false },
+        { "name": "participant", "isMut": true, "isSigner": true },
+        { "name": "participantTokenAccount", "isMut": true, "isSigner": false },
+        { "name": "vault", "isMut": true, "isSigner": false },
+        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+      ],
+      "args": []
+    },
+    {
+      "name": "settlePerformanceAgreement",
+      "accounts": [
+        { "name": "agreementAccount", "isMut": true, "isSigner": false },
+        { "name": "oracle1", "isMut": false, "isSigner": true },
+        { "name": "oracle2", "isMut": false, "isSigner": true }
+      ],
+      "args": [
+        { "name": "beneficiaryPubkey", "type": "publicKey" },
+        { "name": "proofHash", "type": { "array": ["u8", 32] } }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "AgreementAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "creator", "type": "publicKey" },
+          { "name": "agreementId", "type": "string" },
+          { "name": "guaranteeAmount", "type": "u64" },
+          { "name": "totalGuarantee", "type": "u64" },
+          { "name": "ruleHash", "type": { "array": ["u8", 32] } },
+          { "name": "proofHash", "type": { "option": { "array": ["u8", 32] } } },
+          { "name": "status", "type": { "defined": "AgreementStatus" } }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "AgreementStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          { "name": "Formation" },
+          { "name": "Active" },
+          { "name": "Settled" },
+          { "name": "Cancelled" }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidStatus",
+      "msg": "The agreement is not in a valid status for this operation."
+    }
+  ]
+}
