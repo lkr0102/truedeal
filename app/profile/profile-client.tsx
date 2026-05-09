@@ -12,7 +12,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { Profile, DealWithParticipants } from "@/lib/supabase/types"
 
 const NAV_ITEMS = [
-  { icon: Home,    label: "Deals",    href: "/" },
+  { icon: Home,    label: "Acordos",  href: "/" },
   { icon: Compass, label: "Explorar", href: "/explore" },
   { icon: Wallet,  label: "Wallet",   href: "/wallet" },
   { icon: User,    label: "Perfil",   href: "/profile" },
@@ -22,7 +22,7 @@ function BottomNav({ active }: { active: string }) {
   const router = useRouter()
   return (
     <nav className="fixed bottom-0 left-0 right-0 px-6 py-4 z-10"
-      style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(40px) saturate(200%)", borderTop: "1px solid rgba(255,255,255,0.5)" }}>
+      style={{ background: "rgba(255,255,255,0.75)", backdropFilter: "blur(40px) saturate(200%)", borderTop: "1px solid rgba(0,0,0,0.05)" }}>
       <div className="flex justify-around items-center">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
@@ -30,11 +30,11 @@ function BottomNav({ active }: { active: string }) {
           return (
             <button key={item.label} onClick={() => router.push(item.href)}
               className="flex flex-col items-center gap-1 transition-all duration-300">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? "scale-110" : ""}`}
-                style={{ background: isActive ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}>
-                <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500"}`} />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? "scale-110 shadow-lg" : ""}`}
+                style={{ background: isActive ? "#00D26A" : "transparent" }}>
+                <Icon className={`w-5 h-5 ${isActive ? "text-[#0A0F0D]" : "text-gray-400"}`} />
               </div>
-              <span className={`text-xs font-medium ${isActive ? "text-[#16A34A]" : "text-gray-500"}`}>{item.label}</span>
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? "text-[#00D26A]" : "text-gray-400"}`}>{item.label}</span>
             </button>
           )
         })}
@@ -46,16 +46,16 @@ function BottomNav({ active }: { active: string }) {
 // ── Mock data (kept as-is — social links not in DB schema yet) ─────────────────
 
 const DEAL_TYPES_STATS = [
-  { label: "Oficial",  count: 3, won: 0, color: "#16A34A" },
-  { label: "Privado",  count: 5, won: 2, color: "#3DBF6A" },
-  { label: "Público",  count: 4, won: 1, color: "#8B5CF6" },
+  { label: "Oficial",  count: 3, won: 0, color: "#00D26A" },
+  { label: "Privado",  count: 5, won: 2, color: "#14F195" },
+  { label: "Público",  count: 4, won: 1, color: "#9945FF" },
 ]
 
 const SOCIALS = [
   { key: "x",        icon: Twitter,   label: "X (Twitter)", handle: "@lukasrocha",   linked: true,  pts: 100 },
   { key: "instagram",icon: Instagram, label: "Instagram",   handle: null,             linked: false, pts: 100 },
-  { key: "tiktok",   icon: Star,      label: "TikTok",      handle: null,             linked: false, pts: 100 },
-  { key: "youtube",  icon: Youtube,   label: "YouTube",     handle: null,             linked: false, pts: 100 },
+  { key: "wellhub",  icon: Shield,    label: "Wellhub",      handle: null,             linked: false, pts: 100 },
+  { key: "strava",   icon: Target,    label: "Strava",       handle: null,             linked: false, pts: 100 },
 ]
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -79,13 +79,14 @@ interface ProfileClientProps {
 function AvatarPlaceholder({ size = 84, initials }: { size?: number; initials: string }) {
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <div className="w-full h-full rounded-full flex items-center justify-center"
-        style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E6A)", border: "3px solid #16A34A" }}>
-        <span className="font-bold text-white" style={{ fontSize: size * 0.3 }}>{initials}</span>
+      <div className="w-full h-full rounded-[2.5rem] flex items-center justify-center relative overflow-hidden"
+        style={{ background: "#0A0F0D", border: "3px solid #00D26A" }}>
+        <div className="absolute inset-0 bg-[#00D26A] opacity-5 blur-xl" />
+        <span className="font-black text-white relative z-10" style={{ fontSize: size * 0.35 }}>{initials}</span>
       </div>
-      <div className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center"
-        style={{ background: "#ADFF2F", border: "2px solid white" }}>
-        <User className="w-3.5 h-3.5 text-green-900" />
+      <div className="absolute bottom-0 right-0 w-8 h-8 rounded-2xl flex items-center justify-center shadow-lg"
+        style={{ background: "#00D26A", border: "3px solid white" }}>
+        <Shield className="w-4 h-4 text-[#0A0F0D]" />
       </div>
     </div>
   )
@@ -120,93 +121,90 @@ function DashboardTab({ user }: DashboardTabProps) {
   return (
     <div className="px-5 pb-8 space-y-4">
       {/* Performance ring stats */}
-      <div className="rounded-2xl p-5"
+      <div className="rounded-3xl p-6"
         style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Performance</p>
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-5">Sovereign Execution</p>
         <div className="grid grid-cols-3 gap-3">
           {[
-            { label: "Win Rate", value: `${user.winRate}%`, color: "#16A34A", icon: Trophy },
-            { label: "Streak",   value: `${user.streak}🔥`,  color: "#F59E0B", icon: Flame },
-            { label: "Ranking",  value: "—",                 color: "#8B5CF6", icon: Award },
+            { label: "Win Rate",    value: `${user.winRate}%`, color: "#00D26A", icon: Trophy },
+            { label: "Palavra",     value: `${user.streak}🔥`, color: "#F59E0B", icon: Flame },
+            { label: "Rank",        value: "S-Tier",           color: "#9945FF", icon: Award },
           ].map(({ label, value, color, icon: Icon }) => (
-            <div key={label} className="rounded-xl p-3 text-center"
-              style={{ background: `${color}12`, border: `1px solid ${color}30` }}>
-              <Icon className="w-4 h-4 mx-auto mb-1" style={{ color }} />
-              <p className="font-bold text-gray-800 text-base">{value}</p>
-              <p className="text-[10px] text-gray-500 mt-0.5">{label}</p>
+            <div key={label} className="rounded-2xl p-4 text-center transition-all hover:scale-[1.02]"
+              style={{ background: `${color}08`, border: `1.5px solid ${color}15` }}>
+              <Icon className="w-5 h-5 mx-auto mb-2" style={{ color }} />
+              <p className="font-black text-gray-800 text-lg tracking-tight leading-none">{value}</p>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-1.5">{label}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Financeiro */}
-      <div className="rounded-2xl p-5"
+      <div className="rounded-3xl p-6"
         style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Financeiro</p>
-        <div className="space-y-3">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-4">Assentamento On-Chain</p>
+        <div className="space-y-4">
           {[
-            { label: "Total ganho",  value: user.totalWon,  positive: true },
-            { label: "PnL líquido",  value: user.pnl,       positive: user.pnlPositive },
-            { label: "Shakes",        value: `${user.tdp.toLocaleString("pt-BR")} 🤝`,  positive: true },
+            { label: "Rendimento Total", value: user.totalWon,  positive: true },
+            { label: "PnL Institucional", value: user.pnl,       positive: user.pnlPositive },
+            { label: "Performance Score", value: `${user.tdp.toLocaleString("pt-BR")} 🤝`, positive: true },
           ].map(({ label, value, positive }) => (
-            <div key={label} className="flex items-center justify-between py-2"
-              style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
-              <span className="text-sm text-gray-600">{label}</span>
-              <span className="font-bold text-sm" style={{ color: positive ? "#16A34A" : "#FF4A4A" }}>{value}</span>
+            <div key={label} className="flex items-center justify-between pb-3"
+              style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+              <span className="text-[13px] text-gray-500 font-medium">{label}</span>
+              <span className="font-black text-sm tracking-tight" style={{ color: positive ? "#00D26A" : "#FF4A4A" }}>{value}</span>
             </div>
           ))}
         </div>
       </div>
 
       {/* Deals por tipo */}
-      <div className="rounded-2xl p-5"
+      <div className="rounded-3xl p-6"
         style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Deals por Tipo</p>
-        <div className="space-y-3">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-5">Acordos por Nível</p>
+        <div className="space-y-4">
           {DEAL_TYPES_STATS.map(({ label, count, won, color }) => (
             <div key={label}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm text-gray-700">{label}</span>
-                <span className="text-xs text-gray-500">{won}/{count} ganhos</span>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-gray-700 font-black uppercase tracking-wider">{label}</span>
+                <span className="text-[10px] text-gray-400 font-bold uppercase">{won}/{count} ADIMPLENTES</span>
               </div>
-              <div className="h-1.5 rounded-full" style={{ background: "rgba(0,0,0,0.06)" }}>
-                <div className="h-1.5 rounded-full transition-all" style={{ width: `${(won / count) * 100}%`, background: color }} />
+              <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.04)" }}>
+                <div className="h-1.5 rounded-full transition-all duration-700" style={{ width: `${(won / count) * 100}%`, background: color, boxShadow: `0 0 10px ${color}40` }} />
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Redes sociais */}
-      <div className="rounded-2xl p-5"
+      {/* Social Oracle */}
+      <div className="rounded-3xl p-6"
         style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1">Redes Sociais</p>
-        <p className="text-xs text-gray-400 mb-4">+100 🤝 por rede linkada e verificada</p>
-        <div className="space-y-2">
+        <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.15em] mb-1">Social Oracle Sync</p>
+        <p className="text-[10px] text-gray-400 font-medium mb-5 uppercase tracking-wider">+100 🤝 por canal de auditoria</p>
+        <div className="space-y-3">
           {SOCIALS.map(({ key, icon: Icon, label, handle, linked, pts }) => (
-            <div key={key} className="flex items-center gap-3 p-3 rounded-xl transition-all"
-              style={{ background: linked ? "rgba(22,163,74,0.07)" : "rgba(0,0,0,0.03)", border: linked ? "1px solid rgba(22,163,74,0.25)" : "1px solid rgba(0,0,0,0.06)" }}>
-              <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                style={{ background: linked ? "rgba(22,163,74,0.15)" : "rgba(0,0,0,0.06)" }}>
-                <Icon className="w-4 h-4" style={{ color: linked ? "#16A34A" : "#9CA3AF" }} />
+            <div key={key} className="flex items-center gap-3 p-4 rounded-2xl transition-all"
+              style={{ background: linked ? "rgba(0,210,106,0.05)" : "rgba(0,0,0,0.03)", border: linked ? "1.5px solid rgba(0,210,106,0.15)" : "1px solid rgba(0,0,0,0.05)" }}>
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                style={{ background: linked ? "#00D26A" : "rgba(0,0,0,0.06)" }}>
+                <Icon className="w-4 h-4" style={{ color: linked ? "#0A0F0D" : "#9CA3AF" }} />
               </div>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-gray-800">{label}</p>
-                {linked && handle && <p className="text-xs text-gray-500">{handle}</p>}
+                <p className="text-sm font-black text-gray-800 tracking-tight">{label}</p>
+                {linked && handle && <p className="text-[10px] text-gray-400 font-mono">{handle}</p>}
               </div>
               {linked ? (
                 <div className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
-                  <span className="text-[10px] font-bold text-[#16A34A]">+{pts}</span>
+                  <CheckCircle2 className="w-4 h-4 text-[#00D26A]" />
+                  <span className="text-[10px] font-black text-[#00D26A]">SYNCED</span>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-gray-400">+{pts} 🤝</span>
-                  <button className="px-3 py-1.5 rounded-lg text-xs font-semibold text-white"
-                    style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}>
-                    Linkar
-                  </button>
-                </div>
+                <button className="px-4 py-2 rounded-xl text-[10px] font-black text-[#0A0F0D] uppercase tracking-wider transition-all active:scale-[0.98]"
+                  style={{ background: "#00D26A" }}>
+                  LINK
+                </button>
               )}
             </div>
           ))}
@@ -214,35 +212,32 @@ function DashboardTab({ user }: DashboardTabProps) {
       </div>
 
       {/* Referral */}
-      <div className="rounded-2xl p-5"
-        style={{ background: "linear-gradient(135deg, rgba(22,163,74,0.08), rgba(34,197,94,0.05))", border: "1.5px solid rgba(22,163,74,0.25)", backdropFilter: "blur(20px)" }}>
-        <div className="flex items-center gap-2 mb-1">
-          <Users className="w-4 h-4 text-[#16A34A]" />
-          <p className="font-bold text-gray-800">Referral</p>
-          <div className="ml-auto flex items-center gap-1 px-2.5 py-1 rounded-full"
-            style={{ background: "rgba(22,163,74,0.15)" }}>
-            <span className="text-xs font-bold text-[#16A34A]">{user.referrals}/{user.referralsGoal}</span>
+      <div className="rounded-3xl p-6 relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg, rgba(0,210,106,0.08), rgba(0,168,81,0.04))", border: "1.5px solid rgba(0,210,106,0.2)", backdropFilter: "blur(20px)" }}>
+        <div className="absolute top-0 right-0 w-24 h-24 bg-[#00D26A] opacity-5 blur-2xl" />
+        <div className="flex items-center gap-2 mb-2">
+          <Users className="w-4 h-4 text-[#00D26A]" />
+          <p className="font-black text-gray-800 text-sm tracking-tight uppercase">Squad de Performance</p>
+          <div className="ml-auto flex items-center gap-1 px-3 py-1 rounded-full"
+            style={{ background: "#00D26A" }}>
+            <span className="text-[10px] font-black text-[#0A0F0D]">{user.referrals}/{user.referralsGoal}</span>
           </div>
         </div>
-        <p className="text-xs text-gray-500 mb-3">A cada 5 indicados novos você libera um Super Deal gratuito!</p>
+        <p className="text-[11px] text-gray-500 font-medium mb-4 leading-relaxed">A cada 5 parceiros recrutados você ativa o status <strong className="text-[#00D26A]">Oracle Premium</strong>.</p>
 
         {/* progress track */}
-        <div className="flex gap-1.5 mb-4">
+        <div className="flex gap-2 mb-5">
           {Array.from({ length: user.referralsGoal }).map((_, i) => (
             <div key={i} className="flex-1 h-1.5 rounded-full"
-              style={{ background: i < user.referrals ? "#16A34A" : "rgba(0,0,0,0.08)" }} />
+              style={{ background: i < user.referrals ? "#00D26A" : "rgba(0,0,0,0.06)", boxShadow: i < user.referrals ? "0 0 8px rgba(0,210,106,0.3)" : "none" }} />
           ))}
         </div>
 
         <div className="relative">
-          <div className="absolute -top-2 right-4 px-2 py-0.5 rounded-full text-[10px] font-bold text-white"
-            style={{ background: "#16A34A" }}>
-            +100 🤝 por indicado
-          </div>
-          <button onClick={copyReferral} className="w-full py-3 rounded-xl font-semibold text-sm flex items-center justify-center gap-2"
-            style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(22,163,74,0.3)", color: "#16A34A", backdropFilter: "blur(10px)" }}>
+          <button onClick={copyReferral} className="w-full py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+            style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(0,210,106,0.2)", color: "#00D26A", backdropFilter: "blur(10px)" }}>
             {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copied ? "Copiado!" : "Copiar link de indicação"}
+            {copied ? "COPIADO!" : "CONVOCAR PARCEIRO"}
           </button>
         </div>
       </div>
@@ -266,9 +261,9 @@ function HistoryTab({ dealHistory }: { dealHistory: DealHistoryItem[] }) {
   if (dealHistory.length === 0) {
     return (
       <div className="px-5 pb-8">
-        <div className="rounded-2xl p-8 text-center"
+        <div className="rounded-3xl p-10 text-center"
           style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <p className="text-sm text-gray-400">Nenhum deal ainda — crie ou entre em um deal para começar</p>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-widest leading-relaxed">Nenhum rastro institucional.<br/>Sua palavra ainda não foi testada.</p>
         </div>
       </div>
     )
@@ -277,27 +272,27 @@ function HistoryTab({ dealHistory }: { dealHistory: DealHistoryItem[] }) {
   return (
     <div className="px-5 pb-8 space-y-3">
       {dealHistory.map((deal) => (
-        <div key={deal.id} className="rounded-2xl p-4 flex items-center gap-3"
+        <div key={deal.id} className="rounded-3xl p-5 flex items-center gap-4"
           style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: `${deal.color}18` }}>
-            {deal.result === "ganhou" ? <Trophy className="w-5 h-5" style={{ color: deal.color }} />
-             : deal.result === "perdeu" ? <Target className="w-5 h-5" style={{ color: deal.color }} />
-             : <Zap className="w-5 h-5" style={{ color: deal.color }} />}
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: `${deal.color}12` }}>
+            {deal.result === "ganhou" ? <Trophy className="w-6 h-6" style={{ color: deal.color }} />
+             : deal.result === "perdeu" ? <Target className="w-6 h-6" style={{ color: deal.color }} />
+             : <Zap className="w-6 h-6" style={{ color: deal.color }} />}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-gray-800 text-sm truncate">{deal.title}</p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                style={{ background: `${deal.color}18`, color: deal.color }}>
+            <p className="font-black text-gray-800 text-[15px] truncate tracking-tight">{deal.title}</p>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[9px] px-2 py-0.5 rounded-full font-black uppercase tracking-wider"
+                style={{ background: `${deal.color}15`, color: deal.color }}>
                 {deal.type}
               </span>
-              <span className="text-[10px] text-gray-400">{deal.date}</span>
+              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest">{deal.date}</span>
             </div>
           </div>
           <div className="text-right flex-shrink-0">
-            <p className="font-bold text-sm" style={{ color: deal.color }}>{deal.prize}</p>
-            <p className="text-[10px] text-gray-400 capitalize">{deal.result}</p>
+            <p className="font-black text-base tracking-tighter" style={{ color: deal.color }}>{deal.prize}</p>
+            <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest">{deal.result === "ganhou" ? "adimplente" : deal.result === "perdeu" ? "inadimplente" : "vigente"}</p>
           </div>
         </div>
       ))}
@@ -309,27 +304,27 @@ function HistoryTab({ dealHistory }: { dealHistory: DealHistoryItem[] }) {
 
 function ConfigTab({ onSignOut }: { onSignOut: () => void }) {
   const CONFIG_ITEMS = [
-    { icon: User,      label: "Editar Perfil",           sub: "Atualize suas informações",     color: "#16A34A", danger: false, action: undefined as (() => void) | undefined },
-    { icon: Shield,    label: "Segurança & Privacidade", sub: "Senha, 2FA, biometria",         color: "#3B82F6", danger: false, action: undefined as (() => void) | undefined },
-    { icon: Bell,      label: "Notificações",            sub: "Gerencie seus alertas",         color: "#F59E0B", danger: false, action: undefined as (() => void) | undefined },
-    { icon: HelpCircle,label: "Ajuda & Suporte",         sub: "FAQs e contato",                color: "#8B5CF6", danger: false, action: undefined as (() => void) | undefined },
-    { icon: LogOut,    label: "Sair",                    sub: "Sair da sua conta",             color: "#FF4A4A", danger: true,  action: onSignOut },
+    { icon: User,      label: "Perfil Institucional",    sub: "Metadados e Identidade",        color: "#00D26A", danger: false, action: undefined as (() => void) | undefined },
+    { icon: Shield,    label: "Soberania & Auditoria",   sub: "Chaves e Auditoria On-Chain",    color: "#3B82F6", danger: false, action: undefined as (() => void) | undefined },
+    { icon: Bell,      label: "Protocolos de Alerta",    sub: "Configurações de Push",          color: "#F59E0B", danger: false, action: undefined as (() => void) | undefined },
+    { icon: HelpCircle,label: "Base de Conhecimento",    sub: "Manuais e Suporte",             color: "#9945FF", danger: false, action: undefined as (() => void) | undefined },
+    { icon: LogOut,    label: "Sair do Sistema",         sub: "Encerrar Sessão Soberana",      color: "#FF4A4A", danger: true,  action: onSignOut },
   ]
 
   return (
     <div className="px-5 pb-8 space-y-3">
       {CONFIG_ITEMS.map(({ icon: Icon, label, sub, color, danger, action }) => (
-        <button key={label} onClick={action} className="w-full rounded-2xl p-4 flex items-center gap-4 text-left transition-all active:scale-[0.98]"
+        <button key={label} onClick={action} className="w-full rounded-3xl p-5 flex items-center gap-5 text-left transition-all active:scale-[0.98]"
           style={{ background: danger ? "rgba(255,74,74,0.05)" : "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: danger ? "1px solid rgba(255,74,74,0.15)" : "1px solid rgba(255,255,255,0.6)" }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: `${color}15` }}>
+          <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
+            style={{ background: `${color}12` }}>
             <Icon className="w-5 h-5" style={{ color }} />
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-sm" style={{ color: danger ? "#FF4A4A" : "#1A1A2E" }}>{label}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{sub}</p>
+            <p className="font-black text-sm tracking-tight" style={{ color: danger ? "#FF4A4A" : "#0A0F0D" }}>{label}</p>
+            <p className="text-[11px] text-gray-400 font-medium mt-0.5">{sub}</p>
           </div>
-          <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+          <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" />
         </button>
       ))}
     </div>
@@ -354,7 +349,7 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
   const winRate   = finalized.length > 0 ? Math.round((wonDeals.length / finalized.length) * 100) : 0
 
   // ── USER object ──
-  const displayName = profile?.display_name ?? "Usuário"
+  const displayName = profile?.display_name ?? "Sovereign User"
   const initials    = getInitials(displayName)
 
   const USER = {
@@ -380,7 +375,7 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
     const won  = isFinalized && d.winner_id === userId
     const lost = isFinalized && d.winner_id !== null && d.winner_id !== userId
     const result = won ? "ganhou" : lost ? "perdeu" : "em curso"
-    const color  = won ? "#3DBF6A" : lost ? "#FF4A4A" : "#F59E0B"
+    const color  = won ? "#00D26A" : lost ? "#FF4A4A" : "#F59E0B"
     const dt     = new Date(d.start_date)
     const dateStr = `${MONTH_NAMES[dt.getMonth()]} ${dt.getFullYear()}`
     return {
@@ -389,7 +384,7 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
       result,
       prize:  won ? `+R$ ${Math.round(d.net_pot)}` : lost ? `-R$ ${d.entry_amount}` : `R$ ${d.entry_amount}`,
       date:   dateStr,
-      type:   d.type === "publico" ? "público" : d.type,
+      type:   d.type === "publico" ? "PÚBLICO" : d.type.toUpperCase(),
       color,
     }
   })
@@ -402,9 +397,9 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
   }
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: "dashboard", label: "Dashboard" },
-    { key: "historico", label: "Histórico" },
-    { key: "config",    label: "Config" },
+    { key: "dashboard", label: "Protocolos" },
+    { key: "historico", label: "Auditoria" },
+    { key: "config",    label: "Sistema" },
   ]
 
   return (
@@ -412,34 +407,35 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
       style={{ backgroundImage: "url('/images/gradient-background.jpg')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundAttachment: "fixed" }}>
 
       {/* Header */}
-      <header className="px-5 pt-12 pb-6">
-        <div className="flex flex-col items-center gap-3">
-          <AvatarPlaceholder size={84} initials={initials} />
+      <header className="px-5 pt-12 pb-8">
+        <div className="flex flex-col items-center gap-4">
+          <AvatarPlaceholder size={96} initials={initials} />
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1.5">
-              <h1 className="text-xl font-bold text-gray-800">{USER.name}</h1>
-              {USER.verified && <CheckCircle2 className="w-5 h-5 text-[#16A34A]" />}
+            <div className="flex items-center justify-center gap-2">
+              <h1 className="text-2xl font-black text-gray-800 tracking-tighter leading-none">{USER.name}</h1>
+              {USER.verified && <div className="w-5 h-5 rounded-full bg-[#00D26A] flex items-center justify-center border-2 border-white"><Check className="w-3 h-3 text-[#0A0F0D] stroke-[3]" /></div>}
             </div>
-            <p className="text-sm text-gray-500 mt-0.5">{USER.username}</p>
+            <p className="text-[10px] text-gray-400 font-mono mt-1 uppercase tracking-widest">{USER.username}</p>
           </div>
 
           {/* Dark glass stats card */}
-          <div className="w-full mt-2 rounded-3xl p-5"
-            style={{ background: "linear-gradient(135deg,#0D2E1A 0%,#0D3A22 60%,#0F4D2A 100%)", boxShadow: "0 12px 40px rgba(22,163,74,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="flex justify-around">
+          <div className="w-full mt-4 rounded-[2.5rem] p-6 relative overflow-hidden"
+            style={{ background: "linear-gradient(135deg,#0A0F0D 0%,#00A851 70%,#00D26A 100%)", boxShadow: "0 14px 40px rgba(0,210,106,0.3)", border: "1px solid rgba(255,255,255,0.08)" }}>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#9945FF] opacity-10 blur-3xl" />
+            <div className="flex justify-around relative z-10">
               <div className="text-center">
-                <p className="text-xl font-black text-[#ADFF2F]">{USER.totalWon}</p>
-                <p className="text-[10px] text-white/50 mt-0.5 font-medium uppercase tracking-wide">Total Ganho</p>
+                <p className="text-xl font-black text-white tracking-tight leading-none">{USER.totalWon}</p>
+                <p className="text-[9px] text-white/40 mt-2 font-black uppercase tracking-widest">Rendimento</p>
               </div>
               <div className="w-px bg-white/10" />
               <div className="text-center">
-                <p className="text-xl font-black text-[#ADFF2F]">{USER.totalDeals}</p>
-                <p className="text-[10px] text-white/50 mt-0.5 font-medium uppercase tracking-wide">Deals</p>
+                <p className="text-xl font-black text-white tracking-tight leading-none">{USER.totalDeals}</p>
+                <p className="text-[9px] text-white/40 mt-2 font-black uppercase tracking-widest">Acordos</p>
               </div>
               <div className="w-px bg-white/10" />
               <div className="text-center">
-                <p className="text-xl font-black" style={{ color: USER.pnlPositive ? "#ADFF2F" : "#FF4A4A" }}>{USER.pnl}</p>
-                <p className="text-[10px] text-white/50 mt-0.5 font-medium uppercase tracking-wide">PnL</p>
+                <p className="text-xl font-black tracking-tight leading-none" style={{ color: USER.pnlPositive ? "#00D26A" : "#FF4A4A" }}>{USER.pnl}</p>
+                <p className="text-[9px] text-white/40 mt-2 font-black uppercase tracking-widest">PnL</p>
               </div>
             </div>
           </div>
@@ -447,13 +443,13 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
       </header>
 
       {/* Tabs */}
-      <div className="px-5 mb-5">
-        <div className="flex gap-1 p-1 rounded-2xl"
+      <div className="px-5 mb-6">
+        <div className="flex gap-1.5 p-1 rounded-2xl"
           style={{ background: "rgba(255,255,255,0.35)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.5)" }}>
           {TABS.map(({ key, label }) => (
             <button key={key} onClick={() => setTab(key)}
-              className="flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300"
-              style={{ background: tab === key ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent", color: tab === key ? "white" : "#6B7280", boxShadow: tab === key ? "0 4px 12px rgba(22,163,74,0.3)" : "none" }}>
+              className="flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300"
+              style={{ background: tab === key ? "#00D26A" : "transparent", color: tab === key ? "#0A0F0D" : "#6B7280", boxShadow: tab === key ? "0 4px 12px rgba(0,210,106,0.3)" : "none" }}>
               {label}
             </button>
           ))}

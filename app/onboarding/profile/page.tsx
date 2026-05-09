@@ -43,7 +43,7 @@ const PLATFORMS: Platform[] = [
     key:          "x",
     label:        "X (Twitter)",
     dealCategory: "Social Media",
-    whyNeeded:    "Necessário para deals de crescimento de seguidores, posts e engajamento no X. O app lê seus dados via API do X para verificar automaticamente o resultado.",
+    whyNeeded:    "Necessário para acordos de crescimento de seguidores e engajamento no X. O protocolo audita seus dados via API para validar o cumprimento do acordo.",
     color:        "#000000",
     textColor:    "#ffffff",
     mode:         "oauth",
@@ -52,8 +52,8 @@ const PLATFORMS: Platform[] = [
   {
     key:          "strava",
     label:        "Strava",
-    dealCategory: "Corrida & Ciclismo",
-    whyNeeded:    "Necessário para deals de corrida, ciclismo e atividades ao ar livre. O app lê suas atividades com GPS via API do Strava para verificar distâncias e tempos.",
+    dealCategory: "Performance Física",
+    whyNeeded:    "Necessário para acordos de performance em corrida e ciclismo. O protocolo audita suas atividades via API do Strava para verificar o atingimento de metas.",
     color:        "#FC4C02",
     textColor:    "#ffffff",
     mode:         "oauth",
@@ -62,8 +62,8 @@ const PLATFORMS: Platform[] = [
   {
     key:          "wellhub",
     label:        "Wellhub",
-    dealCategory: "Academia & Fitness",
-    whyNeeded:    "Necessário para deals de frequência em academias parceiras Wellhub (ex-Gympass). A verificação de check-ins é feita via parceria com a plataforma.",
+    dealCategory: "Saúde & Bem-estar",
+    whyNeeded:    "Necessário para acordos de frequência em academias parceiras Wellhub. A auditoria de check-ins é feita via integração com a plataforma.",
     color:        "#00A651",
     textColor:    "#ffffff",
     mode:         "email",
@@ -71,8 +71,8 @@ const PLATFORMS: Platform[] = [
   {
     key:          "totalpass",
     label:        "TotalPass",
-    dealCategory: "Academia & Fitness",
-    whyNeeded:    "Necessário para deals de check-in em academias parceiras TotalPass. A verificação é feita via parceria com a plataforma.",
+    dealCategory: "Saúde & Bem-estar",
+    whyNeeded:    "Necessário para acordos de check-in em academias parceiras TotalPass. A auditoria é automatizada via integração institucional.",
     color:        "#0047AB",
     textColor:    "#ffffff",
     mode:         "email",
@@ -435,7 +435,7 @@ function ProfileSetupContent() {
       <div className="flex-1 px-5 pb-8 overflow-y-auto">
         <div className="text-center mb-8 mt-4">
           <h1 className="text-2xl font-bold text-gray-800">Crie seu perfil</h1>
-          <p className="text-gray-600 mt-1 text-sm">Como os outros te verão no True Deal</p>
+          <p className="text-gray-600 mt-1 text-sm">Como os outros te verão na TrueDeal</p>
         </div>
 
         {/* Avatar */}
@@ -514,11 +514,11 @@ function ProfileSetupContent() {
         <div className="mb-8">
           <div className="mb-3">
             <label className="text-sm font-semibold text-gray-600 block">
-              Verificação de contas <span className="text-gray-400 font-normal">(opcional)</span>
+              Verificação Institucional <span className="text-gray-400 font-normal">(opcional)</span>
             </label>
             <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-              Vincule suas contas para desbloquear deals desses canais. Toque no{" "}
-              <Info className="w-3 h-3 inline -mt-0.5" /> para entender a importância de cada verificação.
+              Conecte suas contas para habilitar acordos de performance nesses canais. Toque no{" "}
+              <Info className="w-3 h-3 inline -mt-0.5" /> para entender os critérios de auditoria.
             </p>
           </div>
 

@@ -14,48 +14,53 @@ import type { Profile } from "@/lib/supabase/types"
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { icon: Home,    label: "Deals",    href: "/" },
-  { icon: Compass, label: "Explorar", href: "/explore" },
-  { icon: Wallet,  label: "Wallet",   href: "/wallet" },
-  { icon: User,    label: "Perfil",   href: "/profile" },
+  { icon: Home,    label: "HOME",    href: "/" },
+  { icon: Compass, label: "EXPLORE", href: "/explore" },
+  { icon: Wallet,  label: "VAULT",   href: "/wallet" },
+  { icon: User,    label: "PROFILE", icon_label: "PRO", href: "/profile" },
 ]
 
 function BottomNav({ active }: { active: string }) {
   const router = useRouter()
   return (
-    <nav className="fixed bottom-0 left-0 right-0 px-6 py-4 z-10"
-      style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(40px) saturate(200%)", borderTop: "1px solid rgba(255,255,255,0.5)" }}>
-      <div className="flex justify-around items-center">
+    <div className="fixed bottom-0 left-0 right-0 p-6 z-50">
+      <nav className="max-w-md mx-auto h-20 rounded-[2.5rem] flex items-center justify-around px-4 relative overflow-hidden shadow-2xl"
+        style={{
+          background: "rgba(10, 15, 13, 0.9)",
+          backdropFilter: "blur(24px) saturate(160%)",
+          WebkitBackdropFilter: "blur(24px) saturate(160%)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+        }}>
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
-          const isActive = active === item.label
+          const isActive = active.toUpperCase() === item.label
           return (
             <button key={item.label} onClick={() => router.push(item.href)}
-              className="flex flex-col items-center gap-1 transition-all duration-300">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? "scale-110" : ""}`}
-                style={{ background: isActive ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}>
-                <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500"}`} />
-              </div>
-              <span className={`text-xs font-medium ${isActive ? "text-[#16A34A]" : "text-gray-500"}`}>{item.label}</span>
+              className="flex flex-col items-center gap-1.5 transition-all active:scale-95 group">
+              <Icon className={`w-5 h-5 transition-colors ${isActive ? "text-[#00D26A]" : "text-gray-500 group-hover:text-gray-300"}`}
+                style={{ strokeWidth: isActive ? 2.5 : 2 }} />
+              <span className={`text-[8px] font-black tracking-[0.2em] transition-colors ${isActive ? "text-[#00D26A]" : "text-gray-600 group-hover:text-gray-400"}`}>
+                {item.label}
+              </span>
             </button>
           )
         })}
-      </div>
-    </nav>
+      </nav>
+    </div>
   )
 }
 
 // ── Points sources (static) ───────────────────────────────────────────────────
 
 const POINTS_SOURCES = [
-  { icon: Zap,        label: "Participar de um Deal",    pts: "+75 🤝",  color: "#16A34A" },
-  { icon: Star,       label: "Criar um Deal",            pts: "+100 🤝", color: "#F59E0B" },
-  { icon: Trophy,     label: "Ganhar um Deal",           pts: "+200 🤝", color: "#3DBF6A" },
-  { icon: MapPin,     label: "Check-in diário",          pts: "até 300 🤝", color: "#3B82F6" },
-  { icon: TrendingUp, label: "Streak de 7 dias",         pts: "+150 🤝", color: "#8B5CF6" },
+  { icon: Zap,        label: "Aderir a um Acordo",       pts: "+75 🤝",  color: "#00D26A" },
+  { icon: Star,       label: "Criar um Acordo",          pts: "+100 🤝", color: "#F59E0B" },
+  { icon: Trophy,     label: "Liderar um Acordo",        pts: "+200 🤝", color: "#00D26A" },
+  { icon: MapPin,     label: "Validação Diária",         pts: "até 300 🤝", color: "#3B82F6" },
+  { icon: TrendingUp, label: "Streak de 7 dias",         pts: "+150 🤝", color: "#9945FF" },
   { icon: TrendingUp, label: "Streak de 30 dias",        pts: "+500 🤝", color: "#EC4899" },
-  { icon: UserPlus,   label: "Indicar um amigo",         pts: "+300 🤝", color: "#10B981" },
-  { icon: Gift,       label: "Cupom promocional",        pts: "variável", color: "#EF4444" },
+  { icon: UserPlus,   label: "Convocar Parceiro",        pts: "+300 🤝", color: "#14F195" },
+  { icon: Gift,       label: "Código Institucional",     pts: "variável", color: "#EF4444" },
 ]
 
 // ── Progressive check-in rewards ─────────────────────────────────────────────
@@ -125,21 +130,21 @@ function CheckInCard({
 
   return (
     <div className="rounded-2xl overflow-hidden mb-0"
-      style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: canCheckIn ? "1.5px solid rgba(22,163,74,0.4)" : "1px solid rgba(255,255,255,0.55)" }}>
+      style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: canCheckIn ? "1.5px solid rgba(0,210,106,0.4)" : "1px solid rgba(255,255,255,0.55)" }}>
       <div className="px-4 pt-4 pb-3 flex items-center justify-between" style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-            style={{ background: canCheckIn ? "rgba(22,163,74,0.12)" : "rgba(59,130,246,0.12)" }}>
-            <MapPin className="w-4 h-4" style={{ color: canCheckIn ? "#16A34A" : "#3B82F6" }} />
+            style={{ background: canCheckIn ? "rgba(0,210,106,0.12)" : "rgba(59,130,246,0.12)" }}>
+            <MapPin className="w-4 h-4" style={{ color: canCheckIn ? "#00D26A" : "#3B82F6" }} />
           </div>
           <div>
-            <p className="font-bold text-gray-800 text-sm">Check-in Diário</p>
-            <p className="text-[10px] text-gray-500">{total} check-ins realizados</p>
+            <p className="font-bold text-gray-800 text-sm tracking-tight">Validação Institucional</p>
+            <p className="text-[10px] text-gray-500 font-medium uppercase tracking-wider">{total} PROVAS DE HONRA</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
           <Flame className="w-4 h-4 text-orange-500" />
-          <span className="text-sm font-bold text-gray-800">{initialStreak}🔥</span>
+          <span className="text-sm font-black text-gray-800">{initialStreak}🔥</span>
         </div>
       </div>
 
@@ -153,8 +158,8 @@ function CheckInCard({
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
                 <div className="w-full h-1 rounded-full transition-all"
-                  style={{ background: isCurrentOrPast ? "#16A34A" : isNext ? "rgba(22,163,74,0.3)" : "rgba(0,0,0,0.08)" }} />
-                <span className="text-[8px] font-bold" style={{ color: isCurrentOrPast ? "#16A34A" : isNext ? "#16A34A" : "#D1D5DB" }}>
+                  style={{ background: isCurrentOrPast ? "#00D26A" : isNext ? "rgba(0,210,106,0.3)" : "rgba(0,0,0,0.08)" }} />
+                <span className="text-[8px] font-black" style={{ color: isCurrentOrPast ? "#00D26A" : isNext ? "#00D26A" : "#D1D5DB" }}>
                   {reward}
                 </span>
               </div>
@@ -162,36 +167,30 @@ function CheckInCard({
           })}
         </div>
         <div className="flex justify-between mt-0.5 mb-2">
-          <span className="text-[8px] text-gray-400">Dia 1</span>
-          <span className="text-[8px] text-gray-400">Dia 7+</span>
+          <span className="text-[8px] text-gray-400 font-bold">DIA 1</span>
+          <span className="text-[8px] text-gray-400 font-bold">DIA 7+</span>
         </div>
       </div>
 
       <div className="px-4 pb-4">
         {canCheckIn ? (
-          <p className="text-sm text-[#16A34A] font-semibold text-center mb-3">✅ Disponível agora!</p>
+          <p className="text-sm text-[#00D26A] font-black text-center mb-3 tracking-tight">HONRE SUA PALAVRA HOJE.</p>
         ) : (
           <div className="flex items-center justify-center gap-1 mb-3">
             <Clock className="w-3.5 h-3.5 text-gray-400" />
-            <p className="text-xs text-gray-500">Próximo check-in em</p>
+            <p className="text-xs text-gray-500">Próxima prova disponível em</p>
             <span className="font-mono font-bold text-gray-700 text-sm">{hh}:{mm}:{ss}</span>
           </div>
         )}
         <button onClick={handleCheckIn} disabled={!canCheckIn || loading}
-          className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300"
+          className="w-full py-3.5 rounded-xl font-black text-sm transition-all duration-300"
           style={{
-            background: canCheckIn ? "linear-gradient(135deg,#16A34A,#22C55E)" : "rgba(0,0,0,0.05)",
-            color: canCheckIn ? "white" : "#9CA3AF",
-            boxShadow: canCheckIn ? "0 4px 16px rgba(22,163,74,0.35)" : "none",
+            background: canCheckIn ? "#00D26A" : "rgba(0,0,0,0.05)",
+            color: canCheckIn ? "#0A0F0D" : "#9CA3AF",
+            boxShadow: canCheckIn ? "0 8px 24px rgba(0,210,106,0.25)" : "none",
             cursor: canCheckIn ? "pointer" : "not-allowed",
           }}>
-          {done ? `✅ Check-in feito! +${nextReward} 🤝` : loading ? "Registrando..." : canCheckIn ? `Fazer Check-in · +${nextReward} 🤝` : "Check-in indisponível"}
-        </button>
-        <button disabled className="w-full py-2.5 rounded-xl font-medium text-xs mt-2 flex items-center justify-center gap-2"
-          style={{ background: "rgba(0,0,0,0.04)", color: "#C4C4C4", border: "1px dashed rgba(0,0,0,0.1)", cursor: "not-allowed" }}>
-          <Flame className="w-3.5 h-3.5 text-gray-300" />
-          Reparar streak — 2.500 🤝
-          <span className="px-1.5 py-0.5 rounded text-[9px] font-bold" style={{ background: "rgba(0,0,0,0.06)", color: "#C4C4C4" }}>INDISPONÍVEL</span>
+          {done ? `✅ HONRADO! +${nextReward} TDP` : loading ? "Processando..." : canCheckIn ? `VALIDAR INSTITUCIONAL · +${nextReward} TDP` : "PROVA INDISPONÍVEL"}
         </button>
       </div>
     </div>
@@ -208,68 +207,69 @@ function PointsTab({
   totalCheckins: number
 }) {
   const [showHowModal,  setShowHowModal]  = useState(false)
-  const superDealAvailable = !(profile?.super_deal_used ?? false)
-  const shakesPoints = profile?.tdp_points  ?? 0
+  const superAgreementAvailable = !(profile?.super_deal_used ?? false)
+  const tdpPoints    = profile?.tdp_points  ?? 0
   const streak       = profile?.streak_days ?? 0
   const lastCheckin  = profile?.last_checkin ?? null
 
   return (
     <div className="px-5 pb-8 space-y-4">
       {/* Hero card */}
-      <div className="rounded-3xl p-6 text-center"
-        style={{ background: "linear-gradient(135deg,#0D2E1A 0%,#16A34A 60%,#22C55E 100%)", boxShadow: "0 12px 40px rgba(22,163,74,0.4)" }}>
-        <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-2">Seus Shakes</p>
+      <div className="rounded-3xl p-6 text-center relative overflow-hidden"
+        style={{ background: "linear-gradient(135deg,#0A0F0D 0%,#00A851 60%,#00D26A 100%)", boxShadow: "0 12px 40px rgba(0,210,106,0.3)" }}>
+        <div className="absolute top-0 right-0 w-32 h-32 bg-[#9945FF] opacity-10 blur-3xl" />
+        <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Performance Score</p>
         <div className="flex items-center justify-center gap-2 mb-1">
-          <p className="text-white text-5xl font-black">
-            {shakesPoints.toLocaleString("pt-BR")}
+          <p className="text-white text-6xl font-black tracking-tighter">
+            {tdpPoints.toLocaleString("pt-BR")}
           </p>
-          <Handshake className="w-8 h-8 text-white/70 mt-1" />
+          <Handshake className="w-8 h-8 text-[#00D26A] mt-2" />
         </div>
         <div className="flex justify-center gap-4 mt-4">
           <div className="text-center">
-            <p className="text-white text-base font-bold">{streak} 🔥</p>
-            <p className="text-white/60 text-[10px]">Streak atual</p>
+            <p className="text-white text-base font-black tracking-tight">{streak} 🔥</p>
+            <p className="text-white/40 text-[9px] font-bold uppercase tracking-wider">Streak</p>
           </div>
-          <div className="w-px bg-white/20" />
+          <div className="w-px bg-white/10" />
           <div className="text-center">
-            <p className="text-white text-base font-bold">{totalCheckins}</p>
-            <p className="text-white/60 text-[10px]">Check-ins</p>
+            <p className="text-white text-base font-black tracking-tight">{totalCheckins}</p>
+            <p className="text-white/40 text-[9px] font-bold uppercase tracking-wider">Provas</p>
           </div>
-          <div className="w-px bg-white/20" />
+          <div className="w-px bg-white/10" />
           <div className="text-center">
-            <p className="text-white text-base font-bold">{profile?.referral_count ?? 0}</p>
-            <p className="text-white/60 text-[10px]">Indicações</p>
+            <p className="text-white text-base font-black tracking-tight">{profile?.referral_count ?? 0}</p>
+            <p className="text-white/40 text-[9px] font-bold uppercase tracking-wider">Indicações</p>
           </div>
         </div>
       </div>
 
       <CheckInCard totalCheckins={totalCheckins} streak={streak} lastCheckin={lastCheckin} />
 
-      {/* Super Deal */}
+      {/* Super Acordo */}
       <div className="rounded-2xl p-4"
-        style={{ background: superDealAvailable ? "rgba(61,191,106,0.08)" : "rgba(239,68,68,0.08)", border: `1.5px solid ${superDealAvailable ? "rgba(61,191,106,0.3)" : "rgba(239,68,68,0.3)"}` }}>
+        style={{ background: superAgreementAvailable ? "rgba(61,191,106,0.08)" : "rgba(239,68,68,0.08)", border: `1.5px solid ${superAgreementAvailable ? "rgba(61,191,106,0.3)" : "rgba(239,68,68,0.3)"}` }}>
         <div className="flex items-center gap-2 mb-1">
-          <Award className="w-4 h-4" style={{ color: superDealAvailable ? "#3DBF6A" : "#EF4444" }} />
-          <p className="font-bold text-gray-800">Super Deal</p>
+          <Award className="w-4 h-4" style={{ color: superAgreementAvailable ? "#3DBF6A" : "#EF4444" }} />
+          <p className="font-bold text-gray-800">Super Acordo</p>
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: superDealAvailable ? "rgba(61,191,106,0.15)" : "rgba(239,68,68,0.15)", color: superDealAvailable ? "#3DBF6A" : "#EF4444" }}>
-            {superDealAvailable ? "Disponível" : "Em uso"}
+            style={{ background: superAgreementAvailable ? "rgba(61,191,106,0.15)" : "rgba(239,68,68,0.15)", color: superAgreementAvailable ? "#3DBF6A" : "#EF4444" }}>
+            {superAgreementAvailable ? "Disponível" : "Em uso"}
           </span>
         </div>
-        <p className="text-xs text-gray-500">1 Super Deal gratuito por conta (sem taxa). Quer um segundo? Custa 5.000 🤝.</p>
-        {superDealAvailable && (
+        <p className="text-xs text-gray-500">1 Super Acordo institucional gratuito por conta. Otimize sua performance sem taxas.</p>
+        {superAgreementAvailable && (
           <button className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-white"
             style={{ background: "linear-gradient(135deg,#3DBF6A,#2DA050)" }}>
-            Criar Super Deal
+            Iniciar Super Acordo
           </button>
         )}
       </div>
 
-      {/* Como ganhar Shakes — com overlay "em breve" */}
+      {/* Como evoluir seu Score — com overlay "em breve" */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <p className="text-sm font-bold text-gray-700">Como ganhar Shakes</p>
+            <p className="text-sm font-bold text-gray-700">Como evoluir seu Score</p>
             <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold"
               style={{ background: "rgba(139,92,246,0.12)", color: "#8B5CF6" }}>
               <Lock className="w-2.5 h-2.5" />
@@ -284,7 +284,7 @@ function PointsTab({
           style={{ background: "rgba(139,92,246,0.07)", border: "1px dashed rgba(139,92,246,0.3)" }}>
           <Handshake className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "#8B5CF6" }} />
           <p className="text-[11px] text-gray-500">
-            Bata as metas e faça o <strong style={{ color: "#8B5CF6" }}>claim</strong> dos seus Shakes. Disponível em breve.
+            Cumpra os marcos de performance e realize o <strong style={{ color: "#8B5CF6" }}>claim</strong> dos seus TDP.
           </p>
         </div>
 
@@ -316,15 +316,15 @@ function PointsTab({
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <Handshake className="w-5 h-5 text-[#16A34A]" />
-                <h3 className="text-lg font-bold text-gray-800">O que são Shakes?</h3>
+                <h3 className="text-lg font-bold text-gray-800">O que é TDP?</h3>
               </div>
               <button onClick={() => setShowHowModal(false)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.08)" }}>
                 <X className="w-4 h-4 text-gray-600" />
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4"><strong>Shakes 🤝</strong> são a moeda de engajamento do True Deal — como apertos de mão digitais. Você ganha ao participar da plataforma e usa para desbloquear benefícios.</p>
-            <p className="text-sm font-semibold text-gray-700 mb-2">Ranking e prêmios</p>
-            <p className="text-sm text-gray-600">O <strong>Top 5</strong> do ranking mensal divide <strong>R$100</strong> proporcionalmente.</p>
+            <p className="text-sm text-gray-600 mb-4"><strong>TDP (TrueDeal Points) 🤝</strong> representam seu score de accountability e engajamento institucional. Você acumula pontos ao cumprir acordos e validar sua performance.</p>
+            <p className="text-sm font-semibold text-gray-700 mb-2">Governança e Benefícios</p>
+            <p className="text-sm text-gray-600">Usuários com alto Score TDP possuem prioridade em acordos oficiais e acesso a oráculos exclusivos.</p>
           </div>
         </div>
       )}
@@ -423,7 +423,7 @@ function HallOfFameTab({
 
   const metricValue = (p: Profile) =>
     filter === "mensal"
-      ? `${p.tdp_points.toLocaleString("pt-BR")} 🤝`
+      ? `${p.tdp_points.toLocaleString("pt-BR")} TDP`
       : `${p.streak_days}🔥`
 
   return (
@@ -434,7 +434,7 @@ function HallOfFameTab({
           style={{ background: "rgba(255,255,255,0.45)", backdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.6)" }}>
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest text-center mb-1">🏆 Hall of Fame</p>
           <p className="text-[10px] text-gray-400 text-center mb-5">
-            {filter === "mensal" ? "Ranking mensal · Shakes ganhos em deals" : "Ranking de streak · dias consecutivos"}
+            {filter === "mensal" ? "Ranking mensal · TDP acumulados em acordos" : "Ranking de streak · dias consecutivos"}
           </p>
           <div className="flex items-end justify-center gap-3">
             <PodiumCard profile={podium[0]} rank={2} medal="🥈" height={64} />
@@ -542,7 +542,7 @@ export default function ExploreClient({
   const [subTab, setSubTab] = useState<SubTab>("points")
 
   const SUB_TABS: { key: SubTab; label: string; Icon: React.FC<{ className?: string }> }[] = [
-    { key: "points",     label: "Points",       Icon: Handshake },
+    { key: "points",     label: "TDP Score",     Icon: Handshake },
     { key: "halloffame", label: "Hall of Fame",  Icon: Trophy    },
   ]
 
@@ -555,7 +555,7 @@ export default function ExploreClient({
       }}>
       <header className="px-5 pt-12 pb-4">
         <h1 className="text-2xl font-bold text-gray-800">Explorar</h1>
-        <p className="text-gray-500 text-sm mt-0.5">Shakes e ranking global</p>
+        <p className="text-gray-500 text-sm mt-0.5">TDP Score e accountability global</p>
       </header>
 
       <div className="px-5 mb-5">
@@ -566,11 +566,11 @@ export default function ExploreClient({
             const isActive = subTab === tab.key
             return (
               <button key={tab.key} onClick={() => setSubTab(tab.key)}
-                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold transition-all duration-300"
+                className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300"
                 style={{
-                  background: isActive ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent",
-                  color: isActive ? "white" : "#6B7280",
-                  boxShadow: isActive ? "0 4px 12px rgba(22,163,74,0.3)" : "none",
+                  background: isActive ? "#00D26A" : "transparent",
+                  color: isActive ? "#0A0F0D" : "#6B7280",
+                  boxShadow: isActive ? "0 4px 12px rgba(0,210,106,0.3)" : "none",
                 }}>
                 <Icon className="w-3.5 h-3.5" />
                 {tab.label}
