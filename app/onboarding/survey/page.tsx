@@ -156,7 +156,7 @@ export default function SurveyPage() {
         <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.3)" }}>
           <div
             className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${progress}%`, background: "linear-gradient(90deg,#16A34A,#22C55E)" }}
+            style={{ width: `${progress}%`, background: "#00D26A" }}
           />
         </div>
         <p className="text-xs text-gray-400 mt-1">Etapa 2 de 2 — Pesquisa rápida</p>
@@ -165,9 +165,9 @@ export default function SurveyPage() {
       {/* Conteúdo */}
       <div className="flex-1 px-5 pb-8 flex flex-col">
         <div className="mb-6 mt-4">
-          <h1 className="text-xl font-bold text-gray-800 leading-snug">{current.text}</h1>
+          <h1 className="text-xl font-bold text-white leading-snug">{current.text}</h1>
           {current.type === "multiple" && (
-            <p className="text-sm text-gray-500 mt-1">{current.subtitle}</p>
+            <p className="text-sm text-gray-400 mt-1">{current.subtitle}</p>
           )}
         </div>
 
@@ -196,10 +196,10 @@ export default function SurveyPage() {
                 className="w-full p-4 rounded-2xl text-left flex items-center justify-between transition-all duration-300 hover:scale-[1.01]"
                 style={{
                   background: getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
-                    ? "rgba(22,163,74,0.12)" : "rgba(255,255,255,0.45)",
+                    ? "rgba(0,210,106,0.12)" : "rgba(255,255,255,0.05)",
                   backdropFilter: "blur(20px) saturate(200%)",
                   border: getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
-                    ? "2px solid rgba(22,163,74,0.5)" : "1px solid rgba(255,255,255,0.5)",
+                    ? "2px solid rgba(0,210,106,0.5)" : "1px solid rgba(255,255,255,0.1)",
                 }}
               >
                 <div className="flex items-center gap-3">
@@ -207,26 +207,23 @@ export default function SurveyPage() {
                     className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center"
                     style={{
                       background: getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
-                        ? "linear-gradient(135deg,#16A34A,#22C55E)" : "rgba(255,255,255,0.6)",
-                      border: "2px solid rgba(200,200,200,0.4)",
+                        ? "#00D26A" : "rgba(255,255,255,0.2)",
+                      border: "2px solid rgba(255,255,255,0.1)",
                     }}
                   >
                     {getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string) && (
-                      <svg className="w-3 h-3 text-white" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <svg className="w-3 h-3 text-black" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
                   </div>
-                  <span className="font-medium text-sm" style={{
-                    color: getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
-                      ? "#3333CC" : "#374151"
-                  }}>
+                  <span className="font-medium text-sm text-white">
                     {getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
                       ? getAnswer(current.id) as string
                       : "Outro país"}
                   </span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-400" />
+                <ChevronDown className="w-4 h-4 text-gray-500" />
               </button>
             </>
           )}
@@ -238,11 +235,11 @@ export default function SurveyPage() {
               onChange={(e) => setAnswer(current.id, e.target.value)}
               placeholder={current.placeholder}
               rows={4}
-              className="w-full p-4 rounded-2xl outline-none text-gray-800 placeholder-gray-400 resize-none text-sm"
+              className="w-full p-4 rounded-2xl outline-none text-white placeholder-gray-500 resize-none text-sm"
               style={{
-                background: "rgba(255,255,255,0.55)",
+                background: "rgba(255,255,255,0.05)",
                 backdropFilter: "blur(20px) saturate(200%)",
-                border: getAnswer(current.id) ? "2px solid rgba(22,163,74,0.4)" : "1px solid rgba(255,255,255,0.5)",
+                border: getAnswer(current.id) ? "2px solid rgba(0,210,106,0.4)" : "1px solid rgba(255,255,255,0.1)",
               }}
             />
           )}
@@ -264,12 +261,12 @@ export default function SurveyPage() {
           <button
             onClick={handleNext}
             disabled={!canAdvance()}
-            className={`w-full py-4 rounded-2xl font-semibold text-white flex items-center justify-center gap-2 transition-all duration-300 ${
+            className={`w-full py-4 rounded-2xl font-bold text-black flex items-center justify-center gap-2 transition-all duration-300 ${
               canAdvance() ? "hover:scale-[1.02] active:scale-[0.98]" : "opacity-40 cursor-not-allowed"
             }`}
             style={{
-              background: "linear-gradient(135deg,#16A34A 0%,#22C55E 100%)",
-              boxShadow: canAdvance() ? "0 8px 32px rgba(22,163,74,0.4)" : "none",
+              background: "#00D26A",
+              boxShadow: canAdvance() ? "0 8px 32px rgba(0,210,106,0.3)" : "none",
             }}
           >
             {isLast ? "Acessar TrueDeal" : "Próximo"}
@@ -359,27 +356,27 @@ function OptionButton({ label, selected, onClick }: { label: string; selected: b
       onClick={onClick}
       className="w-full p-4 rounded-2xl text-left transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
       style={{
-        background: selected ? "rgba(22,163,74,0.12)" : "rgba(255,255,255,0.45)",
+        background: selected ? "rgba(0,210,106,0.12)" : "rgba(255,255,255,0.05)",
         backdropFilter: "blur(20px) saturate(200%)",
-        border: selected ? "2px solid rgba(22,163,74,0.5)" : "1px solid rgba(255,255,255,0.5)",
-        boxShadow: selected ? "0 4px 20px rgba(22,163,74,0.15)" : "0 4px 16px rgba(0,0,0,0.05)",
+        border: selected ? "2px solid rgba(0,210,106,0.5)" : "1px solid rgba(255,255,255,0.1)",
+        boxShadow: selected ? "0 4px 20px rgba(0,210,106,0.15)" : "0 4px 16px rgba(0,0,0,0.1)",
       }}
     >
       <div className="flex items-center gap-3">
         <div
           className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all"
           style={{
-            background: selected ? "linear-gradient(135deg,#16A34A,#22C55E)" : "rgba(255,255,255,0.6)",
-            border: selected ? "none" : "2px solid rgba(200,200,200,0.6)",
+            background: selected ? "#00D26A" : "rgba(255,255,255,0.2)",
+            border: selected ? "none" : "2px solid rgba(255,255,255,0.1)",
           }}
         >
           {selected && (
-            <svg className="w-3 h-3" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6l3 3 5-5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <svg className="w-3 h-3 text-black" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           )}
         </div>
-        <span className="font-medium text-sm" style={{ color: selected ? "#3333CC" : "#374151" }}>
+        <span className="font-medium text-sm" style={{ color: selected ? "#00D26A" : "#FFFFFF" }}>
           {label}
         </span>
       </div>

@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server"
 import { fetchDeal } from "@/lib/actions/deals"
 import DealResultClient from "./result-client"
 
+export const dynamic = "force-dynamic"
+
 export default async function DealResultPage({
   params,
 }: {

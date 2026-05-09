@@ -184,5 +184,3 @@ Acompanhe minha execução:
     </div>
   )
 }
-  )
-}
