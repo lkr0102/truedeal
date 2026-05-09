@@ -63,7 +63,7 @@ export async function createDeal(input: CreateDealInput) {
     .select()
     .single() as any
 
-  if (error || !deal) return { error: (error as any)?.message ?? "Erro ao criar deal" }
+  if (error || !deal) return { error: (error as any)?.message ?? "Erro ao criar acordo institucional" }
 
   // Criador entra automaticamente como participante
   await (supabase.from("deal_participants") as any).insert({
@@ -72,7 +72,7 @@ export async function createDeal(input: CreateDealInput) {
     status:  "active",
   })
 
-  // +100 TDP por criar um deal
+  // +100 TDP por criar um acordo
   await (supabase.from("tdp_transactions") as any).insert({
     user_id: user.id,
     amount:  100,
@@ -80,7 +80,7 @@ export async function createDeal(input: CreateDealInput) {
     deal_id: deal.id,
   })
 
-  // Marca super_deal_used se for Super Deal
+  // Marca super_deal_used se for Super Acordo
   if (input.mode === "super") {
     await (supabase.from("profiles") as any)
       .update({ super_deal_used: true })
@@ -186,14 +186,14 @@ export async function joinDeal(dealId: string) {
     .eq("id", dealId)
     .single()
 
-  if (dealErr || !deal) return { error: "Deal não encontrado" }
-  if (deal.status !== "formacao") return { error: "Este deal já iniciou" }
+  if (dealErr || !deal) return { error: "Acordo não encontrado" }
+  if (deal.status !== "formacao") return { error: "Este acordo já iniciou" }
 
   const { count } = await (supabase.from("deal_participants") as any)
     .select("*", { count: "exact", head: true })
     .eq("deal_id", dealId)
 
-  if ((count ?? 0) >= deal.max_participants) return { error: "Deal lotado" }
+  if ((count ?? 0) >= deal.max_participants) return { error: "Acordo lotado" }
 
   const { error } = await (supabase.from("deal_participants") as any).insert({
     deal_id: dealId,
@@ -202,7 +202,7 @@ export async function joinDeal(dealId: string) {
   })
 
   if (error) {
-    if ((error as any).code === "23505") return { error: "Você já está neste deal" }
+    if ((error as any).code === "23505") return { error: "Você já está participando deste acordo" }
     return { error: (error as any).message }
   }
 
@@ -277,7 +277,7 @@ export async function depositToEscrow(dealId: string) {
     .eq("id", dealId)
     .single()
 
-  if (dealErr || !deal) return { error: "Deal não encontrado" }
+  if (dealErr || !deal) return { error: "Acordo não encontrado" }
 
   try {
     // 3. Decrypt wallet and set up Anchor Provider

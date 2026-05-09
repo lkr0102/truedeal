@@ -29,3 +29,13 @@ next-env.d.ts
 
 # agents intelligence
 .agents/
+
+# Symbeon Internal (DO NOT PUBLISH)
+task_mesh.yaml
+guardrive_sync.yaml
+arkitect.log
+docsync.log
+*.egg-info/
+metrics.log
+arkitect/
+docsync/
