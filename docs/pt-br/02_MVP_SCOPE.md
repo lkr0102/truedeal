@@ -13,7 +13,8 @@ Este documento define as funcionalidades principais e os limites do MVP do TrueD
 ### 2.1 Criação de Acordos de Performance
 - [x] **Canais de Auditoria (Mocked/Demo)**: X (Twitter) simulado para aprovação em Demo.
 - [ ] **Integração Real de Canais**: Strava, Wellhub, TotalPass via OAuth real.
-- [x] **Regras**: Conectores lógicos para validação.
+- [x] **Matriz de Regras**: Utilizar `11_CONTRACT_RULES_TEMPLATE.md` para mapear regras de UX para a lógica soberana on-chain.
+- [ ] **Implementação das Regras (Lukas -> João)**: Lukas desenha as regras sociais no template; João codifica as restrições no programa Anchor da Solana.
 - [x] **Parâmetros**: Título institucional, vigência definida, valor de garantia (BRL/USDC).
 - [x] **Liquidação**: Distribuição Proporcional, Ranking (Top 3) ou Beneficiário Único.
 

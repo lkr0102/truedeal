@@ -13,7 +13,8 @@ This document defines the core functionalities and boundaries of the TrueDeal MV
 ### 2.1 Performance Agreement Creation
 - [x] **Audit Channels (Mocked/Demo)**: X (Twitter) simulated for Demo approval.
 - [ ] **Real Channel Integration**: Strava, Wellhub, TotalPass via real OAuth.
-- [x] **Rules**: Logical connectors for validation.
+- [x] **Rules Matrix**: Use `11_CONTRACT_RULES_TEMPLATE.md` to map UX rules into on-chain sovereign logic.
+- [ ] **Rules Implementation (Lukas -> João)**: Lukas designs the social rules via template; João encodes them into the Solana Anchor program.
 - [x] **Parameters**: Institutional title, defined period, guarantee value (BRL/USDC).
 - [x] **Settlement**: Proportional Distribution, Ranking (Top 3), or Single Beneficiary.
 
