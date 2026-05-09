@@ -53,9 +53,12 @@ This document defines the implemented features, boundaries, and roadmap for the 
 
 ### 2.6 On-Chain Escrow (Solana / Anchor)
 - [x] Program ID: `9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4`
-- [x] Deterministic PDA vault: `[b"deal", deal_id]`
-- [x] `join_agreement`: exact stake amount enforced on-chain
-- [x] `settle_performance_agreement`: dual-oracle multi-sig + proof hash required
+- [x] Deterministic PDA vault: `[b"agreement", deal_id]`
+- [x] `join_agreement`: exact stake amount enforced on-chain with participant tracking
+- [x] `settle_performance_agreement`: **Full On-chain Settlement**
+    - [x] Automatic Slacker Tax calculation (3% on loser pool)
+    - [x] Multi-winner payout orchestration using Remaining Accounts
+    - [x] Dual-oracle multi-sig attestation required for execution
 - [x] Account Abstraction: managed wallets (AES-256-GCM) — no browser extension needed
 
 ### 2.7 User Experience

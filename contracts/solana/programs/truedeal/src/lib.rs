@@ -31,6 +31,9 @@ pub mod truedeal {
         agreement.rule_hash = rule_hash;
         agreement.status = AgreementStatus::Formation;
         agreement.total_guarantee = 0;
+        agreement.participant_count = 0;
+        agreement.winners_count = 0;
+        agreement.vault = ctx.accounts.vault.key();
         
         msg!("Sovereign Performance Agreement Initialized: {}", agreement.agreement_id);
         Ok(())
@@ -51,17 +54,17 @@ pub mod truedeal {
         token::transfer(cpi_ctx, agreement.guarantee_amount)?;
 
         agreement.total_guarantee += agreement.guarantee_amount;
+        agreement.participant_count += 1;
         
         msg!("Participant joined agreement. Total Guarantee in Escrow: {}", agreement.total_guarantee);
         Ok(())
     }
 
     /// Sovereign Payout: Settles the agreement based strictly on the DealGuard Engine Consensus.
-    /// In legal terms, the DealGuard acts as the 'Digital Sentencing Council', verifying 
-    /// real-world evidence (e.g. Strava, X APIs) via Risk Guardian AI before executing payout.
+    /// Implements the 'Slacker Tax': 3% fee on losers' pool, proportional reward for winners.
     pub fn settle_performance_agreement(
         ctx: Context<SettlePerformanceAgreement>,
-        beneficiary_pubkey: Pubkey,
+        winners_count: u64,
         proof_hash: [u8; 32],
     ) -> Result<()> {
         let agreement = &mut ctx.accounts.agreement_account;
@@ -72,17 +75,74 @@ pub mod truedeal {
         );
 
         // DealGuard Consensus Validation
-        // Ensures multi-sig attestation from independent DealGuard validation nodes.
-        // This mitigates systemic risk and API falsification.
         require!(
             ctx.accounts.oracle_1.is_signer && ctx.accounts.oracle_2.is_signer,
             AgreementError::DealGuardConsensusFailed
         );
-        
+
+        agreement.winners_count = winners_count;
         agreement.status = AgreementStatus::Settled;
         agreement.proof_hash = Some(proof_hash);
+
+        // Economic Logic: Slacker Tax
+        if winners_count > 0 {
+            let losers_count = agreement.participant_count.saturating_sub(winners_count);
+            let slacker_pool = losers_count.saturating_mul(agreement.guarantee_amount);
+            
+            // 3% Platform Fee
+            let platform_fee = slacker_pool.saturating_mul(3).checked_div(100).unwrap_or(0);
+            let distributable_reward = slacker_pool.saturating_sub(platform_fee);
+            let reward_per_winner = distributable_reward.checked_div(winners_count).unwrap_or(0);
+            let total_payout_per_winner = agreement.guarantee_amount.saturating_add(reward_per_winner);
+
+            // 1. Transfer Platform Fee to Treasury
+            if platform_fee > 0 {
+                let cpi_accounts = Transfer {
+                    from: ctx.accounts.vault.to_account_info(),
+                    to: ctx.accounts.treasury_token_account.to_account_info(),
+                    authority: agreement.to_account_info(),
+                };
+                // PDA Signer seeds for the agreement
+                let agreement_id = agreement.agreement_id.clone();
+                let seeds = &[
+                    b"agreement",
+                    agreement_id.as_bytes(),
+                    &[ctx.bumps.agreement_account],
+                ];
+                let signer = &[&seeds[..]];
+                let cpi_ctx = CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    cpi_accounts,
+                    signer,
+                );
+                token::transfer(cpi_ctx, platform_fee)?;
+            }
+
+            // 2. Transfer Payouts to Winners (using remaining accounts)
+            // Expecting winners_count TokenAccounts in remaining_accounts
+            for winner_info in ctx.remaining_accounts.iter() {
+                let cpi_accounts = Transfer {
+                    from: ctx.accounts.vault.to_account_info(),
+                    to: winner_info.clone(),
+                    authority: agreement.to_account_info(),
+                };
+                let agreement_id = agreement.agreement_id.clone();
+                let seeds = &[
+                    b"agreement",
+                    agreement_id.as_bytes(),
+                    &[ctx.bumps.agreement_account],
+                ];
+                let signer = &[&seeds[..]];
+                let cpi_ctx = CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    cpi_accounts,
+                    signer,
+                );
+                token::transfer(cpi_ctx, total_payout_per_winner)?;
+            }
+        }
         
-        msg!("Agreement Executed via DealGuard Consensus. Beneficiary: {}", beneficiary_pubkey);
+        msg!("Agreement Settled. Winners: {}, Platform Fee collected.", winners_count);
         Ok(())
     }
 }
@@ -100,6 +160,8 @@ pub struct InitPerformanceAgreement<'info> {
     pub agreement_account: Account<'info, AgreementAccount>,
     #[account(mut)]
     pub creator: Signer<'info>,
+    /// CHECK: The token vault that will hold the funds
+    pub vault: AccountInfo<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -121,10 +183,15 @@ pub struct JoinAgreement<'info> {
 pub struct SettlePerformanceAgreement<'info> {
     #[account(mut, seeds = [b"agreement", agreement_account.agreement_id.as_bytes()], bump)]
     pub agreement_account: Account<'info, AgreementAccount>,
-    /// DealGuard consensus node 1 required to attest real-world performance
+    /// DealGuard consensus node 1
     pub oracle_1: Signer<'info>, 
-    /// DealGuard consensus node 2 required to attest real-world performance
+    /// DealGuard consensus node 2
     pub oracle_2: Signer<'info>, 
+    #[account(mut)]
+    pub vault: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub treasury_token_account: Account<'info, TokenAccount>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[account]
@@ -133,6 +200,9 @@ pub struct AgreementAccount {
     pub agreement_id: String,
     pub guarantee_amount: u64,
     pub total_guarantee: u64,
+    pub participant_count: u64,
+    pub winners_count: u64,
+    pub vault: Pubkey,
     pub rule_hash: [u8; 32], // Represents the unalterable conditions of the deal
     pub proof_hash: Option<[u8; 32]>, // The final cryptographic proof provided by DealGuard
     pub status: AgreementStatus,

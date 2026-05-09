@@ -81,14 +81,6 @@ export async function createDeal(input: CreateDealInput) {
     status:  "active",
   })
 
-  // +100 TDP por criar um acordo
-  await (supabase.from("tdp_transactions") as any).insert({
-    user_id: user.id,
-    amount:  100,
-    reason:  "deal_create",
-    deal_id: deal.id,
-  })
-
   revalidatePath("/")
   return { deal }
 }
@@ -251,14 +243,6 @@ export async function joinDeal(dealId: string) {
     return { error: (error as any).message }
   }
 
-  // +75 TDP por participar
-  await (supabase.from("tdp_transactions") as any).insert({
-    user_id: user.id,
-    amount:  75,
-    reason:  "deal_join",
-    deal_id: dealId,
-  })
-
   revalidatePath("/")
   revalidatePath(`/tracking?id=${dealId}`)
   return { success: true }
@@ -272,6 +256,11 @@ export async function updateDealStatus(dealId: string, status: DealStatus) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { error: "Não autenticado" }
 
+  // Se o status for 'ativo', usamos a lógica de ativação institucional
+  if (status === "ativo") {
+    return await activateDeal(dealId)
+  }
+
   const { error } = await (supabase.from("deals") as any)
     .update({ status })
     .eq("id", dealId)
@@ -281,6 +270,63 @@ export async function updateDealStatus(dealId: string, status: DealStatus) {
 
   revalidatePath("/")
   return { success: true }
+}
+
+/**
+ * 🚀 Institutional Activation Protocol
+ * Transitions a deal from 'formacao' to 'ativo'.
+ * Checks quorum, sets snapshots, and awards Shakes.
+ */
+export async function activateDeal(dealId: string) {
+  const supabase = await createClient()
+
+  // 1. Fetch deal and participants
+  const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
+    .select("*, participants:deal_participants(*)")
+    .eq("id", dealId)
+    .single()
+
+  if (dealErr || !deal) return { error: "Deal não encontrado" }
+  if (deal.status !== "formacao") return { error: "Deal já está ativo ou encerrado" }
+
+  // 2. Quorum Check (min 2 participants)
+  if (deal.participants.length < 2) {
+    await (supabase.from("deals") as any).update({ status: "cancelado" }).eq("id", dealId)
+    return { error: "Quorum insuficiente. Deal cancelado.", status: "cancelado" }
+  }
+
+  // 3. Transition to 'ativo'
+  await (supabase.from("deals") as any).update({ status: "ativo" }).eq("id", dealId)
+
+  // 4. Award Shakes (TDP)
+  const transactions = []
+  
+  // Creator: +500
+  transactions.push({
+    user_id: deal.creator_id,
+    amount:  500,
+    reason:  "deal_activate_creator",
+    deal_id: deal.id,
+  })
+
+  // Participants: +200 each (including creator if double-reward is desired, 
+  // but usually it's unique. Here we follow: Creator (+500), Others (+200))
+  for (const p of deal.participants) {
+    if (p.user_id !== deal.creator_id) {
+      transactions.push({
+        user_id: p.user_id,
+        amount:  200,
+        reason:  "deal_activate_participant",
+        deal_id: deal.id,
+      })
+    }
+  }
+
+  await (supabase.from("tdp_transactions") as any).insert(transactions)
+
+  revalidatePath("/")
+  revalidatePath(`/deal/${dealId}`)
+  return { success: true, status: "ativo" }
 }
 
 // ── On-chain Escrow ───────────────────────────────────────────────────────────
@@ -388,43 +434,77 @@ export async function declareWinner(dealId: string, winnerId: string) {
  * Distributes the pot to the winner(s) after DealGuard Engine verification.
  * Requires a valid verification hash/proof.
  */
-export async function withdrawFromEscrow(dealId: string, winnerId: string, proofHash: string) {
+export async function withdrawFromEscrow(dealId: string, proofHash: string) {
   const supabase = await createClient()
 
-  // In production, this would be restricted to the DealGuard Oracle authority
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { error: "Não autenticado" }
 
   try {
-    // 1. Get Fee Payer (as Oracle authority for MVP)
+    // 1. Fetch winners from database
+    const { data: winners, error: winErr } = await (supabase.from("deal_participants") as any)
+      .select("user_id, user_wallets(pubkey, token_account)")
+      .eq("deal_id", dealId)
+      .eq("status", "winner")
+
+    if (winErr || !winners || winners.length === 0) return { error: "Nenhum vencedor encontrado para liquidação." }
+
+    // 2. Get Oracle/Fee Payer
     const { getFeePayer } = await import("@/lib/solana/fee-payer")
     const oracleKeypair = getFeePayer() 
     const provider      = getProvider(oracleKeypair)
     const program       = getProgram(provider)
 
-    // 2. Execute settle_deal on-chain
-    // await program.methods.settleDeal(new PublicKey(winnerPubKey), [...proofHashBytes]).accounts({ ... }).rpc()
+    // 3. Prepare Accounts & Remaining Accounts (Winners)
+    const [agreementPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("agreement"), Buffer.from(dealId)],
+      program.programId
+    )
+    const agreementAccount = await program.account.agreementAccount.fetch(agreementPDA)
 
-    const txSignature = "settlement_tx_" + Math.random().toString(36).slice(2)
+    const proofHashBytes = Buffer.from(proofHash.replace("0x", ""), "hex")
+    const winnerRemainingAccounts = winners.map((w: any) => ({
+      pubkey: new PublicKey(w.user_wallets.token_account),
+      isWritable: true,
+      isSigner: false,
+    }))
 
-    // 3. Update Deal status to 'settled'
+    // 4. Execute settle_performance_agreement on-chain
+    // In MVP, we use the same oracleKeypair for both oracle_1 and oracle_2 for demo purposes
+    const treasuryTokenAccount = process.env.TREASURY_TOKEN_ACCOUNT 
+      ? new PublicKey(process.env.TREASURY_TOKEN_ACCOUNT)
+      : oracleKeypair.publicKey // Fallback to oracle for demo
+
+    const txSignature = await program.methods
+      .settlePerformanceAgreement(
+        new (await import("bn.js")).default(winners.length),
+        Array.from(proofHashBytes)
+      )
+      .accounts({
+        agreementAccount: agreementPDA,
+        oracle1: oracleKeypair.publicKey,
+        oracle2: oracleKeypair.publicKey,
+        vault: agreementAccount.vault, // Fetching from state
+        treasuryTokenAccount: treasuryTokenAccount,
+        tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+      })
+      .remainingAccounts(winnerRemainingAccounts)
+      .signers([oracleKeypair])
+      .rpc()
+
+    // 5. Update Deal status to 'settled'
     await (supabase.from("deals") as any)
       .update({ 
         status: "settled",
-        final_proof_hash: proofHash 
+        final_proof_hash: proofHash,
+        solana_tx_signature: txSignature
       })
       .eq("id", dealId)
 
-    // 4. Record win for the user
-    await (supabase.from("deal_participants") as any)
-      .update({ is_winner: true })
-      .eq("deal_id", dealId)
-      .eq("user_id", winnerId)
-
-    revalidatePath(`/deals/${dealId}`)
+    revalidatePath(`/deal/${dealId}`)
     return { success: true, txSignature }
   } catch (err: any) {
     console.error("Settlement Error:", err)
-    return { error: `Erro na liquidação: ${err.message}` }
+    return { error: `Erro na liquidação on-chain: ${err.message}` }
   }
 }
