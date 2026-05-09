@@ -10,13 +10,24 @@ import { decryptSecret } from "@/lib/solana/keypair"
 import { getProvider, getProgram } from "@/lib/solana/anchor-client"
 import { PublicKey } from "@solana/web3.js"
 
+const CHANNEL_LABELS: Record<string, string> = {
+  x: "X",
+  instagram: "Instagram",
+  tiktok: "TikTok",
+  linkedin: "LinkedIn",
+  discord: "Discord",
+  youtube: "YouTube",
+  strava: "Strava",
+  wellhub: "Wellhub",
+  totalpass: "TotalPass",
+}
+
 // ── Create ────────────────────────────────────────────────────────────────────
 
 export interface CreateDealInput {
   title:                 string
   description?:          string
   type:                  DealType
-  mode:                  "regular" | "super"
   category:              DealCategory
   verification_type:     string
   verification_channels: string[]
@@ -35,20 +46,18 @@ export async function createDeal(input: CreateDealInput) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { error: "Não autenticado" }
 
-  const fee_pct = input.mode === "super" ? 1 : 5
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dealPayload: any = {
     title:                 input.title,
     description:           input.description ?? null,
     creator_id:            user.id,
     type:                  input.type,
-    mode:                  input.mode,
+    mode:                  "regular",
     category:              input.category,
     verification_type:     input.verification_type,
     verification_channels: input.verification_channels,
     entry_amount:          input.entry_amount,
-    fee_pct,
+    fee_pct:               3,
     distribution:          input.distribution,
     payment_method:        input.payment_method,
     max_participants:      input.max_participants,
@@ -79,13 +88,6 @@ export async function createDeal(input: CreateDealInput) {
     reason:  "deal_create",
     deal_id: deal.id,
   })
-
-  // Marca super_deal_used se for Super Acordo
-  if (input.mode === "super") {
-    await (supabase.from("profiles") as any)
-      .update({ super_deal_used: true })
-      .eq("id", user.id)
-  }
 
   revalidatePath("/")
   return { deal }
@@ -162,6 +164,32 @@ export async function fetchDeal(id: string) {
 
   const count = data.participants?.length ?? 0
   const pot   = data.entry_amount * count
+
+  if (Array.isArray(data.participants) && data.verification_channels?.length > 0) {
+    const platform = data.verification_channels[0]
+    const participantIds = data.participants.map((p: any) => p.user_id)
+
+    const { data: connections } = await (supabase.from("social_connections") as any)
+      .select("user_id, platform, username")
+      .in("user_id", participantIds)
+      .in("platform", [platform])
+
+    const connectionByUser = new Map<string, any>()
+    ;(connections ?? []).forEach((conn: any) => {
+      if (conn?.user_id && conn?.platform && conn?.username) {
+        connectionByUser.set(`${conn.user_id}:${conn.platform}`, conn.username)
+      }
+    })
+
+    data.participants = data.participants.map((p: any) => {
+      const socialHandle = connectionByUser.get(`${p.user_id}:${platform}`)
+      return {
+        ...p,
+        socialHandle: socialHandle ? (socialHandle.startsWith("@") ? socialHandle : `@${socialHandle}`) : undefined,
+      }
+    })
+  }
+
   const deal: DealWithParticipants = {
     ...data,
     participant_count: count,
@@ -195,6 +223,23 @@ export async function joinDeal(dealId: string) {
 
   if ((count ?? 0) >= deal.max_participants) return { error: "Acordo lotado" }
 
+  const requiredChannel = Array.isArray(deal.verification_channels) ? deal.verification_channels[0] : null
+  if (requiredChannel) {
+    const channelLabel = CHANNEL_LABELS[requiredChannel] ?? requiredChannel
+    const { data: connections, error: connErr } = await (supabase.from("social_connections") as any)
+      .select("platform, status, username, member_email, external_id")
+      .eq("user_id", user.id)
+      .eq("platform", requiredChannel)
+      .neq("status", "pending")
+      .limit(1)
+
+    if (connErr) return { error: "Erro ao verificar sua conta social" }
+    const connection = Array.isArray(connections) ? connections[0] : null
+    if (!connection || !(connection.username || connection.member_email || connection.external_id)) {
+      return { error: `Você precisa vincular sua conta do ${channelLabel} para participar deste deal.` }
+    }
+  }
+
   const { error } = await (supabase.from("deal_participants") as any).insert({
     deal_id: dealId,
     user_id: user.id,
@@ -226,19 +271,6 @@ export async function updateDealStatus(dealId: string, status: DealStatus) {
 
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { error: "Não autenticado" }
-
-  // Check minimum participants before starting
-  if (status === "ativo") {
-    const { count } = await (supabase.from("deal_participants") as any)
-      .select("*", { count: "exact", head: true })
-      .eq("deal_id", dealId)
-
-    if ((count ?? 0) < 2) {
-      // Se não tem 2 pessoas, bloqueia ou cancela
-      // Vamos retornar um erro claro para o frontend para que o criador saiba que precisa convidar
-      return { error: "São necessários no mínimo 2 participantes para iniciar o acordo." }
-    }
-  }
 
   const { error } = await (supabase.from("deals") as any)
     .update({ status })
@@ -309,6 +341,47 @@ export async function depositToEscrow(dealId: string) {
     console.error("Escrow Error:", err)
     return { error: `Erro na transação on-chain: ${err.message}` }
   }
+}
+
+// ── Declare Winner ────────────────────────────────────────────────────────────
+
+export async function declareWinner(dealId: string, winnerId: string) {
+  const supabase = await createClient()
+
+  const { data: { user }, error: authErr } = await supabase.auth.getUser()
+  if (authErr || !user) return { error: "Não autenticado" }
+
+  const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
+    .select("id, creator_id, status")
+    .eq("id", dealId)
+    .single()
+
+  if (dealErr || !deal) return { error: "Deal não encontrado" }
+  if (deal.creator_id !== user.id) return { error: "Apenas o criador pode declarar o vencedor" }
+  if (deal.status === "finalizado") return { error: "Deal já encerrado" }
+
+  const { error: updateErr } = await (supabase.from("deals") as any)
+    .update({ winner_id: winnerId, status: "finalizado" })
+    .eq("id", dealId)
+
+  if (updateErr) return { error: updateErr.message }
+
+  await (supabase.from("deal_participants") as any)
+    .update({ status: "winner" })
+    .eq("deal_id", dealId)
+    .eq("user_id", winnerId)
+
+  await (supabase.from("tdp_transactions") as any).insert({
+    user_id: winnerId,
+    amount:  500,
+    reason:  "deal_win",
+    deal_id: dealId,
+  })
+
+  revalidatePath("/")
+  revalidatePath(`/deal/${dealId}`)
+  revalidatePath(`/deal/${dealId}/result`)
+  return { success: true }
 }
 
 /**

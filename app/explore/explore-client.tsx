@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   Home, Compass, Wallet, User,
   Star, Zap, Gift, UserPlus, Trophy, Search,
-  X, TrendingUp, Award, Bell, MapPin, Clock, Flame,
+  X, TrendingUp, Bell, MapPin, Clock, Flame,
   ChevronUp, ChevronDown, Minus, Handshake, Lock,
 } from "lucide-react"
 import { doCheckin } from "@/lib/actions/profile"
@@ -208,7 +208,6 @@ function PointsTab({
   totalCheckins: number
 }) {
   const [showHowModal,  setShowHowModal]  = useState(false)
-  const superDealAvailable = !(profile?.super_deal_used ?? false)
   const shakesPoints = profile?.tdp_points  ?? 0
   const streak       = profile?.streak_days ?? 0
   const lastCheckin  = profile?.last_checkin ?? null
@@ -244,26 +243,6 @@ function PointsTab({
       </div>
 
       <CheckInCard totalCheckins={totalCheckins} streak={streak} lastCheckin={lastCheckin} />
-
-      {/* Super Deal */}
-      <div className="rounded-2xl p-4"
-        style={{ background: superDealAvailable ? "rgba(61,191,106,0.08)" : "rgba(239,68,68,0.08)", border: `1.5px solid ${superDealAvailable ? "rgba(61,191,106,0.3)" : "rgba(239,68,68,0.3)"}` }}>
-        <div className="flex items-center gap-2 mb-1">
-          <Award className="w-4 h-4" style={{ color: superDealAvailable ? "#3DBF6A" : "#EF4444" }} />
-          <p className="font-bold text-gray-800">Super Deal</p>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-            style={{ background: superDealAvailable ? "rgba(61,191,106,0.15)" : "rgba(239,68,68,0.15)", color: superDealAvailable ? "#3DBF6A" : "#EF4444" }}>
-            {superDealAvailable ? "Disponível" : "Em uso"}
-          </span>
-        </div>
-        <p className="text-xs text-gray-500">1 Super Deal gratuito por conta (sem taxa). Quer um segundo? Custa 5.000 🤝.</p>
-        {superDealAvailable && (
-          <button className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-white"
-            style={{ background: "linear-gradient(135deg,#3DBF6A,#2DA050)" }}>
-            Criar Super Deal
-          </button>
-        )}
-      </div>
 
       {/* Como ganhar Shakes — com overlay "em breve" */}
       <div>

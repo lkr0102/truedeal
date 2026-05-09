@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
-  ArrowLeft, Star, Lock, Globe, ChevronLeft, ChevronRight,
+  ArrowLeft, Lock, Globe, ChevronLeft, ChevronRight,
   Plus, Minus, Check, Info, X,
 } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
@@ -158,9 +158,8 @@ export default function CreateDealPage() {
   const router = useRouter()
 
   // ── State ──
-  const [name,     setName]     = useState("")
-  const [dealMode, setDealMode] = useState<"regular" | "super">("regular")
-  const [privacy,  setPrivacy]  = useState<"private" | "public">("private")
+  const [name,    setName]    = useState("")
+  const [privacy, setPrivacy] = useState<"private" | "public">("private")
 
   const [category,         setCategory]         = useState<string | null>(null)
   const [selectedChannels, setSelectedChannels] = useState<string[]>([])
@@ -181,9 +180,8 @@ export default function CreateDealPage() {
   const [customAmtStr, setCustomAmtStr] = useState("")
   const [distribution, setDistribution] = useState("winner")
 
-  const [screen,        setScreen]        = useState<1 | 2>(1)
-  const [showSuperInfo, setShowSuperInfo] = useState(false)
-  const [showInfo,      setShowInfo]      = useState(false)
+  const [screen,       setScreen]       = useState<1 | 2>(1)
+  const [showInfo,     setShowInfo]     = useState(false)
   const [isSubmitting,  setIsSubmitting]  = useState(false)
   const [submitError,   setSubmitError]   = useState<string | null>(null)
 
@@ -191,7 +189,7 @@ export default function CreateDealPage() {
   const channels        = category ? (CHANNELS[category] ?? []) : []
   const availableRules  = getSharedRules(selectedChannels)
   const effectiveAmount = isCustomAmt ? (parseFloat(customAmtStr) || 0) : amount
-  const feeRate         = dealMode === "super" ? 1 : 5
+  const feeRate         = 3
   const diffDays        = Math.round((endDate.getTime() - startDate.getTime()) / 86400000)
 
   const channelLabel = selectedChannels.length === 1
@@ -265,7 +263,6 @@ export default function CreateDealPage() {
     const result = await createDeal({
       title:                 name.trim(),
       type:                  privacyMap[privacy] ?? "privado",
-      mode:                  dealMode,
       category:              category as DealCategory,
       verification_type:     rule ?? "",
       verification_channels: selectedChannels,
@@ -342,18 +339,10 @@ export default function CreateDealPage() {
             <span className="font-medium">Voltar</span>
           </button>
           <div className="flex items-center gap-2">
-            {dealMode === "super" ? (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                style={{ background: "rgba(255,170,0,0.12)", border: "1px solid rgba(255,170,0,0.3)" }}>
-                <Star className="w-3.5 h-3.5 text-yellow-500" />
-                <span className="text-xs font-bold text-yellow-600">Super · 1%</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-                style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
-                <span className="text-xs font-bold text-[#16A34A]">Regular · 5%</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+              style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
+              <span className="text-xs font-bold text-[#16A34A]">Taxa · 3%</span>
+            </div>
             <button
               onClick={() => setShowInfo(true)}
               className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -388,31 +377,7 @@ export default function CreateDealPage() {
             )}
           </SectionBlock>
 
-          {/* ── 2. Tipo ── */}
-          <SectionBlock icon={<span className="text-base">⚙️</span>} iconBg="rgba(22,163,74,0.1)" title="Tipo do Deal" sub="Regular (5% fee) ou Super (1% fee)">
-            <div className="flex gap-2.5">
-              {[
-                { id: "regular" as const, label: "Regular",   sub: "5% fee", grad: "linear-gradient(135deg,#16A34A,#22C55E)" },
-                { id: "super"   as const, label: "⭐ Super",  sub: "1% fee", grad: "linear-gradient(135deg,#FFAA00,#FF6B00)" },
-              ].map(opt => (
-                <button key={opt.id}
-                  onClick={() => { setDealMode(opt.id); if (opt.id === "super") setShowSuperInfo(true) }}
-                  className="flex-1 py-3 rounded-xl transition-all"
-                  style={{
-                    background: dealMode === opt.id ? opt.grad : "rgba(255,255,255,0.5)",
-                    border: dealMode === opt.id ? "none" : "1.5px solid rgba(0,0,0,0.07)",
-                    color: dealMode === opt.id ? "white" : "#9CA3AF",
-                    fontWeight: 700, fontSize: 13,
-                    boxShadow: dealMode === opt.id ? "0 6px 20px rgba(22,163,74,0.25)" : "none",
-                  }}>
-                  <div>{opt.label}</div>
-                  <div style={{ fontSize: 10, opacity: 0.8, marginTop: 2 }}>{opt.sub}</div>
-                </button>
-              ))}
-            </div>
-          </SectionBlock>
-
-          {/* ── 3. Categoria ── */}
+          {/* ── 2. Categoria ── */}
           <SectionBlock icon={<span className="text-base">🗂️</span>} iconBg="rgba(22,163,74,0.1)" title="Categoria" sub="Escolha o tipo de desafio">
             <div className="grid grid-cols-3 gap-2">
               {CATEGORIES.map(cat => (
@@ -748,12 +713,8 @@ export default function CreateDealPage() {
               disabled={!isValid}
               className={`w-full py-4 rounded-2xl font-bold text-white text-sm transition-all duration-300 ${isValid ? "active:scale-[0.98]" : "opacity-40 cursor-not-allowed"}`}
               style={{
-                background: dealMode === "super"
-                  ? "linear-gradient(135deg,#FFAA00,#FF6B00)"
-                  : "linear-gradient(135deg,#16A34A,#22C55E)",
-                boxShadow: isValid
-                  ? dealMode === "super" ? "0 8px 32px rgba(255,170,0,0.4)" : "0 8px 32px rgba(22,163,74,0.4)"
-                  : "none",
+                background: "linear-gradient(135deg,#16A34A,#22C55E)",
+                boxShadow: isValid ? "0 8px 32px rgba(22,163,74,0.4)" : "none",
                 letterSpacing: "0.04em",
               }}
             >
@@ -810,7 +771,7 @@ export default function CreateDealPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest mb-1">
-                    {dealMode === "super" ? "⭐ Super Deal" : "Deal Regular"}
+                    Deal
                   </p>
                   <h2 className="text-xl font-bold leading-tight">{name || "Sem nome"}</h2>
                 </div>
@@ -875,10 +836,8 @@ export default function CreateDealPage() {
               disabled={isSubmitting}
               className="w-full py-4 rounded-2xl font-bold text-white text-sm transition-all active:scale-[0.98] disabled:opacity-60"
               style={{
-                background: dealMode === "super"
-                  ? "linear-gradient(135deg,#FFAA00,#FF6B00)"
-                  : "linear-gradient(135deg,#16A34A,#22C55E)",
-                boxShadow: dealMode === "super" ? "0 8px 32px rgba(255,170,0,0.4)" : "0 8px 32px rgba(22,163,74,0.4)",
+                background: "linear-gradient(135deg,#16A34A,#22C55E)",
+                boxShadow: "0 8px 32px rgba(22,163,74,0.4)",
                 letterSpacing: "0.04em",
               }}
             >
@@ -982,39 +941,6 @@ export default function CreateDealPage() {
         </div>
       )}
 
-      {/* ── Super Deal info ───────────────────────────────────────────────────── */}
-      {showSuperInfo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-          style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
-          onClick={() => setShowSuperInfo(false)}>
-          <div className="w-full max-w-sm rounded-3xl p-6"
-            style={{ background: "rgba(255,255,255,0.98)" }}
-            onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Star className="w-5 h-5 text-yellow-500" />
-                <h2 className="text-lg font-bold text-gray-800">Super Deal</h2>
-              </div>
-              <button onClick={() => setShowSuperInfo(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.06)" }}>
-                <X className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-            <p className="text-sm text-gray-600 mb-3">
-              Taxa reduzida de <strong className="text-yellow-600">1%</strong> vs 5% do Regular.
-            </p>
-            <p className="text-sm text-gray-600 mb-5">
-              Cobrada apenas se houver perdedor. Se todos cumprirem, o valor integral é devolvido.
-            </p>
-            <button onClick={() => setShowSuperInfo(false)}
-              className="w-full py-3 rounded-2xl font-semibold text-sm text-white"
-              style={{ background: "linear-gradient(135deg,#FFAA00,#FF6B00)" }}>
-              Entendido
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

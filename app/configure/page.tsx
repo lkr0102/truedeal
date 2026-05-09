@@ -122,7 +122,7 @@ export default function ConfigureDealPage() {
         </button>
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
           style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
-          <span className="text-xs font-bold text-[#16A34A]">Deal · 3% fee</span>
+          <span className="text-xs font-bold text-[#16A34A]">Taxa · 3%</span>
         </div>
       </header>
 
@@ -348,9 +348,7 @@ export default function ConfigureDealPage() {
                 onClick={handleConfirm}
                 disabled={isSubmitting}
                 className="flex-1 py-3 rounded-xl font-bold text-white text-sm disabled:opacity-60"
-                style={{
-                  background: "linear-gradient(135deg,#16A34A,#22C55E)",
-                }}
+                style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}
               >
                 {isSubmitting ? "Criando…" : "Confirmar"}
               </button>

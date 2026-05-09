@@ -5,12 +5,10 @@ import { useRouter } from "next/navigation"
 import { differenceInCalendarDays, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import {
-  ArrowLeft, Share2, Users, DollarSign, Clock, Activity,
-  CheckCircle2, XCircle, Trophy,
-  Lock, AlertCircle, Loader2, ExternalLink, CalendarDays, Hourglass
+  ArrowLeft, Share2, Activity,
+  Trophy, Lock, ExternalLink, BarChart2, ChevronRight, ChevronDown,
 } from "lucide-react"
-import { GlassCard, PrimaryBtn, GhostBtn } from "@/components/td-ui"
-import { joinDeal, depositToEscrow } from "@/lib/actions/deals"
+import { GlassCard } from "@/components/td-ui"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -24,11 +22,16 @@ interface Participant {
   initials: string
   name: string
   username: string
+  socialHandle?: string
+  userTag?: string
   color: string
   bg: string
   rank: number
   isMe: boolean
   value: number
+  currentValue: number
+  startValue: number
+  hasData: boolean
   approved: boolean
   paid: boolean
   joinedDaysAgo: number
@@ -48,6 +51,14 @@ interface PrizeSlice {
   amount: number
 }
 
+interface SocialConnection {
+  platform: string
+  status: string
+  username?: string | null
+  member_email?: string | null
+  external_id?: string | null
+}
+
 interface DealView {
   id: string
   title: string
@@ -55,6 +66,7 @@ interface DealView {
   status: DealStatus
   prizeType: PrizeType
   verifications: VerifType[]
+  verificationChannels: string[]
   pot: number
   valuePerPerson: number
   participants: number
@@ -85,6 +97,13 @@ const PLAYER_BG     = [
 
 function getInitials(name: string) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
+}
+
+function getUserTag(username: string) {
+  const plain = username.replace(/^@/, "")
+  const digits = (plain.match(/\d+/g) ?? []).join("")
+  if (digits) return `#${digits}`
+  return `#${plain}`
 }
 
 function buildPrizeSlices(distribution: Distribution, netPot: number): PrizeSlice[] {
@@ -127,19 +146,24 @@ function mapDeal(d: DealWithParticipants, userId: string | null): DealView {
   const verifications = (d.verification_channels ?? []).filter(c => knownVerifs.includes(c)) as VerifType[]
 
   const participants_list: Participant[] = d.participants.map((p, i) => {
-    const name        = p.profile.display_name || p.profile.username
-    const snapshotVal = p.current_snapshot ? (Object.values(p.current_snapshot)[0] as number ?? 0) : 0
-    const joinedAt    = new Date(p.joined_at)
+    const name       = p.profile.display_name || p.profile.username
+    const startVal   = p.start_snapshot   ? (Object.values(p.start_snapshot)[0]   as number ?? 0) : 0
+    const currVal    = p.current_snapshot ? (Object.values(p.current_snapshot)[0] as number ?? 0) : 0
+    const joinedAt   = new Date(p.joined_at)
     return {
       id:           p.id,
       initials:     getInitials(name),
       name,
       username:     `@${p.profile.username}`,
+      userTag:      getUserTag(p.profile.username),
       color:        PLAYER_COLORS[i % PLAYER_COLORS.length],
       bg:           PLAYER_BG[i % PLAYER_BG.length],
       rank:         p.rank ?? (i + 1),
       isMe:         p.user_id === userId,
-      value:        snapshotVal,
+      value:        currVal,
+      currentValue: currVal,
+      startValue:   startVal,
+      hasData:      p.start_snapshot !== null || p.current_snapshot !== null,
       approved:     p.status !== "eliminated",
       paid:         true,
       joinedDaysAgo: Math.max(0, differenceInCalendarDays(now, joinedAt)),
@@ -172,6 +196,7 @@ function mapDeal(d: DealWithParticipants, userId: string | null): DealView {
     status,
     prizeType,
     verifications,
+    verificationChannels: d.verification_channels ?? [],
     pot:            d.pot_total,
     valuePerPerson: d.entry_amount,
     participants:   d.participant_count,
@@ -241,7 +266,7 @@ const RULE_LABELS: Record<string, string> = {
 const DIST_META: Record<string, { label: string; icon: string; desc: string }> = {
   winner:       { label: "1º Lugar",      icon: "👑", desc: "Winner takes all" },
   top3:         { label: "Ranking",        icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% do pote" },
-  proportional: { label: "Proporcional",   icon: "🤝", desc: "Pote ÷ todos que cumprirem a regra" },
+  proportional: { label: "Proporcional",   icon: "🤝", desc: "Pote final dividido entre todos que cumprirem o acordo." },
 }
 
 function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithParticipants }) {
@@ -289,7 +314,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">
-                {(dealData as any).mode === "super" ? "⭐ Super Deal" : "Deal Regular"}
+                Deal
               </p>
               <h2 className="text-xl font-bold text-white leading-tight">{deal.title}</h2>
             </div>
@@ -315,49 +340,21 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
         </div>
       </div>
 
-      {/* Rows — igual confirmRows */}
-      <div className="space-y-2 mb-3">
-        {confirmRows.map(row => (
+      {/* Compact info rows — single card */}
+      <div className="rounded-xl overflow-hidden mb-3"
+        style={{ background: "rgba(255,255,255,0.48)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+        {[
+          ...confirmRows,
+          { icon: distMeta.icon, iconBg: "rgba(168,85,247,0.1)", key: "Premiação", val: `${distMeta.label} · ${distMeta.desc}` },
+        ].map((row, i, arr) => (
           <div key={row.key}
-            className="flex items-center gap-3 p-3.5 rounded-xl"
-            style={{
-              background: "rgba(255,255,255,0.48)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(255,255,255,0.6)",
-            }}>
-            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: row.iconBg }}>
-              <span className="text-base">{row.icon}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{row.key}</p>
-              <p className="text-[13px] font-bold text-gray-800 mt-0.5">{row.val}</p>
-            </div>
+            className="flex items-center gap-3 px-3.5 py-2.5"
+            style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
+            <span className="text-sm flex-shrink-0">{row.icon}</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 w-16 flex-shrink-0">{row.key}</span>
+            <span className="text-[12px] font-semibold text-gray-800 flex-1 min-w-0 truncate">{row.val}</span>
           </div>
         ))}
-      </div>
-
-      {/* Distribuição detalhada */}
-      <div className="flex items-center gap-3 p-3.5 rounded-xl mb-3"
-        style={{ background: "rgba(255,255,255,0.48)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-          style={{ background: "rgba(168,85,247,0.1)" }}>
-          <span className="text-base">{distMeta.icon}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Premiação</p>
-          <p className="text-[13px] font-bold text-gray-800 mt-0.5">{distMeta.label}</p>
-          <p className="text-[11px] text-gray-400 mt-0.5">{distMeta.desc}</p>
-        </div>
-      </div>
-
-      {/* Fee info */}
-      <div className="p-3.5 rounded-xl"
-        style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-        <p className="text-xs text-gray-600 leading-relaxed">
-          Taxa de <strong className="text-[#16A34A]">{feeRate}%</strong> cobrada apenas se houver perdedor.
-          Se todos cumprirem, o valor integral é devolvido.
-        </p>
       </div>
 
       {deal.description && (
@@ -371,39 +368,104 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
   )
 }
 
-// ── Participants list ─────────────────────────────────────────────────────────
+// ── Live ranking card ─────────────────────────────────────────────────────────
 
-function ParticipantsList({ deal }: { deal: DealView }) {
+function PlayerCard({
+  player, expanded, onToggle,
+}: { player: Participant; expanded: boolean; onToggle: () => void }) {
+  const delta    = player.currentValue - player.startValue
+  const deltaStr = player.hasData
+    ? (delta >= 0 ? `+${delta.toLocaleString("pt-BR")}` : delta.toLocaleString("pt-BR"))
+    : "—"
+
   return (
-    <GlassCard style={{ padding: "14px 16px", marginTop: 12, marginBottom: 4 }}>
-      <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
-        Participantes · {deal.participants_list.length}
-      </p>
-      <div className="space-y-2">
-        {deal.participants_list.sort((a, b) => a.rank - b.rank).map((p) => (
-          <div key={p.id}
-            className="flex items-center gap-3 p-2.5 rounded-xl"
-            style={{ background: p.isMe ? "rgba(37,99,235,0.06)" : "rgba(0,0,0,0.03)" }}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-              style={{ background: p.bg, border: `2px solid ${p.color}` }}>
-              <span className="text-xs font-bold" style={{ color: p.color }}>{p.initials}</span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-semibold text-gray-800 truncate">{p.name}</span>
-                {p.isMe && (
-                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                    style={{ background: "rgba(37,99,235,0.12)", color: "#2563EB" }}>
-                    Você
-                  </span>
-                )}
-              </div>
-              <span className="text-[11px] text-gray-400">{p.username}</span>
-            </div>
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#16A34A" }} />
+    <GlassCard
+      accent={player.isMe ? "#16A34A" : undefined}
+      style={{ overflow: "hidden", background: player.isMe ? "rgba(22,163,74,0.05)" : undefined }}
+    >
+      <button
+        onClick={onToggle}
+        style={{
+          width: "100%", padding: 14,
+          display: "flex", gap: 12, alignItems: "center",
+          background: "none", border: "none", cursor: "pointer", textAlign: "left",
+        }}
+      >
+        <div style={{ width: 24, textAlign: "center", flexShrink: 0 }}>
+          <span style={{ fontWeight: 900, fontSize: 16, color: player.rank === 1 ? "#16A34A" : "#9CA3AF" }}>
+            #{player.rank}
+          </span>
+        </div>
+        <div style={{
+          width: 44, height: 44, borderRadius: 13, flexShrink: 0,
+          background: `linear-gradient(135deg,${player.bg},${player.bg}CC)`,
+          border: `2px solid ${player.color}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <span style={{ fontWeight: 700, fontSize: 13, color: player.color }}>{player.initials}</span>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontWeight: 700, color: "#1f2937", fontSize: 13 }}>{player.name}</span>
+            {player.userTag && (
+              <span style={{ fontStyle: "italic", fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
+                {player.userTag}
+              </span>
+            )}
+            {player.isMe && (
+              <span style={{
+                fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 100,
+                background: "rgba(22,163,74,0.15)", color: "#16A34A",
+              }}>Você</span>
+            )}
           </div>
-        ))}
-      </div>
+          <div style={{ fontSize: 11, color: "#9CA3AF" }}>
+            {player.socialHandle ?? player.username}
+          </div>
+          {player.hasData && (
+            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 2, color: delta >= 0 ? "#16A34A" : "#EF4444" }}>
+              {deltaStr} pts
+            </div>
+          )}
+        </div>
+        <div style={{ textAlign: "right", flexShrink: 0 }}>
+          {player.hasData ? (
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#1f2937" }}>
+              {player.currentValue.toLocaleString("pt-BR")}
+            </div>
+          ) : (
+            <div style={{ fontSize: 11, color: "#9CA3AF" }}>sem dados</div>
+          )}
+        </div>
+        {expanded
+          ? <ChevronDown size={14} color="#9CA3AF" style={{ flexShrink: 0 }} />
+          : <ChevronRight size={14} color="#9CA3AF" style={{ flexShrink: 0 }} />}
+      </button>
+
+      {expanded && (
+        <div style={{ padding: "0 14px 14px", borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+          {player.hasData ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingTop: 10 }}>
+              {[
+                { label: "Início", value: player.startValue.toLocaleString("pt-BR") },
+                { label: "Atual",  value: player.currentValue.toLocaleString("pt-BR") },
+              ].map(({ label, value }) => (
+                <div key={label} style={{
+                  borderRadius: 10, padding: "8px 4px", textAlign: "center",
+                  background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.6)",
+                }}>
+                  <div style={{ fontWeight: 700, color: "#1f2937", fontSize: 12 }}>{value}</div>
+                  <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>{label}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", paddingTop: 10 }}>
+              Dados de tracking ainda não disponíveis
+            </p>
+          )}
+        </div>
+      )}
     </GlassCard>
   )
 }
@@ -413,62 +475,53 @@ function ParticipantsList({ deal }: { deal: DealView }) {
 export default function DealClient({
   deal: dealData,
   userId,
+  userSocialConnections,
 }: {
   deal: DealWithParticipants
   userId: string | null
+  userSocialConnections?: SocialConnection[]
 }) {
   const router  = useRouter()
   const deal    = mapDeal(dealData, userId)
-  const [joining,   setJoining]   = useState(false)
-  const [joinError, setJoinError] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const isParticipating = userId
-    ? dealData.participants.some(p => p.user_id === userId)
-    : false
-  const isFull      = dealData.participant_count >= dealData.max_participants
-  const isCreator   = userId === dealData.creator_id
+  const requiredChannel = deal.verificationChannels?.[0] ?? null
+  const requiredChannelLabel = requiredChannel ? CHANNEL_LABELS[requiredChannel] ?? requiredChannel : null
+  const hasRequiredConnection = requiredChannel
+    ? !!userSocialConnections?.some(c =>
+        c.platform === requiredChannel && c.status !== "pending" &&
+        (c.username || c.member_email || c.external_id)
+      )
+    : true
 
-  async function handleJoinDeal() {
-    if (joining) return
-    setJoining(true)
-    setJoinError(null)
-    const result = await joinDeal(dealData.id)
-    if (result.error) {
-      setJoinError(result.error)
-      setJoining(false)
-      return
-    }
+  const showMissingConnectionWarning = Boolean(
+    userId && requiredChannel && !hasRequiredConnection
+  )
 
-    // New: Trigger On-Chain Escrow Deposit
-    const escrowResult = await depositToEscrow(dealData.id)
-    if (escrowResult.error) {
-      setJoinError(escrowResult.error)
-      setJoining(false)
-      return
-    }
-
-    // New: Trigger Initial Snapshot (DealGuard Oracle)
-    try {
-      await fetch('/api/verify/x', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId: dealData.id, userId, xUsername: "user_twitter" })
-      })
-    } catch (e) { console.warn("Snapshot fail", e) }
-
-    router.refresh()
-  }
-
-  const daysLeft  = deal.daysTotal - deal.daysGone
-  const pct       = Math.round(deal.progress * 100)
   const isWinning = deal.myRank != null && deal.myRank <= Math.ceil(deal.participants * 0.3)
 
   const myInitials = userId
     ? deal.participants_list.find(p => p.isMe)?.initials ?? "EU"
     : "EU"
 
+  // ── Participant stats ──
+  const aliveList       = deal.participants_list.filter(p => p.approved)
+  const eliminatedList  = deal.participants_list.filter(p => !p.approved)
+  const aliveCount      = aliveList.length
+  const eliminatedCount = eliminatedList.length
+  const totalCount      = deal.participants_list.length
+
+  // ── Financial calc ──
+  const entryAmount    = dealData.entry_amount
+  const feePct         = dealData.fee_pct ?? 3
+  const loserPool      = entryAmount * eliminatedCount
+  const netLoserPool   = loserPool * (1 - feePct / 100)
+  const extraPerWinner = aliveCount > 0 && eliminatedCount > 0 ? netLoserPool / aliveCount : 0
+  const totalPerWinner = entryAmount + extraPerWinner
+  const isAlive        = deal.participants_list.find(p => p.isMe)?.approved ?? false
+
   return (
-    <div className="min-h-screen pb-32"
+    <div className="min-h-screen pb-8"
       style={{
         backgroundImage: "url('/images/gradient-background.jpg')",
         backgroundSize: "cover", backgroundPosition: "center",
@@ -513,10 +566,10 @@ export default function DealClient({
             <>
               <div className="flex justify-between items-center mb-1.5">
                 <span className="text-white/70 text-xs">Progresso</span>
-                <span className="text-white font-bold text-xs">{pct}%</span>
+                <span className="text-white font-bold text-xs">{Math.round(deal.progress * 100)}%</span>
               </div>
               <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.2)" }}>
-                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "rgba(255,255,255,0.9)" }} />
+                <div className="h-full rounded-full" style={{ width: `${Math.round(deal.progress * 100)}%`, background: "rgba(255,255,255,0.9)" }} />
               </div>
             </>
           )}
@@ -538,28 +591,6 @@ export default function DealClient({
 
         {/* Info grid */}
         <div className="px-5 -mt-1">
-          <div className="grid grid-cols-2 gap-3 pb-1">
-            {[
-              { label: "Pote total",    value: `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, Icon: DollarSign, color: "#16A34A" },
-              { label: "Entrada",       value: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}/pessoa`, Icon: Lock,        color: "#3B82F6" },
-              { label: "Participantes", value: `${deal.participants}`,                                    Icon: Users,       color: "#8B5CF6" },
-              { label: deal.status === "ativo" ? "Dias restantes" : "Duração",
-                value: deal.status === "ativo" ? `${daysLeft}d` : `${deal.daysTotal}d`,
-                Icon: Clock, color: "#F59E0B" },
-            ].map((stat, i) => (
-              <GlassCard key={i} style={{ padding: "12px 14px" }}>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-                    style={{ background: `${stat.color}18` }}>
-                    <stat.Icon className="w-3.5 h-3.5" style={{ color: stat.color }} />
-                  </div>
-                  <span className="text-[10px] text-gray-400 font-medium">{stat.label}</span>
-                </div>
-                <p className="text-gray-800 font-bold text-base leading-tight">{stat.value}</p>
-              </GlassCard>
-            ))}
-          </div>
-
           {/* My rank tile */}
           {deal.myRank != null && (
             <GlassCard style={{ padding: "12px 16px", marginTop: 12 }}
@@ -589,79 +620,188 @@ export default function DealClient({
             </GlassCard>
           )}
 
-          <DealRulesCard deal={deal} dealData={dealData} />
-          <ParticipantsList deal={deal} />
-        </div>
-      </div>
+          {showMissingConnectionWarning && requiredChannelLabel && (
+            <div className="rounded-xl p-4 mb-3"
+              style={{ background: "rgba(254,243,199,0.9)", border: "1px solid rgba(245,158,11,0.3)" }}>
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-700 mb-2">
+                Atenção
+              </p>
+              <p className="text-sm text-orange-900 leading-relaxed mb-3">
+                Você precisa vincular sua conta do canal de verificação utilizado no deal em questão ({requiredChannelLabel}) para participar.
+              </p>
+              <a
+                href="/profile"
+                className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white"
+                style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}
+              >
+                Ir para perfil
+              </a>
+            </div>
+          )}
 
-      {/* Sticky footer */}
-      <div className="fixed bottom-0 left-0 right-0 px-5 py-4 z-20"
-        style={{
-          background: "rgba(255,255,255,0.85)",
-          backdropFilter: "blur(40px) saturate(200%)",
-          WebkitBackdropFilter: "blur(40px) saturate(200%)",
-          borderTop: "1px solid rgba(255,255,255,0.6)",
-        }}>
-        <div className="flex items-center gap-4">
-          <div>
-            <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF" }}>
-              Pote total
+          <DealRulesCard deal={deal} dealData={dealData} />
+
+          {/* Situação dos participantes */}
+          <GlassCard style={{ padding: 16, marginTop: 12 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
+              Situação do desafio
             </p>
-            <p style={{ fontSize: 22, fontWeight: 900, color: "#16A34A", lineHeight: 1.1 }}>
-              R${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-            </p>
-            <p style={{ fontSize: 10, color: "#6B7280" }}>{deal.participants} participantes</p>
-          </div>
-          <div className="flex-1">
-            {deal.status === "ativo" ? (
-              <PrimaryBtn
-                style={{ width: "100%", textAlign: "center", borderRadius: 12 }}
-                onClick={() => router.push(`/tracking?id=${deal.id}`)}>
-                Ver Tracking →
-              </PrimaryBtn>
-            ) : deal.status === "pendente" ? (
-              <div className="flex-1 flex flex-col gap-1.5">
-                {joinError && (
-                  <div className="flex items-center gap-1.5 text-red-500 text-xs px-1">
-                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                    <span>{joinError}</span>
-                  </div>
-                )}
-                {isCreator || isParticipating ? (
-                  <div className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl"
-                    style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.25)" }}>
-                    <Hourglass className="w-4 h-4 flex-shrink-0" style={{ color: "#D97706" }} />
-                    <div>
-                      <p className="text-xs font-bold" style={{ color: "#D97706" }}>Aguardando participantes</p>
-                      <p className="text-[10px] text-gray-400">O deal inicia quando o período começar</p>
-                    </div>
-                  </div>
-                ) : (
-                  <PrimaryBtn
-                    disabled={joining || isFull}
-                    style={{
-                      width: "100%", textAlign: "center", borderRadius: 12,
-                      opacity: (joining || isFull) ? 0.65 : 1,
-                      cursor: (joining || isFull) ? "not-allowed" : "pointer",
-                    }}
-                    onClick={handleJoinDeal}>
-                    {joining ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Entrando…
-                      </span>
-                    ) : isFull ? "Deal lotado" : "Entrar no Deal →"}
-                  </PrimaryBtn>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
+              {[
+                { label: "Iniciaram",  value: totalCount,      color: "#374151", bg: "rgba(0,0,0,0.04)"         },
+                { label: "No jogo",    value: aliveCount,      color: "#16A34A", bg: "rgba(22,163,74,0.08)"     },
+                { label: "Eliminados", value: eliminatedCount, color: "#EF4444", bg: "rgba(239,68,68,0.08)"     },
+              ].map(({ label, value, color, bg }) => (
+                <div key={label} style={{
+                  borderRadius: 12, padding: "10px 8px", textAlign: "center", background: bg,
+                }}>
+                  <p style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1 }}>{value}</p>
+                  <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>{label}</p>
+                </div>
+              ))}
+            </div>
+            {/* Barra proporcional */}
+            {totalCount > 0 && (
+              <div style={{ height: 8, borderRadius: 100, overflow: "hidden", display: "flex" }}>
+                <div style={{
+                  width: `${(aliveCount / totalCount) * 100}%`,
+                  background: "linear-gradient(90deg,#16A34A,#22C55E)",
+                  transition: "width 0.5s ease",
+                }} />
+                <div style={{
+                  width: `${(eliminatedCount / totalCount) * 100}%`,
+                  background: "linear-gradient(90deg,#EF4444,#F87171)",
+                  transition: "width 0.5s ease",
+                }} />
+                <div style={{ flex: 1, background: "rgba(0,0,0,0.07)" }} />
+              </div>
+            )}
+            {totalCount > 0 && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
+                <span style={{ fontSize: 10, color: "#16A34A" }}>
+                  {Math.round((aliveCount / totalCount) * 100)}% ainda competindo
+                </span>
+                {eliminatedCount > 0 && (
+                  <span style={{ fontSize: 10, color: "#EF4444" }}>
+                    {Math.round((eliminatedCount / totalCount) * 100)}% eliminados
+                  </span>
                 )}
               </div>
-            ) : (
-              <GhostBtn
-                style={{ width: "100%", textAlign: "center", borderRadius: 12 }}
-                onClick={() => router.push(`/deal/${deal.id}/result`)}>
-                Ver Resultado Final
-              </GhostBtn>
             )}
+          </GlassCard>
+
+          {/* Cálculo financeiro */}
+          {deal.status !== "pendente" && (
+            <GlassCard style={{ padding: 16, marginTop: 12 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
+                Pote atual por participante ativo
+              </p>
+
+              {/* Breakdown */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 12, color: "#6B7280" }}>Entrada paga</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
+                    R${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                {eliminatedCount > 0 && (
+                  <>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 12, color: "#6B7280" }}>
+                        Pote dos eliminados ({eliminatedCount}× entrada)
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
+                        R${loserPool.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 12, color: "#9CA3AF" }}>
+                        Taxa da plataforma ({feePct}%)
+                      </span>
+                      <span style={{ fontSize: 12, color: "#9CA3AF" }}>
+                        −R${(loserPool * feePct / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 12, color: "#6B7280" }}>
+                        Distribuído entre {aliveCount} ativos
+                      </span>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "#16A34A" }}>
+                        +R${extraPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <div style={{ height: 1, background: "rgba(0,0,0,0.07)", margin: "4px 0" }} />
+                  </>
+                )}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Total estimado por ativo</span>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: "#16A34A" }}>
+                    R${totalPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* Mensagem motivacional */}
+              {eliminatedCount === 0 ? (
+                <div style={{
+                  padding: "10px 12px", borderRadius: 12,
+                  background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)",
+                }}>
+                  <p style={{ fontSize: 12, color: "#3B82F6", fontWeight: 600, lineHeight: 1.5 }}>
+                    🤝 Todos ainda no jogo! Ninguém foi eliminado — se isso se mantiver, cada participante recupera os{" "}
+                    <strong>R${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> integralmente.
+                  </p>
+                </div>
+              ) : isAlive ? (
+                <div style={{
+                  padding: "10px 12px", borderRadius: 12,
+                  background: "linear-gradient(135deg,rgba(22,163,74,0.1),rgba(34,197,94,0.06))",
+                  border: "1px solid rgba(22,163,74,0.25)",
+                }}>
+                  <p style={{ fontSize: 12, color: "#16A34A", fontWeight: 700, lineHeight: 1.5 }}>
+                    ✅ Cumprir sua palavra está te fazendo ganhar{" "}
+                    <strong>R${extraPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> a mais.{" "}
+                    Continue assim!
+                  </p>
+                </div>
+              ) : (
+                <div style={{
+                  padding: "10px 12px", borderRadius: 12,
+                  background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)",
+                }}>
+                  <p style={{ fontSize: 12, color: "#EF4444", fontWeight: 600, lineHeight: 1.5 }}>
+                    ❌ Você foi eliminado deste deal. Acompanhe quem vai até o fim.
+                  </p>
+                </div>
+              )}
+            </GlassCard>
+          )}
+
+          {/* Live ranking */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, marginBottom: 4 }}>
+            <BarChart2 size={15} color="#16A34A" />
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Participantes</span>
+            <div
+              className="animate-pulse"
+              style={{ width: 7, height: 7, borderRadius: "50%", background: "#16A34A", marginLeft: "auto" }}
+            />
+            <span style={{ fontSize: 10, color: "#9CA3AF" }}>atualizado agora</span>
           </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {deal.participants_list
+              .sort((a, b) => a.rank - b.rank)
+              .map(player => (
+                <PlayerCard
+                  key={player.id}
+                  player={player}
+                  expanded={expandedId === player.id}
+                  onToggle={() => setExpandedId(expandedId === player.id ? null : player.id)}
+                />
+              ))}
+          </div>
+
         </div>
       </div>
     </div>
