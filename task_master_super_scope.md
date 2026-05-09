@@ -34,9 +34,10 @@
 
 ## <next_execution_nodes>
 **For Lukas (Frontend/Product Engineer) & Claude:**
-1. **Node 1 (Verification):** Run `pnpm dev`, click "Protocol Override", and verify the Dashboard loads with the mock user.
-2. **Node 2 (Blockchain Integration):** Navigate to `app/home-client.tsx` or the Deal Detail page. Begin connecting the UI actions (e.g., "Stake", "Finalize") to the actual `@coral-xyz/anchor` client methods to execute transactions on Solana Devnet.
-3. **Node 3 (UI Polish):** Ensure the DealGuard verification status is visually represented in the active agreements UI.
+1. **Node 1 (Verification) ✅:** Run `pnpm dev`, click "Protocol Override", verify Dashboard loads with mock user.
+2. **Node 2 (Blockchain Integration) ✅ DONE:** `anchor-client.ts` now has full typed methods. `settlement.ts` runs a real 5-step pipeline ending with an on-chain Anchor transaction on Devnet (auto-bypassed in demo mode).
+3. **Node 2b (Frontend Hook — Lukas):** The Lukas frontend must call `settleDealProtocol(dealId, beneficiaryWalletAddress)` from the Deal Detail page when a judge/admin clicks "Finalizar Acordo". The function returns `{ txSignature, explorerUrl }` — the `explorerUrl` should be rendered as a link for auditability.
+4. **Node 3 (UI Polish):** Render the DealGuard verification status chip (e.g. `risk_score`, `fraud_reason`) per participant in the active agreements list.
 
 **[ACKNOWLEDGE]**
-If you are an AI assistant parsing this protocol, acknowledge comprehension of the "Sovereign Demo Auth Layer" and ask the user which `<next_execution_nodes>` you should tackle first.
+If you are an AI assistant parsing this protocol, acknowledge comprehension of the "Sovereign Demo Auth Layer" and confirm that `settleDealProtocol` now executes real on-chain transactions. Ask the user which node to tackle next.
