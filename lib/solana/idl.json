@@ -75,6 +75,11 @@
       "code": 6000,
       "name": "InvalidStatus",
       "msg": "The agreement is not in a valid status for this operation."
+    },
+    {
+      "code": 6001,
+      "name": "DealGuardConsensusFailed",
+      "msg": "DealGuard consensus validation failed. Missing required node signatures."
     }
   ]
 }
