@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Star, X, Check } from "lucide-react"
+import { ArrowLeft, X, Check } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
 import type { DealCategory, DealType } from "@/lib/supabase/types"
 
@@ -11,7 +11,7 @@ import type { DealCategory, DealType } from "@/lib/supabase/types"
 const AMOUNT_PRESETS = [25, 50, 100, 200, 500]
 
 const DISTRIBUTION_TYPES = [
-  { id: "proportional", label: "Proporcional", desc: "Baseado no desempenho de cada um" },
+  { id: "proportional", label: "Proporcional", desc: "Pote final dividido entre todos que cumprirem o acordo." },
   { id: "top3",         label: "Ranking",       desc: "Top 3: 60% · 30% · 10%"         },
   { id: "winner",       label: "1º Lugar",      desc: "100% para quem chegar na frente" },
 ]
@@ -30,7 +30,6 @@ export default function ConfigureDealPage() {
 
   // Draft from step 1
   const [dealName,   setDealName]   = useState("")
-  const [dealMode,   setDealMode]   = useState<"regular" | "super">("regular")
   const [privacy,    setPrivacy]    = useState("private")
   const [category,   setCategory]   = useState<DealCategory>("free")
   const [channel,    setChannel]    = useState("")
@@ -55,7 +54,6 @@ export default function ConfigureDealPage() {
     try {
       const draft = JSON.parse(sessionStorage.getItem("dealDraft") ?? "{}")
       if (draft.dealName)  setDealName(draft.dealName)
-      if (draft.dealMode)  setDealMode(draft.dealMode)
       if (draft.privacy)   setPrivacy(draft.privacy)
       if (draft.category)  setCategory(draft.category as DealCategory)
       if (draft.channel)   setChannel(draft.channel)
@@ -68,7 +66,7 @@ export default function ConfigureDealPage() {
   }, [])
 
   const effectiveAmount = isCustomAmt ? (parseFloat(customAmtStr) || 0) : amount
-  const feeRate = dealMode === "super" ? 1 : 5
+  const feeRate = 3
   const isValid = effectiveAmount >= 10
 
   async function handleConfirm() {
@@ -81,7 +79,6 @@ export default function ConfigureDealPage() {
     const result = await createDeal({
       title:                 dealName || "Deal sem nome",
       type:                  privacyMap[privacy] ?? "privado",
-      mode:                  dealMode,
       category,
       verification_type:     rule,
       verification_channels: [channel],
@@ -123,18 +120,10 @@ export default function ConfigureDealPage() {
           <ArrowLeft className="w-5 h-5" />
           <span className="font-medium">Configuração</span>
         </button>
-        {dealMode === "super" ? (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-            style={{ background: "rgba(255,170,0,0.12)", border: "1px solid rgba(255,170,0,0.3)" }}>
-            <Star className="w-3.5 h-3.5 text-yellow-500" />
-            <span className="text-xs font-bold text-yellow-600">Super Deal · 1%</span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-            style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
-            <span className="text-xs font-bold text-[#16A34A]">Regular · 5%</span>
-          </div>
-        )}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+          style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
+          <span className="text-xs font-bold text-[#16A34A]">Deal · 3% fee</span>
+        </div>
       </header>
 
       {/* Steps */}
@@ -262,16 +251,12 @@ export default function ConfigureDealPage() {
           <div
             className="p-5 rounded-2xl text-center"
             style={{
-              background: dealMode === "super"
-                ? "linear-gradient(135deg,rgba(255,170,0,0.1),rgba(255,107,0,0.07))"
-                : "linear-gradient(135deg,rgba(22,163,74,0.1),rgba(123,123,255,0.07))",
-              border: dealMode === "super"
-                ? "1px solid rgba(255,170,0,0.3)"
-                : "1px solid rgba(22,163,74,0.25)",
+              background: "linear-gradient(135deg,rgba(22,163,74,0.1),rgba(123,123,255,0.07))",
+              border: "1px solid rgba(22,163,74,0.25)",
             }}
           >
             <p className="text-[10px] font-bold text-gray-500 tracking-widest mb-1">SEU DEPÓSITO</p>
-            <p className="text-3xl font-bold" style={{ color: dealMode === "super" ? "#FFAA00" : "#16A34A" }}>
+            <p className="text-3xl font-bold" style={{ color: "#16A34A" }}>
               R$ {effectiveAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             <p className="text-xs text-gray-500 mt-1">
@@ -294,12 +279,8 @@ export default function ConfigureDealPage() {
           disabled={!isValid}
           className={`w-full py-4 rounded-2xl font-bold text-white text-sm transition-all duration-300 tracking-wide ${isValid ? "active:scale-[0.98]" : "opacity-40 cursor-not-allowed"}`}
           style={{
-            background: dealMode === "super"
-              ? "linear-gradient(135deg,#FFAA00,#FF6B00)"
-              : "linear-gradient(135deg,#16A34A,#22C55E)",
-            boxShadow: isValid
-              ? dealMode === "super" ? "0 8px 32px rgba(255,170,0,0.4)" : "0 8px 32px rgba(22,163,74,0.4)"
-              : "none",
+            background: "linear-gradient(135deg,#16A34A,#22C55E)",
+            boxShadow: isValid ? "0 8px 32px rgba(22,163,74,0.4)" : "none",
             letterSpacing: "0.04em",
           }}
         >
@@ -336,7 +317,6 @@ export default function ConfigureDealPage() {
             <div className="space-y-3 mb-6">
               {[
                 ["Nome",        dealName],
-                ["Modalidade",  dealMode === "super" ? "⭐ Super Deal" : "Regular"],
                 ["Visibilidade",privacy === "private" ? "🔒 Privado" : "🌐 Público"],
                 ["Canal",       channel],
                 ["Regra",       `${quantity}× ${rule?.replace(/_/g, " ")} por ${frequency}`],
@@ -369,9 +349,7 @@ export default function ConfigureDealPage() {
                 disabled={isSubmitting}
                 className="flex-1 py-3 rounded-xl font-bold text-white text-sm disabled:opacity-60"
                 style={{
-                  background: dealMode === "super"
-                    ? "linear-gradient(135deg,#FFAA00,#FF6B00)"
-                    : "linear-gradient(135deg,#16A34A,#22C55E)",
+                  background: "linear-gradient(135deg,#16A34A,#22C55E)",
                 }}
               >
                 {isSubmitting ? "Criando…" : "Confirmar"}

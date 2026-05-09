@@ -84,7 +84,7 @@ export interface Deal {
   verification_type:    string       // 'social_followers', 'fitness_steps', etc.
   verification_channels: string[]    // ['x', 'strava', 'manual']
   entry_amount:         number       // BRL
-  fee_pct:              number       // 5 ou 1
+  fee_pct:              number       // 3 (fixo sobre o pote dos perdedores)
   distribution:         Distribution
   payment_method:       PaymentMethod
   max_participants:     number
@@ -152,7 +152,7 @@ export type DailyCheckinInsert = Omit<DailyCheckin, "id">
 // ── Computed helpers ───────────────────────────────────────────────────────────
 
 export interface DealWithParticipants extends Deal {
-  participants: (DealParticipant & { profile: Pick<Profile, "id" | "username" | "display_name" | "avatar_url"> })[]
+  participants: (DealParticipant & { profile: Pick<Profile, "id" | "username" | "display_name" | "avatar_url">; socialHandle?: string })[]
   participant_count: number
   pot_total: number   // entry_amount * participant_count
   net_pot: number     // pot_total * (1 - fee_pct/100)
