@@ -211,7 +211,7 @@ export default function LoginPage() {
 
           {!isSignUp && (
             <div className="text-right -mt-1">
-              <button type="button" className="text-xs text-[#16A34A] hover:underline">
+              <button type="button" className="text-xs text-[#00D26A] hover:underline">
                 Esqueci minha senha
               </button>
             </div>
@@ -220,17 +220,17 @@ export default function LoginPage() {
           {authError && <p className="text-xs text-red-500 text-center px-2">{authError}</p>}
 
           <button type="submit" disabled={isLoading}
-            className="w-full py-3 rounded-xl font-semibold text-white transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
-            style={{ background: "linear-gradient(135deg,#16A34A 0%,#22C55E 100%)", boxShadow: "0 8px 24px rgba(22,163,74,0.35)" }}>
+            className="w-full py-3 rounded-xl font-bold text-black transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
+            style={{ background: "#00D26A", boxShadow: "0 8px 24px rgba(0,210,106,0.25)" }}>
             {isLoading
               ? (isSignUp ? "Criando conta…" : "Entrando…")
-              : (isSignUp ? "Criar conta" : "Entrar com e-mail")}
+              : (isSignUp ? "Entrar na Plataforma")}
           </button>
 
           <p className="text-center text-xs text-gray-500">
             {isSignUp ? "Já tem conta?" : "Não tem conta?"}{" "}
             <button type="button" onClick={() => { setIsSignUp(v => !v); setAuthError(null) }}
-              className="text-[#16A34A] font-medium hover:underline">
+              className="text-[#00D26A] font-medium hover:underline">
               {isSignUp ? "Entrar" : "Cadastre-se"}
             </button>
           </p>
@@ -281,12 +281,28 @@ export default function LoginPage() {
           <span style={{ color: "#9945FF" }}>→</span>
         </button>
 
-        {/* Termos */}
-        <p className="text-center text-xs text-gray-500">
-          Ao continuar, você aceita os{" "}
-          <a href="#" className="text-blue-600 hover:underline">Termos de Uso</a> e a{" "}
-          <a href="#" className="text-blue-600 hover:underline">Política de Privacidade</a>
-        </p>
+        {/* Termos e Acesso Juiz */}
+        <div className="text-center space-y-4">
+          <p className="text-[10px] text-gray-500 uppercase tracking-tighter opacity-50 hover:opacity-100 transition-opacity">
+            Institutional Access: <button 
+              type="button"
+              onClick={() => {
+                setEmail("demo@truedeal.io")
+                setPassword("judgelogin2024")
+                // A pequena pausa garante que o estado do React atualize antes do submit
+                setTimeout(() => document.querySelector("form")?.requestSubmit(), 100)
+              }}
+              className="underline hover:text-[#00D26A]"
+            >
+              Demo Protocol v1.1
+            </button>
+          </p>
+          <p className="text-[10px] text-gray-400">
+            Ao continuar, você aceita os{" "}
+            <a href="#" className="text-blue-600 hover:underline">Termos de Uso</a> e a{" "}
+            <a href="#" className="text-blue-600 hover:underline">Política de Privacidade</a>
+          </p>
+        </div>
       </div>
 
       {/* ── Modal carteiras Solana ── */}
@@ -356,7 +372,7 @@ export default function LoginPage() {
                         <p className="font-bold text-gray-800">{w.name}</p>
                         {isInstalled && (
                           <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{ background: "rgba(22,163,74,0.1)", color: "#16A34A" }}>
+                            style={{ background: "rgba(0,210,106,0.1)", color: "#00D26A" }}>
                             Instalado
                           </span>
                         )}
