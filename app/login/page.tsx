@@ -143,6 +143,59 @@ export default function LoginPage() {
     select(found.adapter.name)
   }
 
+  async function handleDemoLogin() {
+    setIsLoading(true)
+    setAuthError(null)
+    const demoEmail = "demo@truedeal.io"
+    const demoPass  = "judgelogin2024"
+    
+    setEmail(demoEmail)
+    setPassword(demoPass)
+
+    const supabase = createClient()
+    
+    // Try sign in
+    const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+      email: demoEmail,
+      password: demoPass
+    })
+
+    if (signInErr) {
+      console.log("[Demo] Sign in failed, attempting auto-provisioning...", signInErr.message)
+      
+      // If sign in fails, attempt sign up (provisioning)
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+        email: demoEmail,
+        password: demoPass,
+        options: {
+          data: {
+            display_name: "Judge Performance",
+            username: "judge_demo"
+          }
+        }
+      })
+
+      if (signUpErr) {
+        setAuthError(`Demo Protocol Error: ${signUpErr.message}`)
+        setIsLoading(false)
+        return
+      }
+
+      // If signUp successful (or pending confirmation), we try to redirect anyway 
+      // as some configs auto-login after signup
+      if (signUpData.session) {
+         router.push("/")
+         return
+      } else {
+         setAuthError("Sessão demo provisionada. Por favor, verifique o e-mail ou tente entrar novamente.")
+         setIsLoading(false)
+         return
+      }
+    }
+
+    router.push("/")
+  }
+
   // ── Styles ──
 
   const glass = {
@@ -276,11 +329,7 @@ export default function LoginPage() {
            <div className="inline-block p-[1px] rounded-xl bg-gradient-to-r from-transparent via-[#00D26A]/30 to-transparent">
              <button 
                 type="button"
-                onClick={() => {
-                  setEmail("demo@truedeal.io")
-                  setPassword("judgelogin2024")
-                  setTimeout(() => document.querySelector("form")?.requestSubmit(), 200)
-                }}
+                onClick={handleDemoLogin}
                 className="px-6 py-2 rounded-xl bg-[#0A0F0D] text-[9px] font-black text-[#00D26A] uppercase tracking-[0.3em] hover:bg-[#00D26A] hover:text-black transition-all"
               >
                 Protocol Override: Demo v1.1
