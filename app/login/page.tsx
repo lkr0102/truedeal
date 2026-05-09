@@ -152,6 +152,17 @@ export default function LoginPage() {
     setEmail(demoEmail)
     setPassword(demoPass)
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const isPlaceholder = !supabaseUrl || supabaseUrl.includes("seu-projeto")
+
+    if (isPlaceholder) {
+      console.warn("[Demo] Placeholder Supabase detected. Bypassing network for Demo Protocol.")
+      // Simula um delay de rede para UX
+      await new Promise(r => setTimeout(r, 800))
+      router.push("/")
+      return
+    }
+
     const supabase = createClient()
     
     // Try sign in
