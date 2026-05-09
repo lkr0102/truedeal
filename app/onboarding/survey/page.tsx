@@ -55,19 +55,19 @@ const questions: Question[] = [
   {
     id: "source",
     type: "text",
-    text: "Como você conheceu a TrueDeal?",
-    placeholder: "Ex: indicação institucional, redes sociais, evento...",
+    text: "Como você conheceu o True Deal?",
+    placeholder: "Ex: vi no TikTok, um amigo me indicou…",
   },
   {
     id: "motivation",
     type: "multiple",
-    text: "O que você espera da TrueDeal?",
-    subtitle: "Selecione seus principais objetivos",
+    text: "O que você espera do True Deal?",
+    subtitle: "Pode escolher mais de um",
     options: [
-      "Acordos de Performance Física",
-      "Garantias Pessoais e Adimplência",
-      "Validação de Metas Institucionais",
-      "Gestão de Compromissos Auditáveis",
+      "Desafios fitness",
+      "Apostas e desafios entre amigos",
+      "Motivação extra para metas pessoais",
+      "Gamificar os compromissos",
     ],
   },
 ]
@@ -269,7 +269,7 @@ export default function SurveyPage() {
               boxShadow: canAdvance() ? "0 8px 32px rgba(0,210,106,0.3)" : "none",
             }}
           >
-            {isLast ? "Acessar TrueDeal" : "Próximo"}
+            {isLast ? "Entrar no True Deal" : "Próximo"}
             <ArrowRight className="w-5 h-5" />
           </button>
         </div>

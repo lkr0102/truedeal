@@ -13,7 +13,7 @@ import type { Profile, TdpTransaction, TdpReason } from "@/lib/supabase/types"
 // ── Bottom nav ────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { icon: Home,    label: "Acordos",  href: "/" },
+  { icon: Home,    label: "Deals",    href: "/" },
   { icon: Compass, label: "Explorar", href: "/explore" },
   { icon: Wallet,  label: "Wallet",   href: "/wallet" },
   { icon: User,    label: "Perfil",   href: "/profile" },
@@ -23,7 +23,7 @@ function BottomNav({ active }: { active: string }) {
   const router = useRouter()
   return (
     <nav className="fixed bottom-0 left-0 right-0 px-6 py-4 z-10"
-      style={{ background: "rgba(255,255,255,0.75)", backdropFilter: "blur(40px) saturate(200%)", borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+      style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(40px) saturate(200%)", borderTop: "1px solid rgba(255,255,255,0.5)" }}>
       <div className="flex justify-around items-center">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon
@@ -31,11 +31,11 @@ function BottomNav({ active }: { active: string }) {
           return (
             <button key={item.label} onClick={() => router.push(item.href)}
               className="flex flex-col items-center gap-1 transition-all duration-300">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? "scale-110 shadow-lg" : ""}`}
-                style={{ background: isActive ? "#00D26A" : "transparent" }}>
-                <Icon className={`w-5 h-5 ${isActive ? "text-[#0A0F0D]" : "text-gray-400"}`} />
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? "scale-110" : ""}`}
+                style={{ background: isActive ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}>
+                <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500"}`} />
               </div>
-              <span className={`text-[10px] font-bold uppercase tracking-wider ${isActive ? "text-[#00D26A]" : "text-gray-400"}`}>{item.label}</span>
+              <span className={`text-xs font-medium ${isActive ? "text-[#16A34A]" : "text-gray-500"}`}>{item.label}</span>
             </button>
           )
         })}
@@ -48,9 +48,9 @@ function BottomNav({ active }: { active: string }) {
 
 const DEAL_REASONS: TdpReason[] = ["deal_create", "deal_join", "deal_win"]
 const DEAL_LABELS: Partial<Record<TdpReason, string>> = {
-  deal_create: "Abertura de Acordo",
-  deal_join:   "Alocação de Garantia",
-  deal_win:    "Performance Líquida",
+  deal_create: "Criou um deal",
+  deal_join:   "Entrou em um deal",
+  deal_win:    "Ganhou um deal",
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -132,7 +132,7 @@ export default function WalletClient({
   }
 
   // ── Profile
-  const displayName = profile?.display_name ?? "Sovereign User"
+  const displayName = profile?.display_name ?? "Usuário"
   const username    = profile?.username ?? ""
   const initials    = getInitials(displayName)
 
@@ -151,169 +151,159 @@ export default function WalletClient({
       style={{ backgroundImage: "url('/images/gradient-background.jpg')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundAttachment: "fixed" }}>
 
       {/* Header */}
-      <header className="px-5 pt-12 pb-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-gray-800 tracking-tighter leading-none uppercase">Asset Vault</h1>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Soberania On-Chain</p>
-        </div>
-        <div className="flex items-center gap-2 px-4 py-2 rounded-2xl"
-          style={{ background: "#00D26A" }}>
-          <div className="w-2 h-2 rounded-full bg-[#0A0F0D] animate-pulse" />
-          <span className="text-[10px] font-black text-[#0A0F0D] uppercase tracking-wider">Auditável</span>
+      <header className="px-5 pt-12 pb-2 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-800">Wallet</h1>
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+          style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
+          <div className="w-2 h-2 rounded-full bg-[#16A34A]" />
+          <span className="text-xs font-semibold text-[#16A34A]">Ativa</span>
         </div>
       </header>
 
       <div className="flex-1 px-5 overflow-y-auto">
 
         {/* User mini-card */}
-        <div className="rounded-[2rem] px-5 py-4 mb-5 mt-2 flex items-center gap-4"
-          style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <div className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "#0A0F0D" }}>
-            <span className="text-[#00D26A] font-black text-sm">{initials}</span>
+        <div className="rounded-2xl px-4 py-3 mb-4 mt-3 flex items-center gap-3"
+          style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E5A)" }}>
+            <span className="text-blue-300 font-bold text-sm">{initials}</span>
           </div>
           <div className="flex-1">
-            <p className="font-black text-gray-800 text-sm tracking-tight leading-none mb-1">{displayName}</p>
-            {username && <p className="text-[10px] text-gray-400 font-mono">@{username}</p>}
+            <p className="font-bold text-gray-800 text-sm">{displayName}</p>
+            {username && <p className="text-xs text-gray-400">@{username}</p>}
           </div>
-          <div className="w-8 h-8 rounded-xl flex items-center justify-center bg-gray-50">
-            <ChevronRight className="w-4 h-4 text-gray-300" />
-          </div>
+          <ChevronRight className="w-4 h-4 text-gray-300" />
         </div>
 
         {/* ── Balance card ── */}
-        <div className="rounded-[2.5rem] p-7 mb-6 relative overflow-hidden"
+        <div className="rounded-3xl p-6 mb-5 relative overflow-hidden"
           style={{
-            background: "linear-gradient(135deg,#0A0F0D 0%,#00A851 70%,#00D26A 100%)",
-            boxShadow: "0 20px 50px rgba(0,210,106,0.35)",
+            background: "linear-gradient(135deg,#0D2E1A 0%,#16A34A 55%,#22C55E 100%)",
+            boxShadow: "0 16px 48px rgba(22,163,74,0.45)",
           }}>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-[#9945FF] opacity-10 blur-3xl" />
-          
           {/* Grid texture */}
-          <div className="absolute inset-0 opacity-[0.03]"
+          <div className="absolute inset-0 opacity-[0.04]"
             style={{ backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(255,255,255,1) 28px,rgba(255,255,255,1) 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,rgba(255,255,255,1) 28px,rgba(255,255,255,1) 29px)" }} />
 
           <div className="relative z-10">
 
             {/* Balance row */}
-            <div className="flex items-start justify-between mb-6">
+            <div className="flex items-start justify-between mb-4">
               <div>
-                <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-2">Garantia Líquida</p>
-                <p className="text-white text-4xl font-black tracking-tighter leading-none">
+                <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">Saldo Total</p>
+                <p className="text-white text-3xl font-black tracking-tight">
                   {showBalance ? fmtAmount(totalUsd) : "••••"}
                 </p>
               </div>
-              <div className="flex gap-2.5">
+              <div className="flex gap-2">
                 {/* Currency toggle */}
                 <button onClick={cycleCurrency}
-                  className="px-3 py-1.5 rounded-xl text-[10px] font-black tracking-widest transition-all"
-                  style={{ background: "rgba(255,255,255,0.08)", color: "white", border: "1px solid rgba(255,255,255,0.15)" }}>
+                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all"
+                  style={{ background: "rgba(255,255,255,0.18)", color: "white", border: "1px solid rgba(255,255,255,0.25)" }}>
                   {CURRENCY_LABELS[currency]}
                 </button>
                 {/* Show/hide */}
                 <button onClick={() => setShowBalance(b => !b)}
-                  className="w-9 h-9 rounded-xl flex items-center justify-center transition-all active:scale-[0.9]"
-                  style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                  className="p-2 rounded-full"
+                  style={{ background: "rgba(255,255,255,0.15)" }}>
                   {showBalance
-                    ? <Eye className="w-4 h-4 text-white/60" />
-                    : <EyeOff className="w-4 h-4 text-white/60" />}
+                    ? <Eye className="w-4 h-4 text-white" />
+                    : <EyeOff className="w-4 h-4 text-white" />}
                 </button>
               </div>
             </div>
 
             {/* Disponível / Em Deals */}
-            <div className="flex gap-6 mb-6 pt-6" style={{ borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+            <div className="flex gap-4 mb-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               <div>
-                <p className="text-white/30 text-[9px] font-black uppercase tracking-widest mb-1">Disponível</p>
-                <p className="text-white font-black text-base tracking-tight">{fmtAmount(availableUsd, !showBalance)}</p>
+                <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Disponível</p>
+                <p className="text-white font-bold">{fmtAmount(availableUsd, !showBalance)}</p>
               </div>
-              <div className="w-px bg-white/10" />
+              <div className="w-px bg-white/20" />
               <div>
-                <p className="text-white/30 text-[9px] font-black uppercase tracking-widest mb-1">Bloqueado</p>
-                <p className="text-white font-black text-base tracking-tight">{fmtAmount(frozenUsd, !showBalance)}</p>
+                <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Em Deals</p>
+                <p className="text-white font-bold">{fmtAmount(frozenUsd, !showBalance)}</p>
               </div>
             </div>
 
-            {/* Wallet address */}
+            {/* Wallet address (replaces PIX) */}
             <button onClick={copyAddr}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-2xl transition-all active:scale-[0.98]"
-              style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)" }}>
-              <div className="flex items-center gap-3">
-                <div className="w-5 h-5 rounded-lg bg-[#9945FF]/20 flex items-center justify-center">
-                  <span className="text-[10px] font-black text-[#9945FF]">◎</span>
-                </div>
-                <span className="text-xs text-white/60 font-mono font-medium tracking-tight">
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all active:scale-[0.98]"
+              style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-white/50 uppercase">◎</span>
+                <span className="text-xs text-white/90 font-mono font-medium">
                   {managedPublicKey ? truncateAddr(managedPublicKey) : "Gerando…"}
                 </span>
               </div>
               {copied
-                ? <Check className="w-4 h-4 text-[#00D26A]" />
-                : <Copy className="w-4 h-4 text-white/20" />}
+                ? <Check className="w-4 h-4 text-white" />
+                : <Copy className="w-4 h-4 text-white/60" />}
             </button>
           </div>
         </div>
 
         {/* Quick actions */}
-        <div className="grid grid-cols-2 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-3 mb-6">
           {[
             { label: "Depositar", icon: ArrowDownToLine, action: () => setActiveModal("deposit"),  primary: true  },
-            { label: "Liquidar",  icon: ArrowUpFromLine, action: () => setActiveModal("withdraw"), primary: false },
+            { label: "Sacar",     icon: ArrowUpFromLine, action: () => setActiveModal("withdraw"), primary: false },
           ].map((btn) => {
             const Icon = btn.icon
             return (
               <button key={btn.label} onClick={btn.action}
-                className="py-5 rounded-[2rem] flex flex-col items-center gap-2 transition-all duration-300 active:scale-[0.96]"
+                className="py-4 rounded-2xl flex flex-col items-center gap-2 font-semibold text-sm transition-all duration-300 active:scale-[0.97]"
                 style={{
                   background: btn.primary
-                    ? "#00D26A"
+                    ? "linear-gradient(135deg,#16A34A,#22C55E)"
                     : "rgba(255,255,255,0.5)",
-                  color:     btn.primary ? "#0A0F0D" : "#374151",
-                  border:    btn.primary ? "none" : "1px solid rgba(255,255,255,0.6)",
+                  color:     btn.primary ? "white" : "#374151",
+                  border:    btn.primary ? "none" : "1px solid rgba(255,255,255,0.55)",
                   backdropFilter: "blur(20px)",
-                  boxShadow: btn.primary ? "0 10px 24px rgba(0,210,106,0.3)" : "none",
+                  boxShadow: btn.primary ? "0 8px 24px rgba(22,163,74,0.35)" : "none",
                 }}>
-                <Icon className="w-6 h-6 stroke-[2.5]" />
-                <span className="text-xs font-black uppercase tracking-widest">{btn.label}</span>
+                <Icon className="w-5 h-5" />
+                {btn.label}
               </button>
             )
           })}
         </div>
 
         {/* Deal history */}
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Fluxo de Performance</p>
+        <div className="flex items-center justify-between mb-3">
+          <p className="text-sm font-bold text-gray-700">Extrato de Deals</p>
         </div>
 
-        <div className="space-y-3 mb-6">
+        <div className="space-y-2.5 mb-4">
           {dealHistory.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-12 rounded-[2.5rem] gap-3"
-              style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+            <div className="flex flex-col items-center justify-center p-10 rounded-2xl gap-2"
+              style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
               <Trophy className="w-8 h-8 text-gray-200" />
-              <p className="text-xs text-gray-400 font-bold uppercase tracking-widest text-center leading-relaxed">
-                Nenhuma performance<br/>registrada on-chain.
-              </p>
+              <p className="text-sm text-gray-400">Nenhum deal ainda</p>
+              <p className="text-xs text-gray-300">Participe de um deal para ver seu histórico</p>
             </div>
           ) : (
             dealHistory.map((tx) => {
               const isPositive = tx.amount > 0
               const Icon  = isPositive ? Trophy : TrendingDown
-              const color = isPositive ? "#00D26A" : "#FF4A4A"
-              const bg    = isPositive ? "rgba(0,210,106,0.08)" : "rgba(255,74,74,0.08)"
+              const color = isPositive ? "#16A34A" : "#EF4444"
+              const bg    = isPositive ? "rgba(22,163,74,0.1)" : "rgba(239,68,68,0.1)"
               const label = DEAL_LABELS[tx.reason] ?? tx.reason
               const dateStr = formatDate(tx.created_at)
               return (
-                <div key={tx.id} className="flex items-center gap-4 p-5 rounded-[2rem]"
-                  style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                <div key={tx.id} className="flex items-center gap-3 p-4 rounded-2xl"
+                  style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
                     style={{ background: bg }}>
-                    <Icon className="w-6 h-6" style={{ color }} />
+                    <Icon className="w-5 h-5" style={{ color }} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[15px] font-black text-gray-800 truncate tracking-tight leading-none mb-1">{label}</p>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">{dateStr}</p>
+                    <p className="text-sm font-semibold text-gray-800 truncate">{label}</p>
+                    <p className="text-[11px] text-gray-400">{dateStr}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
-                    <p className="text-base font-black tracking-tighter" style={{ color }}>
+                    <p className="text-sm font-bold" style={{ color }}>
                       {isPositive ? "+" : ""}{tx.amount} 🤝
                     </p>
                   </div>
@@ -329,80 +319,61 @@ export default function WalletClient({
       {/* ── Deposit modal ── */}
       {activeModal && (
         <div className="fixed inset-0 z-50 flex items-end"
-          style={{ background: "rgba(10,15,13,0.6)", backdropFilter: "blur(8px)" }}
+          style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
           onClick={() => setActiveModal(null)}>
-          <div className="w-full rounded-t-[3rem] px-6 pt-8 pb-12"
-            style={{ background: "#FFFFFF" }}
+          <div className="w-full rounded-t-3xl px-5 pt-6 pb-10"
+            style={{ background: "rgba(255,255,255,0.98)" }}
             onClick={(e) => e.stopPropagation()}>
-            <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-8" />
-            
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-black text-[#0A0F0D] tracking-tight uppercase">
-                  {activeModal === "deposit" ? "Protocolo de Depósito" : "Liquidação de Ativos"}
-                </h2>
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Sincronização em tempo real</p>
-              </div>
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="text-lg font-bold text-gray-800">
+                {activeModal === "deposit" ? "Depositar" : "Sacar"}
+              </h2>
               <button onClick={() => setActiveModal(null)}
-                className="w-10 h-10 rounded-2xl flex items-center justify-center bg-gray-50 border border-gray-100">
-                <XIcon className="w-5 h-5 text-gray-400" />
+                className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.06)" }}>
+                <XIcon className="w-4 h-4 text-gray-500" />
               </button>
             </div>
 
             {activeModal === "deposit" ? (
-              <div className="space-y-6">
-                <div className="p-6 rounded-[2.5rem]"
-                  style={{ background: "#F9FAFB", border: "1.5px dashed #00D26A" }}>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Address do Custodiante (SOL)</p>
-                  <p className="font-mono font-bold text-[#0A0F0D] text-sm break-all leading-relaxed">{managedPublicKey ?? "—"}</p>
+              <div className="space-y-4">
+                <div className="p-4 rounded-2xl"
+                  style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)" }}>
+                  <p className="text-xs text-gray-500 mb-1">Endereço da sua carteira</p>
+                  <p className="font-mono font-bold text-gray-800 text-sm break-all">{managedPublicKey ?? "—"}</p>
                   <button onClick={copyAddr}
-                    className="mt-4 w-full py-4 rounded-2xl flex items-center justify-center gap-3 text-xs font-black uppercase tracking-widest transition-all active:scale-[0.98]"
-                    style={{ background: "#0A0F0D", color: "#00D26A" }}>
-                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    {copied ? "Endereço Copiado" : "Copiar Endereço"}
+                    className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#16A34A]">
+                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? "Copiado!" : "Copiar endereço"}
                   </button>
                 </div>
-                <div className="p-5 rounded-2xl bg-[#9945FF]/05 border border-[#9945FF]/10 flex gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-[#9945FF]/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[#9945FF] font-black text-lg">!</span>
-                  </div>
-                  <p className="text-[11px] text-[#9945FF] font-medium leading-relaxed uppercase">
-                    Envie apenas <strong>SOLANA (SOL)</strong> para este endereço. O sistema audita o mempool em tempo real.
-                  </p>
-                </div>
+                <p className="text-xs text-gray-400 text-center leading-relaxed">
+                  Envie SOL para esse endereço. O saldo é atualizado automaticamente.
+                </p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3 block">Montante de Liquidação (USD)</label>
+                  <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Valor a sacar (USD)</label>
                   <div className="relative">
-                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black text-lg">$</span>
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">$</span>
                     <input type="number" value={pixAmount} onChange={e => setPixAmount(e.target.value)}
-                      placeholder="0.00" className="w-full pl-10 pr-6 py-5 rounded-[2rem] outline-none text-[#0A0F0D] placeholder-gray-300 font-black text-xl tracking-tight"
-                      style={{ background: "#F9FAFB", border: "1.5px solid #00D26A" }} />
+                      placeholder="0.00" className="w-full pl-8 pr-4 py-3.5 rounded-xl outline-none text-gray-800 placeholder-gray-400 font-medium"
+                      style={{ background: "rgba(0,0,0,0.04)", border: "1.5px solid rgba(22,163,74,0.3)" }} />
                   </div>
-                  <div className="flex justify-between items-center mt-3 px-2">
-                    <p className="text-[10px] text-gray-400 font-bold uppercase">
-                      Vault Disponível: <span className="text-[#0A0F0D]">{fmtAmount(availableUsd)}</span>
-                    </p>
-                    <button onClick={() => setPixAmount(availableUsd.toFixed(2))} className="text-[10px] font-black text-[#00D26A] uppercase tracking-wider">MAX</button>
-                  </div>
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Disponível: {fmtAmount(availableUsd)}
+                  </p>
                 </div>
-                <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-between">
-                  <div>
-                    <p className="text-[9px] text-gray-400 font-black uppercase tracking-widest mb-1">Destino da Liquidez</p>
-                    <p className="text-xs font-mono font-bold text-[#0A0F0D]">
-                      {managedPublicKey ? truncateAddr(managedPublicKey) : "—"}
-                    </p>
-                  </div>
-                  <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center">
-                    <ChevronRight className="w-4 h-4 text-gray-300" />
-                  </div>
+                <div className="p-3 rounded-xl" style={{ background: "rgba(0,0,0,0.04)" }}>
+                  <p className="text-[10px] text-gray-500 mb-0.5">Destino</p>
+                  <p className="text-sm font-mono font-semibold text-gray-800 break-all">
+                    {managedPublicKey ? truncateAddr(managedPublicKey) : "—"}
+                  </p>
                 </div>
                 <button
-                  className="w-full py-5 rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] transition-all active:scale-[0.98]"
-                  style={{ background: "#0A0F0D", color: "#FFFFFF", boxShadow: "0 12px 30px rgba(0,0,0,0.15)" }}>
-                  Autenticar Liquidação
+                  className="w-full py-4 rounded-2xl font-bold text-white transition-all"
+                  style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)", boxShadow: "0 8px 24px rgba(22,163,74,0.35)" }}>
+                  Confirmar saque
                 </button>
               </div>
             )}

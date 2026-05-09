@@ -90,8 +90,8 @@ function getInitials(name: string) {
 
 function buildPrizeSlices(distribution: Distribution, netPot: number): PrizeSlice[] {
   if (distribution === "winner") return [
-    { label: "Beneficiário", pct: 0.95, color: "#F59E0B", amount: Math.round(netPot * 0.95) },
-    { label: "Taxa Operacional", pct: 0.05, color: "#16A34A", amount: Math.round(netPot * 0.05) },
+    { label: "Vencedor",  pct: 0.95, color: "#F59E0B", amount: Math.round(netPot * 0.95) },
+    { label: "True Deal", pct: 0.05, color: "#16A34A", amount: Math.round(netPot * 0.05) },
   ]
   if (distribution === "top3") return [
     { label: "1º lugar", pct: 0.50, color: "#F59E0B", amount: Math.round(netPot * 0.50) },
@@ -158,10 +158,10 @@ function mapDeal(d: DealWithParticipants, userId: string | null): DealView {
   const todayStr      = format(now,       "dd MMM yyyy", { locale: ptBR })
 
   const timeline: TimelineEvent[] = [
-    { date: startDateStr, label: "Estabelecimento", done: status !== "pendente" },
-    { date: todayStr,     label: "Status Vigente",   done: true, current: status === "ativo" },
-    { date: endDateStr,   label: "Auditoria Final",  done: status === "finalizado" },
-    ...(status === "finalizado" ? [{ date: endDateStr, label: "Liquidação", done: true }] : []),
+    { date: startDateStr, label: "Início do deal", done: status !== "pendente" },
+    { date: todayStr,     label: "Hoje",            done: true, current: status === "ativo" },
+    { date: endDateStr,   label: "Fim do deal",     done: status === "finalizado" },
+    ...(status === "finalizado" ? [{ date: endDateStr, label: "Resultado final", done: true }] : []),
   ]
 
   const borderMap: Record<DealStatus, string> = { ativo: "#16A34A", pendente: "#D97706", finalizado: "#9CA3AF" }
@@ -213,13 +213,13 @@ function VerifChip({ type }: { type: VerifType }) {
 
 function StatusPill({ status }: { status: DealStatus }) {
   const map = {
-    ativo:      { bg: "rgba(0,210,106,0.12)",   color: "#00D26A", label: "EM VIGOR"  },
-    pendente:   { bg: "rgba(245,158,11,0.12)",  color: "#D97706", label: "FORMAÇÃO"  },
-    finalizado: { bg: "rgba(156,163,175,0.12)", color: "#6B7280", label: "AUDITADO"  },
+    ativo:      { bg: "rgba(22,163,74,0.15)",   color: "#16A34A", label: "Em Jogo"   },
+    pendente:   { bg: "rgba(245,158,11,0.15)",  color: "#D97706", label: "Formação"  },
+    finalizado: { bg: "rgba(156,163,175,0.15)", color: "#6B7280", label: "Encerrado" },
   }
   const m = map[status]
   return (
-    <span className="text-[10px] font-black px-2.5 py-1 rounded-full border border-current opacity-90 tracking-widest" style={{ background: m.bg, color: m.color }}>
+    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: m.bg, color: m.color }}>
       {m.label}
     </span>
   )
@@ -240,9 +240,9 @@ const RULE_LABELS: Record<string, string> = {
 }
 
 const DIST_META: Record<string, { label: string; icon: string; desc: string }> = {
-  winner:       { label: "Beneficiário Único", icon: "👑", desc: "Acordo de performance total" },
-  top3:         { label: "Ranking",             icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% da garantia" },
-  proportional: { label: "Proporcional",        icon: "🤝", desc: "Garantia ÷ todos os adimplentes" },
+  winner:       { label: "1º Lugar",      icon: "👑", desc: "Winner takes all" },
+  top3:         { label: "Ranking",        icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% do pote" },
+  proportional: { label: "Proporcional",   icon: "🤝", desc: "Pote ÷ todos que cumprirem a regra" },
 }
 
 function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithParticipants }) {
@@ -255,7 +255,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
 
   const confirmRows = [
     {
-      icon: "🛡️", iconBg: "rgba(0,210,106,0.1)",
+      icon: "🛡️", iconBg: "rgba(22,163,74,0.1)",
       key: "Regra",
       val: channelNames && ruleLabel ? `${channelNames} · ${ruleLabel}` : ruleLabel || "—",
     },
@@ -265,12 +265,12 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
       val: `${deal.startDate} → ${deal.endDate} (${diffDays}d)`,
     },
     {
-      icon: "💰", iconBg: "rgba(0,210,106,0.1)",
+      icon: "💰", iconBg: "rgba(22,163,74,0.1)",
       key: "Financeiro",
       val: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}/pessoa · ${distMeta.label}`,
     },
     {
-      icon: "🔒", iconBg: "rgba(10,15,13,0.1)",
+      icon: "🔒", iconBg: "rgba(107,114,128,0.1)",
       key: "Acesso",
       val: dealData.type === "privado" ? "Privado" : "Público",
     },
@@ -278,37 +278,38 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
 
   return (
     <div style={{ marginTop: 12 }}>
-      {/* Hero verde — official brand look */}
-      <div className="rounded-[24px] p-6 mb-4 relative overflow-hidden"
+      {/* Hero verde — igual ao preview de confirmação */}
+      <div className="rounded-[22px] p-5 mb-3 relative overflow-hidden"
         style={{
-          background: "linear-gradient(135deg, #0A0F0D, #00A851 70%, #00D26A)",
-          boxShadow: "0 14px 40px rgba(0,210,106,0.25)",
+          background: "linear-gradient(135deg, #0D2E1A, #16A34A 55%, #22C55E)",
+          boxShadow: "0 14px 40px rgba(22,163,74,0.35)",
         }}>
-        <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#9945FF] opacity-10 blur-3xl" />
+        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full"
+          style={{ background: "rgba(255,255,255,0.06)" }} />
         <div className="relative z-10">
-          <div className="flex items-start justify-between mb-5">
+          <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1.5">
-                {(dealData as any).mode === "super" ? "⭐ Super Acordo" : "Acordo Institucional"}
+              <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">
+                {(dealData as any).mode === "super" ? "⭐ Super Deal" : "Deal Regular"}
               </p>
-              <h2 className="text-2xl font-black text-white leading-none tracking-tight">{deal.title}</h2>
+              <h2 className="text-xl font-bold text-white leading-tight">{deal.title}</h2>
             </div>
-            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}>
-              <Lock className="w-5 h-5 text-white" />
+            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
+              <Lock className="w-4 h-4 text-white" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2.5">
+          <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "Alocação",       value: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}` },
-              { label: "Garantia Total", value: `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
-              { label: "Duração",        value: `${diffDays} dias` },
-              { label: "Distribuição",   value: distMeta.label },
+              { label: "Entrada",    value: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}` },
+              { label: "Pote atual", value: `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
+              { label: "Duração",    value: `${diffDays} dias` },
+              { label: "Premiação",  value: distMeta.label },
             ].map(stat => (
-              <div key={stat.label} className="p-3 rounded-2xl"
-                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)" }}>
-                <p className="text-[9px] text-white/40 font-bold uppercase tracking-wider">{stat.label}</p>
-                <p className="text-base font-black text-white mt-0.5 tracking-tight">{stat.value}</p>
+              <div key={stat.label} className="p-2.5 rounded-xl"
+                style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <p className="text-[9px] text-white/70 uppercase tracking-wider">{stat.label}</p>
+                <p className="text-base font-bold text-white mt-0.5">{stat.value}</p>
               </div>
             ))}
           </div>
@@ -345,7 +346,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
           <span className="text-base">{distMeta.icon}</span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Distribuição</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Premiação</p>
           <p className="text-[13px] font-bold text-gray-800 mt-0.5">{distMeta.label}</p>
           <p className="text-[11px] text-gray-400 mt-0.5">{distMeta.desc}</p>
         </div>
@@ -355,8 +356,8 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
       <div className="p-3.5 rounded-xl"
         style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
         <p className="text-xs text-gray-600 leading-relaxed">
-          Taxa de <strong className="text-[#16A34A]">{feeRate}%</strong> cobrada apenas em caso de descumprimento.
-          Se todos forem adimplentes, o valor integral é devolvido.
+          Taxa de <strong className="text-[#16A34A]">{feeRate}%</strong> cobrada apenas se houver perdedor.
+          Se todos cumprirem, o valor integral é devolvido.
         </p>
       </div>
 
@@ -534,110 +535,110 @@ export default function DealClient({
       {/* Hero */}
       <div className="relative">
         <div className="px-5 pt-12 pb-6"
-          style={{ background: "linear-gradient(160deg, #0A0F0D 0%, #00A851 70%, #00D26A 100%)" }}>
-          <div className="flex items-center justify-between mb-8">
+          style={{ background: "linear-gradient(160deg, #0D2E1A 0%, #16A34A 55%, #22C55E 100%)" }}>
+          <div className="flex items-center justify-between mb-6">
             <button onClick={() => router.back()}
-              className="w-10 h-10 rounded-2xl flex items-center justify-center"
-              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}>
+              className="w-10 h-10 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
               <ArrowLeft className="w-5 h-5 text-white" />
             </button>
             <button
-              className="w-10 h-10 rounded-2xl flex items-center justify-center"
-              style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.15)" }}>
+              className="w-10 h-10 rounded-full flex items-center justify-center"
+              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
               <Share2 className="w-5 h-5 text-white" />
             </button>
           </div>
 
-          <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
             <StatusPill status={deal.status} />
             <a 
               href={`https://explorer.solana.com/address/9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4?cluster=devnet`}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#9945FF]/20 hover:bg-[#9945FF]/30 text-[10px] text-white font-black transition-all border border-[#9945FF]/30 tracking-widest"
+              className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[10px] text-white/80 font-bold transition-all border border-white/10"
             >
               <ExternalLink className="w-3 h-3" />
-              SOLANA SECURED
+              BLOCKCHAIN
             </a>
             {deal.verifications.map((v) => <VerifChip key={v} type={v} />)}
           </div>
 
-          <h1 className="text-white text-3xl font-black leading-none mb-2 tracking-tighter">{deal.title}</h1>
-          <p className="text-white/40 text-xs font-bold uppercase tracking-widest mb-6">{deal.subtitle}</p>
+          <h1 className="text-white text-2xl font-black leading-tight mb-1">{deal.title}</h1>
+          <p className="text-white/70 text-sm mb-5">{deal.subtitle}</p>
 
           {deal.status === "ativo" && (
             <>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Execução Institucional</span>
-                <span className="text-white font-black text-xs">{pct}%</span>
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-white/70 text-xs">Progresso</span>
+                <span className="text-white font-bold text-xs">{pct}%</span>
               </div>
-              <div className="h-2 rounded-full overflow-hidden mb-6" style={{ background: "rgba(255,255,255,0.08)" }}>
-                <div className="h-full rounded-full shadow-[0_0_12px_#00D26A]" style={{ width: `${pct}%`, background: "#00D26A" }} />
+              <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.2)" }}>
+                <div className="h-full rounded-full" style={{ width: `${pct}%`, background: "rgba(255,255,255,0.9)" }} />
               </div>
             </>
           )}
           {deal.status === "pendente" && (
             <>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-white/40 text-[10px] font-black uppercase tracking-widest">Captação de Garantia</span>
-                <span className="text-white font-black text-xs">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-white/70 text-xs">Vagas preenchidas</span>
+                <span className="text-white font-bold text-xs">
                   {deal.participants}/{dealData.max_participants}
                 </span>
               </div>
-              <div className="h-2 rounded-full overflow-hidden mb-6" style={{ background: "rgba(255,255,255,0.08)" }}>
-                <div className="h-full rounded-full shadow-[0_0_12px_#00D26A]"
-                  style={{ width: `${Math.min(100, (deal.participants / dealData.max_participants) * 100)}%`, background: "#00D26A" }} />
+              <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.2)" }}>
+                <div className="h-full rounded-full"
+                  style={{ width: `${Math.min(100, (deal.participants / dealData.max_participants) * 100)}%`, background: "rgba(255,255,255,0.9)" }} />
               </div>
             </>
           )}
         </div>
 
         {/* Info grid */}
-        <div className="px-5 -mt-3">
+        <div className="px-5 -mt-1">
           <div className="grid grid-cols-2 gap-3 pb-1">
             {[
-              { label: "Garantia Total", value: `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, Icon: DollarSign, color: "#00D26A" },
-              { label: "Alocação",       value: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}`,         Icon: Lock,        color: "#3B82F6" },
-              { label: "Participantes",  value: `${deal.participants}`,                                    Icon: Users,       color: "#9945FF" },
-              { label: deal.status === "ativo" ? "Auditoria Final" : "Vigência",
-                value: deal.status === "ativo" ? `${daysLeft}d restantes` : `${deal.daysTotal} dias`,
+              { label: "Pote total",    value: `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, Icon: DollarSign, color: "#16A34A" },
+              { label: "Entrada",       value: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}/pessoa`, Icon: Lock,        color: "#3B82F6" },
+              { label: "Participantes", value: `${deal.participants}`,                                    Icon: Users,       color: "#8B5CF6" },
+              { label: deal.status === "ativo" ? "Dias restantes" : "Duração",
+                value: deal.status === "ativo" ? `${daysLeft}d` : `${deal.daysTotal}d`,
                 Icon: Clock, color: "#F59E0B" },
             ].map((stat, i) => (
-              <GlassCard key={i} style={{ padding: "14px 16px" }}>
-                <div className="flex items-center gap-2 mb-1.5">
+              <GlassCard key={i} style={{ padding: "12px 14px" }}>
+                <div className="flex items-center gap-2 mb-1">
                   <div className="w-6 h-6 rounded-lg flex items-center justify-center"
-                    style={{ background: `${stat.color}12` }}>
+                    style={{ background: `${stat.color}18` }}>
                     <stat.Icon className="w-3.5 h-3.5" style={{ color: stat.color }} />
                   </div>
-                  <span className="text-[9px] text-gray-400 font-black uppercase tracking-wider">{stat.label}</span>
+                  <span className="text-[10px] text-gray-400 font-medium">{stat.label}</span>
                 </div>
-                <p className="text-gray-800 font-black text-base leading-tight tracking-tight">{stat.value}</p>
+                <p className="text-gray-800 font-bold text-base leading-tight">{stat.value}</p>
               </GlassCard>
             ))}
           </div>
 
           {/* My rank tile */}
           {deal.myRank != null && (
-            <GlassCard style={{ padding: "14px 18px", marginTop: 12 }}
-              accent={isWinning ? "#00D26A" : "#9CA3AF"}>
+            <GlassCard style={{ padding: "12px 16px", marginTop: 12 }}
+              accent={isWinning ? "#16A34A" : "#9CA3AF"}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-2xl flex items-center justify-center"
-                    style={{ background: "#0A0F0D" }}>
-                    <span className="text-[#00D26A] font-black text-xs">{myInitials}</span>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E5A)" }}>
+                    <span className="text-blue-300 font-bold text-xs">{myInitials}</span>
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Meu Status</p>
-                    <p className="text-gray-800 font-black text-base tracking-tight">
+                    <p className="text-xs text-gray-400">Minha posição</p>
+                    <p className="text-gray-800 font-bold text-base">
                       {deal.myRank}º lugar
-                      {isWinning && <span className="ml-2 text-[10px] font-black uppercase tracking-wider" style={{ color: "#00D26A" }}>· Adimplente</span>}
+                      {isWinning && <span className="ml-2 text-[11px]" style={{ color: "#16A34A" }}>· Em zona de prêmio</span>}
                     </p>
                   </div>
                 </div>
                 {deal.potentialWin != null && deal.potentialWin > 0 && (
                   <div className="text-right">
-                    <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Retorno Previsto</p>
-                    <p className="font-black text-lg tracking-tighter" style={{ color: "#00D26A" }}>R${deal.potentialWin.toLocaleString("pt-BR")}</p>
+                    <p className="text-[10px] text-gray-400">Ganho potencial</p>
+                    <p className="font-bold" style={{ color: "#16A34A" }}>R${deal.potentialWin.toLocaleString("pt-BR")}</p>
                   </div>
                 )}
                 {isWinning && <Trophy className="w-5 h-5 text-yellow-500 ml-2" />}
@@ -652,21 +653,22 @@ export default function DealClient({
       </div>
 
       {/* Sticky footer */}
-      <div className="fixed bottom-0 left-0 right-0 px-5 py-5 z-20"
+      <div className="fixed bottom-0 left-0 right-0 px-5 py-4 z-20"
         style={{
-          background: "rgba(255,255,255,0.75)",
+          background: "rgba(255,255,255,0.85)",
           backdropFilter: "blur(40px) saturate(200%)",
           WebkitBackdropFilter: "blur(40px) saturate(200%)",
-          borderTop: "1px solid rgba(0,0,0,0.05)",
+          borderTop: "1px solid rgba(255,255,255,0.6)",
         }}>
-        <div className="flex items-center gap-5">
-          <div className="flex-shrink-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] color-gray-400 mb-1">
-              Garantia Total
+        <div className="flex items-center gap-4">
+          <div>
+            <p style={{ fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: "#9CA3AF" }}>
+              Pote total
             </p>
-            <p className="text-2xl font-black text-gray-800 leading-none tracking-tighter">
+            <p style={{ fontSize: 22, fontWeight: 900, color: "#16A34A", lineHeight: 1.1 }}>
               R${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
+            <p style={{ fontSize: 10, color: "#6B7280" }}>{deal.participants} participantes</p>
           </div>
           <div className="flex-1">
             {deal.status === "ativo" ? (
@@ -676,7 +678,7 @@ export default function DealClient({
                     className="flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest py-2 px-3 rounded-xl"
                     style={{ background: "rgba(153,69,255,0.12)", color: "#9945FF", border: "1px solid rgba(153,69,255,0.3)" }}>
                     <ExternalLink className="w-3 h-3" />
-                    LIQUIDAÇÃO ON-CHAIN → SOLANA EXPLORER
+                    VER NA SOLANA EXPLORER
                   </a>
                 )}
                 {settleErr && (
@@ -687,27 +689,20 @@ export default function DealClient({
                 )}
                 <div className="flex gap-2">
                   <PrimaryBtn
-                    style={{ flex: 1, textAlign: "center", borderRadius: 16, background: "#00D26A", color: "#0A0F0D", fontWeight: 900, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}
+                    style={{ flex: 1, textAlign: "center", borderRadius: 12 }}
                     onClick={() => router.push(`/tracking?id=${deal.id}`)}>
-                    Auditoria →
+                    Ver Tracking →
                   </PrimaryBtn>
                   {isCreator && !txResult && (
                     <PrimaryBtn
                       disabled={settling}
                       style={{
-                        flex: 1, textAlign: "center", borderRadius: 16,
-                        background: settling ? "rgba(153,69,255,0.4)" : "#9945FF",
-                        color: "#fff", fontWeight: 900, fontSize: 13,
-                        textTransform: "uppercase", letterSpacing: "0.05em",
-                        opacity: settling ? 0.7 : 1,
+                        flex: 1, textAlign: "center", borderRadius: 12,
+                        background: settling ? "#ccc" : "#9945FF",
+                        color: "#fff"
                       }}
                       onClick={handleSettleDeal}>
-                      {settling ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          LIQUIDANDO…
-                        </span>
-                      ) : "FINALIZAR ACORDO"}
+                      {settling ? "Liquidando..." : "Finalizar Acordo"}
                     </PrimaryBtn>
                   )}
                 </div>
@@ -721,19 +716,19 @@ export default function DealClient({
                   </div>
                 )}
                 {isCreator || isParticipating ? (
-                  <div className="w-full flex items-center justify-center gap-3 py-3.5 px-4 rounded-2xl"
-                    style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)" }}>
-                    <Hourglass className="w-5 h-5 flex-shrink-0 animate-pulse" style={{ color: "#D97706" }} />
+                  <div className="w-full flex items-center justify-center gap-2.5 py-3 px-4 rounded-xl"
+                    style={{ background: "rgba(245,158,11,0.10)", border: "1px solid rgba(245,158,11,0.25)" }}>
+                    <Hourglass className="w-4 h-4 flex-shrink-0" style={{ color: "#D97706" }} />
                     <div>
-                      <p className="text-xs font-black uppercase tracking-wider" style={{ color: "#D97706" }}>Formando Acordo</p>
-                      <p className="text-[10px] text-gray-400 font-medium">Sincronizando garantias on-chain</p>
+                      <p className="text-xs font-bold" style={{ color: "#D97706" }}>Aguardando participantes</p>
+                      <p className="text-[10px] text-gray-400">O deal inicia quando o período começar</p>
                     </div>
                   </div>
                 ) : (
                   <PrimaryBtn
                     disabled={joining || isFull}
                     style={{
-                      width: "100%", textAlign: "center", borderRadius: 16, background: "#00D26A", color: "#0A0F0D", fontWeight: 900, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em",
+                      width: "100%", textAlign: "center", borderRadius: 12,
                       opacity: (joining || isFull) ? 0.65 : 1,
                       cursor: (joining || isFull) ? "not-allowed" : "pointer",
                     }}
@@ -741,17 +736,17 @@ export default function DealClient({
                     {joining ? (
                       <span className="flex items-center justify-center gap-2">
                         <Loader2 className="w-4 h-4 animate-spin" />
-                        FORMALIZANDO…
+                        Entrando…
                       </span>
-                    ) : isFull ? "ACORDO LOTADO" : "ADERIR AO ACORDO →"}
+                    ) : isFull ? "Deal lotado" : "Entrar no Deal →"}
                   </PrimaryBtn>
                 )}
               </div>
             ) : (
               <GhostBtn
-                style={{ width: "100%", textAlign: "center", borderRadius: 16, fontWeight: 900, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}
+                style={{ width: "100%", textAlign: "center", borderRadius: 12 }}
                 onClick={() => router.push(`/deal/${deal.id}/result`)}>
-                Resultado da Liquidação
+                Ver Resultado Final
               </GhostBtn>
             )}
           </div>

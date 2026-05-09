@@ -174,8 +174,8 @@ export default function DealResultClient({
           <AlertCircle className="w-9 h-9 text-amber-500" />
         </div>
         <div className="text-center">
-          <h2 className="text-xl font-bold text-gray-800 mb-1">Liquidação Pendente</h2>
-          <p className="text-sm text-gray-500">O beneficiário final ainda não foi auditado pelo oráculo.</p>
+          <h2 className="text-xl font-bold text-gray-800 mb-1">Resultado pendente</h2>
+          <p className="text-sm text-gray-500">O vencedor ainda não foi declarado pelo árbitro.</p>
         </div>
         <button onClick={() => router.push("/")}
           className="px-6 py-3 rounded-2xl font-semibold text-white"
@@ -201,7 +201,7 @@ export default function DealResultClient({
         <button onClick={() => router.push("/")}
           className="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
           <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Meus Acordos</span>
+          <span className="font-medium">Meus Deals</span>
         </button>
       </header>
 
@@ -221,12 +221,12 @@ export default function DealResultClient({
                 <Trophy className="w-9 h-9" />
               </div>
             </div>
-            <p className="text-sm font-semibold opacity-90 mb-1">Beneficiário Principal</p>
+            <p className="text-sm font-semibold opacity-90 mb-1">Vencedor do Deal</p>
             <h1 className="text-2xl font-black mb-3">{winnerPlayer?.name ?? "—"}</h1>
             <div className="text-4xl font-bold mb-1">
               R${rewardForRank(deal.distribution, deal.net_pot, 1).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </div>
-            <p className="text-xs opacity-70 mb-4">Após taxa institucional TrueDeal ({deal.fee_pct}%)</p>
+            <p className="text-xs opacity-70 mb-4">Após fee True Deal ({deal.fee_pct}%)</p>
             <div className="pt-4 border-t border-white/20 text-xs opacity-80 space-y-1">
               <p className="font-semibold">{deal.title}</p>
               <p>{startStr} → {endStr}</p>
@@ -240,10 +240,10 @@ export default function DealResultClient({
             style={{ background: "linear-gradient(135deg,rgba(22,163,74,0.12),rgba(34,197,94,0.08))", border: "1px solid rgba(22,163,74,0.25)" }}>
             <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{ background: "rgba(22,163,74,0.2)" }}>
-              <span className="text-xl">⚖️</span>
+              <span className="text-xl">💸</span>
             </div>
             <div>
-              <p className="text-xs font-bold text-[#16A34A] uppercase tracking-wide">Liquidação Concluída</p>
+              <p className="text-xs font-bold text-[#16A34A] uppercase tracking-wide">Pagamento confirmado</p>
               <p className="text-sm font-semibold text-gray-800 mt-0.5">
                 R${myReward.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} — parabéns!
               </p>
@@ -261,7 +261,7 @@ export default function DealResultClient({
                 {rankMedals[myPlayer.rank - 1] ?? myPlayer.rank}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Classificação de Performance</p>
+                <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Minha posição</p>
                 <p className="text-sm font-bold text-gray-800">{myPlayer.rank}º lugar</p>
               </div>
               <div className="text-right">
@@ -277,9 +277,9 @@ export default function DealResultClient({
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
           {[
-            { Icon: Clock,  value: `${durationDays}d`, label: "Vigência"    },
-            { Icon: Wallet, value: `R$${deal.entry_amount.toLocaleString("pt-BR")}`, label: "Alocação" },
-            { Icon: Shield, value: channel.toUpperCase(), label: "Oráculo" },
+            { Icon: Clock,  value: `${durationDays}d`, label: "Duração"    },
+            { Icon: Wallet, value: `R$${deal.entry_amount.toLocaleString("pt-BR")}`, label: "Entrada" },
+            { Icon: Shield, value: channel.toUpperCase(), label: "Verificado" },
           ].map(stat => {
             const Icon = stat.Icon
             return (
@@ -297,13 +297,13 @@ export default function DealResultClient({
         <div className="rounded-2xl p-4"
           style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.6)" }}>
           <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wide">
-            Assentamento (Garantia Total: R${deal.pot_total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})
+            Distribuição (R${deal.pot_total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})
           </p>
           <div className="space-y-3">
             {payoutRows.map((row, i) => (
               <div key={i}>
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-semibold text-gray-800">{row.position === "True Deal" ? "TrueDeal Protocol" : row.position}</span>
+                  <span className="text-sm font-semibold text-gray-800">{row.position}</span>
                   <span className="text-sm font-bold text-gray-800">
                     {row.pct}% · R${row.amount.toLocaleString("pt-BR")}
                   </span>
@@ -320,7 +320,7 @@ export default function DealResultClient({
         {/* Final ranking */}
         <div className="rounded-2xl p-4"
           style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wide">Relatório de Performance</p>
+          <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wide">Ranking Final</p>
           <div className="space-y-2">
             {ranking.map(player => (
               <div key={player.initials + player.rank}
@@ -357,9 +357,9 @@ export default function DealResultClient({
         {/* On-chain link (placeholder) */}
         <button className="w-full p-4 rounded-2xl flex items-center justify-between transition-all"
           style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <span className="text-gray-700 font-semibold text-sm">Assentamento On-chain Concluído</span>
+          <span className="text-gray-700 font-semibold text-sm">Smart contract executado</span>
           <span className="text-[#16A34A] flex items-center gap-1 text-sm font-medium">
-            Ver Explorer <ExternalLink className="w-4 h-4" />
+            Ver on-chain <ExternalLink className="w-4 h-4" />
           </span>
         </button>
 
@@ -368,7 +368,7 @@ export default function DealResultClient({
           style={{ background: "linear-gradient(160deg,#0D2E1A 0%,#16A34A 55%,#22C55E 100%)", boxShadow: "0 8px 24px rgba(0,0,0,0.12)" }}>
           <div className="absolute -top-8 -right-8 w-28 h-28 rounded-full" style={{ background: "rgba(255,255,255,0.06)" }} />
           <div className="relative z-10">
-            <p className="text-xs opacity-70 mb-1">Compartilhe sua performance</p>
+            <p className="text-xs opacity-70 mb-1">Compartilhe sua vitória</p>
             <p className="text-base font-bold mb-2">{deal.title}</p>
             {myPlayer && <p className="text-3xl font-black mb-1">R${myReward.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>}
             <p className="text-xs opacity-70">{myPlayer?.rank ?? 1}º lugar</p>
@@ -408,7 +408,7 @@ export default function DealResultClient({
             className="w-full py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 text-white transition-all active:scale-[0.98]"
             style={{ background: "linear-gradient(135deg,#16A34A 0%,#22C55E 100%)", boxShadow: "0 8px 32px rgba(22,163,74,0.4)" }}>
             <Plus className="w-5 h-5" />
-            Novo Acordo de Performance
+            Criar novo Deal
           </button>
           <button onClick={() => router.push("/")}
             className="w-full py-4 rounded-2xl font-semibold transition-all"

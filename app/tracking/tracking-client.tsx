@@ -180,7 +180,7 @@ export default function TrackingClient({
           backgroundSize: "cover", backgroundPosition: "center",
         }}
       >
-        <p style={{ fontSize: 16, fontWeight: 700, color: "#374151" }}>Acordo não encontrado</p>
+        <p style={{ fontSize: 16, fontWeight: 700, color: "#374151" }}>Deal não encontrado</p>
         <button
           onClick={() => router.push("/")}
           style={{
@@ -284,10 +284,10 @@ export default function TrackingClient({
         {/* 4-stat grid */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
-            { value: pot,                               label: "Garantia Total", color: "#16A34A" },
-            { value: perPerson,                         label: "Alocação",       color: "#374151" },
-            { value: `${daysLeft}d`,                    label: "Auditoria em",   color: "#374151" },
-            { value: `${daysGone}/${daysTotal}d`,        label: "Vigência",       color: "#6B7280" },
+            { value: pot,                               label: "Pot total",  color: "#16A34A" },
+            { value: perPerson,                         label: "Por pessoa", color: "#374151" },
+            { value: `${daysLeft}d`,                    label: "Restantes",  color: "#374151" },
+            { value: `${daysGone}/${daysTotal}d`,        label: "Decorridos", color: "#6B7280" },
           ].map(({ value, label, color }, i) => (
             <GlassCard key={i} style={{ padding: "12px 14px" }}>
               <div style={{ fontSize: 18, fontWeight: 900, color }}>{value}</div>
@@ -303,7 +303,7 @@ export default function TrackingClient({
             textTransform: "uppercase", letterSpacing: "0.08em",
             textAlign: "center", marginBottom: 12,
           }}>
-            Tempo para Auditoria Final
+            Tempo restante
           </div>
           <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
             {TIME_UNITS.map(({ value, label }, i) => (
@@ -330,7 +330,7 @@ export default function TrackingClient({
         {/* Progress bar */}
         <GlassCard style={{ padding: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Vigência do Acordo</span>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#374151" }}>Progresso do deal</span>
             <span style={{ fontSize: 12, fontWeight: 700, color: "#16A34A" }}>
               {Math.round(progress * 100)}%
             </span>
@@ -345,7 +345,7 @@ export default function TrackingClient({
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
             <span style={{ fontSize: 10, color: "#9CA3AF" }}>Dia {daysGone}</span>
             <span style={{ fontSize: 10, color: "#9CA3AF" }}>
-              Auditado em {daysLeft}d ({endDateStr})
+              Termina em {daysLeft}d ({endDateStr})
             </span>
           </div>
         </GlassCard>
@@ -362,7 +362,7 @@ export default function TrackingClient({
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <ShieldCheck size={16} color="#16A34A" />
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#1f2937" }}>Termos do Acordo</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#1f2937" }}>Sobre o Deal</span>
               </div>
               <ChevronDown
                 size={14} color="#9CA3AF"
@@ -388,7 +388,7 @@ export default function TrackingClient({
         {/* Live ranking label */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <BarChart2 size={15} color="#16A34A" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Performance Score</span>
+          <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Ranking ao vivo</span>
           <div
             className="animate-pulse"
             style={{ width: 7, height: 7, borderRadius: "50%", background: "#16A34A", marginLeft: "auto" }}
@@ -417,7 +417,7 @@ export default function TrackingClient({
             }}
           >
             <Share2 size={16} />
-            Compartilhar Auditoria
+            Compartilhar placar
           </button>
           {deal.status === "finalizado" && (
             <button
@@ -429,7 +429,7 @@ export default function TrackingClient({
                 fontSize: 14, fontWeight: 700, color: "white",
               }}
             >
-              Ver Liquidação Final →
+              Ver resultado final →
             </button>
           )}
         </div>
