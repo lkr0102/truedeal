@@ -1,8 +1,11 @@
 # True Deal — Honor your word. Get paid for it.
 
-![True Deal Banner](docs/assets/truedeal_banner_premium.png)
+![True Deal Hero Banner](docs/assets/truedeal_hero_banner.png)
 
-> **"Don't trust. Make a Deal."**
+<div align="center">
+  <img src="public/brand/app-icon-logo.png" width="80" height="80" alt="True Deal Logo" />
+  <p><strong>"Don't trust. Make a Deal."</strong></p>
+</div>
 
 Most goals die in group chats. You promise to run, study, or work out, and weeks later, no one remembers. **True Deal** is the accountability layer the world was missing. 
 
@@ -14,7 +17,7 @@ Define your rules, stake your commitment, and let our automated oracles verify y
 
 - **Sovereign Escrow**: Funds are locked in a deterministic Program Derived Address (PDA) on Solana. No middleman, just the code.
 - **Automated Verification**: Integration with real-world oracles (Strava, Apple Health, X) to verify goal completion.
-- **Slacker Tax**: A 3% protocol fee on losers ensures the ecosystem remains sustainable while rewarding those with discipline.
+- **Slacker Tax**: A flat **3% protocol fee** on losers ensures the ecosystem remains sustainable while rewarding those with discipline.
 - **Institutional-Grade UI**: A "Shakes" social interface that hides the complexity of Web3 under a premium, user-friendly experience.
 
 ## 🛠 Tech Stack
