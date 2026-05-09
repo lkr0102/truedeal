@@ -1,43 +1,114 @@
-# MVP Scope - Solana Frontier Hackathon (TrueDeal)
+# MVP Scope — TrueDeal
 
-This document defines the core functionalities and boundaries of the TrueDeal MVP for the Solana Frontier hackathon. The project is currently **Due Diligence Ready**, with a consolidated institutional framework.
+This document defines the implemented features, boundaries, and roadmap for the TrueDeal MVP targeting the Solana ecosystem launch. The project is **production-ready for demo and early access**, with a consolidated institutional architecture.
+
+---
 
 ## 1. Core Target
-- **Platform**: Web (Next.js) with Mobile-first UX (Progressive Web App).
-- **Blockchain**: Solana (Devnet).
-- **Audience**: Users focused on productivity and performance (Initial focus: Brazil).
-- **Nomenclature**: **Performance Agreements** framework.
 
-## 2. Implemented Features (In-Scope)
+- **Platform**: Web (Next.js 15) with Mobile-first UX (Progressive Web App)
+- **Blockchain**: Solana (Devnet)
+- **Audience**: Productivity and performance-focused users (Initial focus: Brazil)
+- **Framework**: Performance Agreements — stake-based accountability with automated verification
 
-### 2.1 Performance Agreement Creation
-- [x] **Audit Channels (Mocked/Demo)**: X (Twitter) simulated for Demo approval.
-- [ ] **Real Channel Integration**: Strava, Wellhub, TotalPass via real OAuth.
-- [x] **Rules Matrix**: Use `11_CONTRACT_RULES_TEMPLATE.md` to map UX rules into on-chain sovereign logic.
-- [ ] **Rules Implementation (Lukas -> João)**: Lukas designs the social rules via template; João encodes them into the Solana Anchor program.
-- [x] **Parameters**: Institutional title, defined period, guarantee value (BRL/USDC).
-- [x] **Settlement**: Proportional Distribution, Ranking (Top 3), or Single Beneficiary.
+---
 
-### 2.2 User Experience (Sovereign UX)
-- [x] **Managed Custody**: Automatic creation of Solana wallets linked to login (Supabase Auth) using AES-256-GCM.
-- [x] **Sovereign Demo Auth Layer**: Automatic fallback and login bypass for the Hackathon (Judge-Proof).
-- [x] **Institutional Onboarding**: Profile and audit criteria configuration.
-- [x] **Audit Dashboard**: Real-time tracking of term validity and compliance status.
-- [x] **Performance Cards**: Visual audit proofs and integration with settlement button.
+## 2. Implemented Features
 
-### 2.3 Verification & Security (DealGuard Engine)
-- [x] **DealGuard Engine**: Structured consensus engine (Oracle 1 and Oracle 2 multisig).
-- [x] **On-chain Escrow (Guarantee)**: Smart contract (Anchor) that locks funds (`init_performance_agreement` and `join_agreement`).
-- [x] **Sovereign Settlement**: "Finalize Agreement" button triggering `settle_performance_agreement` on-chain (Demo Fallback activated if keys are missing).
-- [ ] **Sentinel-01 Integration (Node 3)**: Real connection with the Qwen model for behavioral audit of real data.
+### 2.1 Deal Creation & Configuration
+- [x] Deal creation with title, category, verification channel, rule, frequency, period, stake amount
+- [x] Start date validation: minimum D+1 from creation date (frontend-enforced)
+- [x] Privacy types: `publico` (open) and `privado` (creator approval required)
+- [x] Private deal: approval required for all participants, including share-link access
+- [x] Single fee model: 3% flat fee on loser pool only (Slacker Tax)
+- [x] Distribution: **Proportional** (only available for MVP)
+- [x] Distribution options `top3` and `winner` displayed as "em breve" (non-selectable)
 
-## 3. Next Phases (Post-Hackathon)
-- [ ] Super Paid Agreements (Fee optimization).
-- [ ] Additional Social Channels (Instagram, TikTok, YouTube).
-- [ ] Advanced AI Oracle for natural language agreement creation.
-- [ ] Native Application (iOS/Android).
+### 2.2 Participant Management
+- [x] Creator auto-joins as first participant on deal creation
+- [x] Join deal with pre-condition checks (status, capacity, social account linked)
+- [x] Social account verification gate: participant must have linked and verified account on required channel
+- [x] Duplicate entry prevention (unique constraint + user-facing error)
+- [x] `start_snapshot` recording for baseline at deal activation
 
-## 4. Success Metrics for Demo
-- [x] **Establishment Time**: < 30 seconds to create an agreement.
-- [x] **Audit Efficiency**: On-chain validation and settlement with guaranteed fallback for the judging panel.
-- [x] **Due Diligence Ready**: Interface and architecture ready for institutional partnerships and investors.
+### 2.3 Automatic Lifecycle Management
+- [x] Deal activates automatically at **00:00 GMT-3** on configured `start_date` — no admin action needed
+- [x] Quorum check at activation: ≥ 2 participants → `ativo`; < 2 → `cancelado` + full stake refund
+- [x] State machine: `formacao → ativo → liquidando → encerrado` / `cancelado`
+
+### 2.4 Shakes (Reputation System)
+- [x] Shakes credited **only when deal transitions to `ativo`** (not on creation or join)
+- [x] Creator: **+500 Shakes** on deal activation
+- [x] Each participant: **+200 Shakes** on deal activation
+- [x] No Shakes credited for cancelled deals
+
+### 2.5 Verification & DealGuard Engine
+- [x] DealGuard Engine: structured audit pipeline with per-window compliance evaluation
+- [x] Strava integration: `km_corridos`, `horas_exercicio`, `checkins`, `pace`
+- [x] X (Twitter) integration: `post_feito` with sub-rules (public account, >100 chars, unique content)
+- [x] Sentinel AI: fraud detection per participant per window (risk score + `isFraudulent`)
+- [x] Forensic SHA-256 proof hash generated over audit results
+- [x] Dual-oracle multi-sig settlement (`oracle_1` + `oracle_2`)
+- [x] Demo Mode: full UX simulation without gas when oracle keys are absent
+
+### 2.6 On-Chain Escrow (Solana / Anchor)
+- [x] Program ID: `9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4`
+- [x] Deterministic PDA vault: `[b"deal", deal_id]`
+- [x] `join_agreement`: exact stake amount enforced on-chain
+- [x] `settle_performance_agreement`: dual-oracle multi-sig + proof hash required
+- [x] Account Abstraction: managed wallets (AES-256-GCM) — no browser extension needed
+
+### 2.7 User Experience
+- [x] Institutional onboarding with social account linking
+- [x] Deal discovery (Explore), tracking (Tracking), deal detail pages
+- [x] Privacy info bottom sheet (public vs. private deal model explained)
+- [x] Deal result page with on-chain tx link
+- [x] Profile page with Shakes balance and deal history
+
+---
+
+## 3. Compliance Rules (MVP)
+
+All compliance evaluation follows the **strict frequency model**: every window must meet the minimum; one failure = loser status.
+
+| Rule                  | Channel(s)                        | MVP |
+|:----------------------|:----------------------------------|:----|
+| `post_feito`          | X                                 | ✅  |
+| `seguidores_recebidos`| X, Instagram, TikTok, LinkedIn, YouTube | ✅ (X only for MVP) |
+| `impressoes`          | X, Instagram, TikTok, LinkedIn, YouTube | ✅ (X only for MVP) |
+| `reposts_recebidos`   | X, Instagram, TikTok              | ✅ (X only for MVP) |
+| `comentarios`         | X, Instagram, TikTok, LinkedIn, YouTube | ✅ (X only for MVP) |
+| `km_corridos`         | Strava                            | ✅  |
+| `horas_exercicio`     | Strava                            | ✅  |
+| `checkins`            | Strava, Wellhub, TotalPass        | ✅  |
+| `ambientes_diferentes`| Strava, Wellhub, TotalPass        | ✅  |
+| `pace`                | Strava                            | ✅  |
+
+> **Pending UI**: Pace field in deal creation needs a UX update to clearly communicate "maximum pace" (lower = faster) rather than a minimum target.
+
+---
+
+## 4. Out of Scope for MVP
+
+| Feature                                          | Status        |
+|:-------------------------------------------------|:--------------|
+| Distribution: `top3`, `winner`                   | Em breve      |
+| Channels: Instagram, TikTok, LinkedIn, Discord, YouTube | Em breve |
+| Shakes utility: fee discounts, Sovereign tier    | Em breve      |
+| Real on-chain settlement (Mainnet)               | Em breve      |
+| Native app (iOS / Android)                       | Em breve      |
+| DeFi Yield Escrow (Kamino / MarginFi)            | Roadmap       |
+| Advanced AI oracle (natural language rules)      | Roadmap       |
+| Dispute period / arbitration window              | Roadmap       |
+| `refund_all()` on settlement timeout             | Roadmap       |
+
+---
+
+## 5. Success Metrics for Demo / Early Access
+
+- [x] Deal creation to activation: < 30 seconds
+- [x] Zero browser extension required for end-to-end flow
+- [x] Full UX demo without on-chain gas (Demo Mode fallback)
+- [x] Automatic deal start — no admin intervention
+- [x] Compliance audit with fraud detection and proof hash
+- [x] Due Diligence Ready: architecture and interface ready for partnerships and investors
