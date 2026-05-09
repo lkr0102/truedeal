@@ -1,6 +1,5 @@
 # TrueDeal — Honor your word. Get paid for it.
 
-![True Deal Hero Banner](docs/assets/truedeal_hero_banner.png)
 
 <div align="center">
   <img src="public/brand/app-icon-logo.png" width="80" height="80" alt="True Deal Logo" />
