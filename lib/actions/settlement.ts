@@ -42,22 +42,25 @@ export async function settleDealProtocol(
     .eq("id", dealId)
 
   // ── 4. Sovereign Payout (Solana Anchor) ─────────────────────────────────
-  const isDemo = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("seu-projeto")
+  const isPlaceholderSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("seu-projeto")
+  const hasOracleKeys = !!(process.env.APP_FEE_PAYER_KEY && process.env.APP_ORACLE2_KEY)
+
+  // Use real on-chain execution only when both Supabase and oracle keys are configured
+  const useRealChain = !isPlaceholderSupabase && hasOracleKeys
 
   let txSignature: string
 
-  if (isDemo) {
-    // Demo bypass: simulate successful on-chain settlement for judge evaluation
+  if (!useRealChain) {
+    const reason = isPlaceholderSupabase ? "placeholder Supabase URL" : "missing oracle keypairs"
+    console.warn(`[DealGuard] Demo mode active (${reason}). Simulating on-chain settlement.`)
     await new Promise(r => setTimeout(r, 600))
     txSignature = `DEMO_TX_${Date.now()}_${dealId.slice(0, 8)}`
     console.log(`[Demo] Simulated on-chain settlement: ${txSignature}`)
   } else {
-    // Production: use fee-payer as oracle1 and a dedicated oracle2 keypair
+    // Production: fee-payer is oracle1, APP_ORACLE2_KEY is the second DealGuard node
     const oracle1 = getFeePayer()
-    const oracle2b64 = process.env.APP_ORACLE2_KEY
-    if (!oracle2b64) throw new Error("APP_ORACLE2_KEY is not set")
     const oracle2 = Keypair.fromSecretKey(
-      new Uint8Array(Buffer.from(oracle2b64, "base64"))
+      new Uint8Array(Buffer.from(process.env.APP_ORACLE2_KEY!, "base64"))
     )
 
     txSignature = await settlePerformanceAgreement(

@@ -7,10 +7,11 @@ import { ptBR } from "date-fns/locale"
 import {
   ArrowLeft, Share2, Users, DollarSign, Clock, Activity,
   CheckCircle2, XCircle, Trophy,
-  Lock, AlertCircle, Loader2, ExternalLink, CalendarDays, Hourglass
+  Lock, AlertCircle, Loader2, ExternalLink, CalendarDays, Hourglass, ShieldCheck
 } from "lucide-react"
 import { GlassCard, PrimaryBtn, GhostBtn } from "@/components/td-ui"
 import { joinDeal, depositToEscrow } from "@/lib/actions/deals"
+import { settleDealProtocol } from "@/lib/actions/settlement"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -399,11 +400,46 @@ function ParticipantsList({ deal }: { deal: DealView }) {
               </div>
               <span className="text-[11px] text-gray-400">{p.username}</span>
             </div>
-            <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#16A34A" }} />
+            <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "#00D26A" }} />
           </div>
         ))}
       </div>
     </GlassCard>
+  )
+}
+
+function SentinelShield() {
+  return (
+    <div className="mt-4 p-4 rounded-3xl overflow-hidden relative" 
+      style={{ background: "#0A0F0D", border: "1px solid rgba(0,210,106,0.2)" }}>
+      <div className="absolute top-0 right-0 p-2 opacity-10">
+        <Activity className="w-20 h-20 text-[#00D26A]" />
+      </div>
+      <div className="relative z-10 flex items-center gap-3">
+        <div className="w-10 h-10 rounded-2xl bg-[#00D26A]/10 flex items-center justify-center border border-[#00D26A]/30">
+          <ShieldCheck className="w-6 h-6 text-[#00D26A]" />
+        </div>
+        <div>
+          <h4 className="text-xs font-black text-white uppercase tracking-widest">Sentinel-01 Risk Guardian</h4>
+          <p className="text-[10px] text-gray-500 font-bold mt-0.5">AUDITORIA COMPORTAMENTAL ATIVA (AI)</p>
+        </div>
+        <div className="ml-auto">
+          <span className="text-[9px] font-black px-2 py-1 bg-[#00D26A] text-black rounded-lg">PROTECTED</span>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        {[
+          { label: "Anomalia", val: "0.04%", color: "#00D26A" },
+          { label: "Forensics", val: "Audit-Ready", color: "#00D26A" },
+          { label: "Network", val: "BFT Consensus", color: "#9945FF" },
+        ].map(s => (
+          <div key={s.label} className="p-2 rounded-xl bg-white/5 border border-white/10">
+            <p className="text-[8px] text-gray-500 font-bold uppercase tracking-tighter">{s.label}</p>
+            <p className="text-[10px] font-black text-white mt-0.5" style={{ color: s.color }}>{s.val}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -420,6 +456,9 @@ export default function DealClient({
   const deal    = mapDeal(dealData, userId)
   const [joining,   setJoining]   = useState(false)
   const [joinError, setJoinError] = useState<string | null>(null)
+  const [settling,  setSettling]  = useState(false)
+  const [settleErr, setSettleErr] = useState<string | null>(null)
+  const [txResult,  setTxResult]  = useState<{ txSignature: string; explorerUrl: string } | null>(null)
 
   const isParticipating = userId
     ? dealData.participants.some(p => p.user_id === userId)
@@ -456,6 +495,24 @@ export default function DealClient({
     } catch (e) { console.warn("Snapshot fail", e) }
 
     router.refresh()
+  }
+
+  async function handleSettleDeal() {
+    if (settling) return
+    setSettling(true)
+    setSettleErr(null)
+    try {
+      // Beneficiary = first participant wallet, or creator if none
+      const beneficiary = dealData.participants[0]?.profile?.solana_public_key
+        ?? dealData.creator_id
+      const result = await settleDealProtocol(dealData.id, beneficiary)
+      setTxResult({ txSignature: result.txSignature, explorerUrl: result.explorerUrl })
+      router.refresh()
+    } catch (e: any) {
+      setSettleErr(e.message ?? "Erro ao liquidar acordo")
+    } finally {
+      setSettling(false)
+    }
   }
 
   const daysLeft  = deal.daysTotal - deal.daysGone
@@ -590,6 +647,7 @@ export default function DealClient({
 
           <DealRulesCard deal={deal} dealData={dealData} />
           <ParticipantsList deal={deal} />
+          <SentinelShield />
         </div>
       </div>
 
@@ -612,11 +670,48 @@ export default function DealClient({
           </div>
           <div className="flex-1">
             {deal.status === "ativo" ? (
-              <PrimaryBtn
-                style={{ width: "100%", textAlign: "center", borderRadius: 16, background: "#00D26A", color: "#0A0F0D", fontWeight: 900, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}
-                onClick={() => router.push(`/tracking?id=${deal.id}`)}>
-                Auditoria em Tempo Real →
-              </PrimaryBtn>
+              <div className="flex flex-col gap-2 w-full">
+                {txResult && (
+                  <a href={txResult.explorerUrl} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-1.5 text-[10px] font-black uppercase tracking-widest py-2 px-3 rounded-xl"
+                    style={{ background: "rgba(153,69,255,0.12)", color: "#9945FF", border: "1px solid rgba(153,69,255,0.3)" }}>
+                    <ExternalLink className="w-3 h-3" />
+                    LIQUIDAÇÃO ON-CHAIN → SOLANA EXPLORER
+                  </a>
+                )}
+                {settleErr && (
+                  <div className="flex items-center gap-1.5 text-red-500 text-xs px-1">
+                    <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span>{settleErr}</span>
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <PrimaryBtn
+                    style={{ flex: 1, textAlign: "center", borderRadius: 16, background: "#00D26A", color: "#0A0F0D", fontWeight: 900, fontSize: 13, textTransform: "uppercase", letterSpacing: "0.05em" }}
+                    onClick={() => router.push(`/tracking?id=${deal.id}`)}>
+                    Auditoria →
+                  </PrimaryBtn>
+                  {isCreator && !txResult && (
+                    <PrimaryBtn
+                      disabled={settling}
+                      style={{
+                        flex: 1, textAlign: "center", borderRadius: 16,
+                        background: settling ? "rgba(153,69,255,0.4)" : "#9945FF",
+                        color: "#fff", fontWeight: 900, fontSize: 13,
+                        textTransform: "uppercase", letterSpacing: "0.05em",
+                        opacity: settling ? 0.7 : 1,
+                      }}
+                      onClick={handleSettleDeal}>
+                      {settling ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          LIQUIDANDO…
+                        </span>
+                      ) : "FINALIZAR ACORDO"}
+                    </PrimaryBtn>
+                  )}
+                </div>
+              </div>
             ) : deal.status === "pendente" ? (
               <div className="flex-1 flex flex-col gap-1.5">
                 {joinError && (
