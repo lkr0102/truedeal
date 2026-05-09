@@ -157,6 +157,9 @@ export default function LoginPage() {
 
     if (isPlaceholder) {
       console.warn("[Demo] Placeholder Supabase detected. Bypassing network for Demo Protocol.")
+      // Define cookie de bypass para o servidor reconhecer a sessão mockada
+      document.cookie = "truedeal-demo-session=true; path=/; max-age=3600"
+      
       // Simula um delay de rede para UX
       await new Promise(r => setTimeout(r, 800))
       router.push("/")

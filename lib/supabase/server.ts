@@ -3,9 +3,11 @@ import { cookies } from "next/headers"
 
 export async function createClient() {
   const cookieStore = await cookies()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const isPlaceholder = supabaseUrl.includes("seu-projeto")
 
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  const client = createServerClient(
+    supabaseUrl,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
@@ -20,6 +22,27 @@ export async function createClient() {
       },
     },
   )
+
+  // Sovereign Demo Bypass: Se for placeholder, mockamos o getUser para permitir navegação
+  if (isPlaceholder) {
+    const hasDemoCookie = cookieStore.get("truedeal-demo-session")?.value === "true"
+    if (hasDemoCookie) {
+      const mockUser = {
+        id: "demo-judge-uuid",
+        email: "demo@truedeal.io",
+        user_metadata: { display_name: "Judge Performance", username: "judge_demo" }
+      }
+      // Sobrescrevemos o getUser apenas para o bypass
+      const originalAuth = client.auth
+      client.auth = {
+        ...originalAuth,
+        getUser: async () => ({ data: { user: mockUser as any }, error: null }),
+        getSession: async () => ({ data: { session: { user: mockUser } as any }, error: null }),
+      } as any
+    }
+  }
+
+  return client
 }
 
 /** Apenas para operações server-side que precisam de privilégios admin */

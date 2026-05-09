@@ -434,6 +434,8 @@ function ProfilePopover({
   async function handleSignOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
+    // Limpa o cookie de demo se existir
+    document.cookie = "truedeal-demo-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
     router.push("/login")
   }
 
