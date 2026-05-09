@@ -17,55 +17,33 @@ interface IconProps {
 
 export function TrueDealIcon({
   size = 60,
-  sealColor = GREEN,
-  checkColor = WHITE,
-  showDots = true,
   className,
 }: IconProps) {
   return (
-    <svg
+    <img
+      src="/brand/app-icon-logo.png"
       width={size}
       height={size}
-      viewBox="0 0 140 140"
-      xmlns="http://www.w3.org/2000/svg"
-      role="img"
-      aria-label="True Deal logo"
+      alt="True Deal Icon"
       className={className}
-    >
-      <path d={SEAL_D} fill={sealColor} />
-      <polyline
-        points="43,72 60,89 97,52"
-        stroke={checkColor}
-        strokeWidth="7.5"
-        fill="none"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-      {showDots && (
-        <>
-          <circle cx="43" cy="72" r="5" fill={checkColor} />
-          <circle cx="97" cy="52" r="5" fill={checkColor} />
-        </>
-      )}
-    </svg>
+      style={{ borderRadius: "50%" }}
+    />
   )
 }
 
 export function TrueDealAppIcon({ size = 100, className }: { size?: number; className?: string }) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 140 140"
-      xmlns="http://www.w3.org/2000/svg"
-      className={className}
+    <div 
+      className={`relative flex items-center justify-center overflow-hidden rounded-[22%] ${className}`}
+      style={{ width: size, height: size, background: DARK }}
     >
-      <rect width="140" height="140" rx="28" fill={DARK} />
-      <path d={SEAL_D} fill={GREEN} />
-      <polyline points="43,72 60,89 97,52" stroke={WHITE} strokeWidth="7.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-      <circle cx="43" cy="72" r="5" fill={WHITE} />
-      <circle cx="97" cy="52" r="5" fill={WHITE} />
-    </svg>
+      <img
+        src="/brand/app-icon-logo.png"
+        width={size * 0.85}
+        height={size * 0.85}
+        alt="True Deal App Icon"
+      />
+    </div>
   )
 }
 
