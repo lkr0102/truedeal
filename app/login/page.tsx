@@ -143,73 +143,6 @@ export default function LoginPage() {
     select(found.adapter.name)
   }
 
-  async function handleDemoLogin() {
-    setIsLoading(true)
-    setAuthError(null)
-    const demoEmail = "demo@truedeal.io"
-    const demoPass  = "judgelogin2024"
-    
-    setEmail(demoEmail)
-    setPassword(demoPass)
-
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const isPlaceholder = !supabaseUrl || supabaseUrl.includes("seu-projeto")
-
-    if (isPlaceholder) {
-      console.warn("[Demo] Placeholder Supabase detected. Bypassing network for Demo Protocol.")
-      // Define cookie de bypass para o servidor reconhecer a sessão mockada
-      document.cookie = "truedeal-demo-session=true; path=/; max-age=3600"
-      
-      // Simula um delay de rede para UX
-      await new Promise(r => setTimeout(r, 800))
-      router.push("/")
-      return
-    }
-
-    const supabase = createClient()
-    
-    // Try sign in
-    const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
-      email: demoEmail,
-      password: demoPass
-    })
-
-    if (signInErr) {
-      console.log("[Demo] Sign in failed, attempting auto-provisioning...", signInErr.message)
-      
-      // If sign in fails, attempt sign up (provisioning)
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-        email: demoEmail,
-        password: demoPass,
-        options: {
-          data: {
-            display_name: "Judge Performance",
-            username: "judge_demo"
-          }
-        }
-      })
-
-      if (signUpErr) {
-        setAuthError(`Demo Protocol Error: ${signUpErr.message}`)
-        setIsLoading(false)
-        return
-      }
-
-      // If signUp successful (or pending confirmation), we try to redirect anyway 
-      // as some configs auto-login after signup
-      if (signUpData.session) {
-         router.push("/")
-         return
-      } else {
-         setAuthError("Sessão demo provisionada. Por favor, verifique o e-mail ou tente entrar novamente.")
-         setIsLoading(false)
-         return
-      }
-    }
-
-    router.push("/")
-  }
-
   // ── Styles ──
 
   const glass = {
@@ -348,17 +281,8 @@ export default function LoginPage() {
           <span style={{ color: "#9945FF" }}>→</span>
         </button>
 
-        {/* Termos e Acesso Juiz */}
-        <div className="text-center space-y-4">
-          <p className="text-[10px] text-gray-500 uppercase tracking-tighter opacity-50 hover:opacity-100 transition-opacity">
-            Institutional Access: <button 
-              type="button"
-              onClick={handleDemoLogin}
-              className="underline hover:text-[#00D26A]"
-            >
-              Demo Protocol v1.1
-            </button>
-          </p>
+        {/* Termos */}
+        <div className="text-center mt-6">
           <p className="text-[10px] text-gray-400">
             Ao continuar, você aceita os{" "}
             <a href="#" className="text-blue-600 hover:underline">Termos de Uso</a> e a{" "}
