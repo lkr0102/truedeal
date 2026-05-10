@@ -47,8 +47,10 @@ jobs:
           key: anchor-0.30.1
 
       - name: Install Anchor CLI
-        if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: cargo install --version 0.30.1 anchor-cli --locked
+        run: |
+          cargo install --version 0.30.1 anchor-cli --locked 2>&1 || true
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+          anchor --version
 
       - name: Verify tool versions
         run: |
