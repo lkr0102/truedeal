@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.71"
+rust-version = "1.60"
 name = "windows-sys"
 version = "0.61.2"
 build = false
@@ -297,3 +297,4 @@ missing_unsafe_on_extern = "warn"
 level = "warn"
 priority = 0
 check-cfg = ["cfg(windows_raw_dylib, windows_slim_errors)"]
+

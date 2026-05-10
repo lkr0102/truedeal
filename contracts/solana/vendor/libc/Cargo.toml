@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.65"
+rust-version = "1.60"
 name = "libc"
 version = "0.2.186"
 authors = ["The Rust Project Developers"]
@@ -227,3 +227,4 @@ used_underscore_binding = "allow"
 
 [lints.rust]
 unused_qualifications = "allow"
+

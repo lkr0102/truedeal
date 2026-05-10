@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.63"
+rust-version = "1.60"
 name = "jobserver"
 version = "0.1.34"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
@@ -70,3 +70,4 @@ features = ["fs"]
 [target."cfg(windows)".dependencies.getrandom]
 version = "0.3.2"
 features = ["std"]
+

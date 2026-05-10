@@ -41,3 +41,4 @@ features = ["full"]
 anchor-debug = ["anchor-syn/anchor-debug"]
 event-cpi = ["anchor-syn/event-cpi"]
 idl-build = ["anchor-syn/idl-build"]
+

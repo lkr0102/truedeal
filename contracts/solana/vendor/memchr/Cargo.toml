@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.61"
+rust-version = "1.60"
 name = "memchr"
 version = "2.8.0"
 authors = [
@@ -87,3 +87,4 @@ debug = 2
 [profile.test]
 opt-level = 3
 debug = 2
+

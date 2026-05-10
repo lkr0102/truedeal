@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.71"
+rust-version = "1.60"
 name = "unicode-ident"
 version = "1.0.24"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
@@ -82,3 +82,4 @@ version = "0.2.6"
 [target."cfg(not(miri))".dev-dependencies.criterion]
 version = "0.8"
 default-features = false
+

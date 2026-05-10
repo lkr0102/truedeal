@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.71"
+rust-version = "1.60"
 name = "zmij"
 version = "1.0.21"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
@@ -88,3 +88,4 @@ version = "1"
 [target."cfg(not(miri))".dev-dependencies.criterion]
 version = "0.8"
 default-features = false
+

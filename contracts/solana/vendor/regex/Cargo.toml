@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.65"
+rust-version = "1.60"
 name = "regex"
 version = "1.12.3"
 authors = [
@@ -213,3 +213,4 @@ debug = 2
 [profile.test]
 opt-level = 3
 debug = 2
+

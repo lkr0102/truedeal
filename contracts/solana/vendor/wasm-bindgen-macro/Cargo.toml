@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.60"
 name = "wasm-bindgen-macro"
 version = "0.2.121"
 authors = ["The wasm-bindgen Developers"]
@@ -70,3 +70,4 @@ check-cfg = [
     "cfg(wasm_bindgen_use_js_sys)",
     "cfg(xxx_debug_only_print_generated_code)",
 ]
+

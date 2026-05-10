@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.63"
+rust-version = "1.60"
 name = "allocator-api2"
 version = "0.2.21"
 authors = ["Zakarum <zaq.dev@icloud.com>"]
@@ -46,3 +46,4 @@ std = ["alloc"]
 level = "warn"
 priority = 0
 check-cfg = ["cfg(no_global_oom_handling)"]
+

@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.60"
 name = "anyhow"
 version = "1.0.102"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
@@ -127,3 +127,4 @@ version = "2"
 [dev-dependencies.trybuild]
 version = "1.0.108"
 features = ["diff"]
+

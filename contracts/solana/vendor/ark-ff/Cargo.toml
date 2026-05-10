@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.63"
+rust-version = "1.60"
 name = "ark-ff"
 version = "0.4.2"
 authors = ["arkworks contributors"]
@@ -142,3 +142,4 @@ std = [
     "ark-serialize/std",
     "itertools/use_std",
 ]
+

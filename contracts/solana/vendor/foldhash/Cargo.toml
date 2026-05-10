@@ -74,3 +74,4 @@ version = "1.8"
 
 [profile.release]
 lto = "thin"
+

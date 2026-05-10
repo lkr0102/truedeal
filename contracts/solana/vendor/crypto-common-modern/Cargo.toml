@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.66"
+rust-version = "1.60"
 name = "crypto-common"
 version = "0.2.1"
 authors = ["RustCrypto Developers"]
@@ -100,5 +100,6 @@ trivial_casts = "warn"
 trivial_numeric_casts = "warn"
 unused_lifetimes = "warn"
 unused_qualifications = "warn"
+
 
 

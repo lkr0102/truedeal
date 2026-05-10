@@ -32,3 +32,4 @@ version = "1"
 [dependencies.syn]
 version = "1"
 features = ["extra-traits"]
+
