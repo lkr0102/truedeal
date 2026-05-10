@@ -2,6 +2,8 @@
 
 Este documento detalha o fluxo lógico e financeiro do Smart Contract TrueDeal na Solana, servindo de base para auditorias técnicas e integrações de backend.
 
+> **Última atualização:** 2026-05-10 — Regras de compliance por janela documentadas; UX de sub-regras sincronizado com a máquina de estados.
+
 ---
 
 ## 1. Fluxo de Vida do Acordo (State Machine)
@@ -21,6 +23,40 @@ stateDiagram-v2
 - **Active**: O período de performance começou. Nenhum novo participante pode entrar.
 - **Settled**: A auditoria foi concluída. O Slacker Tax foi retido e os prêmios distribuídos.
 - **Cancelled**: Fundos devolvidos integralmente aos participantes.
+
+---
+
+## 1b. Regras de Compliance por Janela (Strict Window Model)
+
+O DealGuard Engine avalia o cumprimento de forma **estrita por janela de frequência**. A UI de todas as telas de deal espelha esta lógica desde 2026-05-10.
+
+### Princípio
+```
+Para cada janela de frequência no período do deal:
+  SE cumprimento_da_janela < quantidade_configurada:
+    → participante = PERDEDOR (irreversível)
+```
+Uma janela perdida = eliminado, independente de qualquer outra janela.
+
+### Sub-regras por Tipo de Verificação
+
+| `verification_type` | Canal | Sub-regras de validade |
+|:--------------------|:------|:-----------------------|
+| `post_feito` | X | Conta pública; post > 100 chars; conteúdo único no período |
+| `seguidores_recebidos` | X, Instagram, TikTok, LinkedIn, YouTube | Delta líquido por janela (ganhos − perdas) ≥ N |
+| `impressoes` | X, Instagram, TikTok, LinkedIn, YouTube | Total de impressões das publicações da janela ≥ N |
+| `reposts_recebidos` | X, Instagram, TikTok | Total de reposts/compartilhamentos na janela ≥ N |
+| `comentarios` | X, Instagram, TikTok, LinkedIn, YouTube | Total de comentários recebidos na janela ≥ N |
+| `km_corridos` | Strava | Soma de distâncias de atividades `Run` na janela ≥ N km |
+| `horas_exercicio` | Strava | Tempo total de atividades na janela ≥ N horas |
+| `checkins` | Strava, Wellhub, TotalPass | Número de check-ins registrados na janela ≥ N |
+| `ambientes_diferentes` | Strava, Wellhub, TotalPass | Locais/academias distintos visitados na janela ≥ N |
+| `pace` | Strava | Pace médio das corridas da janela ≤ pace configurado (min/km) |
+
+> **Nota Pace**: O valor configurado é o **limite máximo** — quanto menor o número, mais rápido. A UI exibe `"Pace máximo (min/km) — ← menor = mais rápido"` para deixar isso explícito.
+
+### Dados insuficientes
+Se o DealGuard não conseguir coletar dados de um participante em uma janela (token expirado, API indisponível, conta privada), o participante é tratado como **não-cumprimento** naquela janela.
 
 ---
 

@@ -2,6 +2,8 @@
 
 Este documento é o guia definitivo para desenvolvedores e auditores entenderem a anatomia do TrueDeal, desde a interface premium até a liquidação on-chain.
 
+> **Última atualização:** 2026-05-10 — Compliance Rules UI, ProfilePopover, countdown timer, correções de bugs.
+
 ---
 
 ## 1. Stack Tecnológica
@@ -24,11 +26,34 @@ A interface foi desenhada por Lukas com foco em **fidelidade visual e confiança
 - `/styles/globals.css`: Variáveis de cor e efeitos de blur.
 
 ### Fluxos do Usuário (User Journey):
-1. **The Hook (Dashboard)**: `page.tsx` (Home) -> Uso de **Hero Banners** saturados e **Live Status Dots** para criar urgência e FOMO.
-2. **The Rule Engine (Creation)**: `/create` -> Configuração modular de regras (Fitness/Social) com conectores lógicos (E/OU).
+1. **The Hook (Dashboard)**: `page.tsx` (Home) -> Uso de **Hero Banners** saturados, **Live Status Dots** e **Countdown Timer** (regressivo até 00h GMT-3) para criar urgência e FOMO.
+2. **The Rule Engine (Creation)**: `/create` -> Configuração modular de regras (Fitness/Social) com conectores lógicos (E/OU) + **VERIFICATION_SUBRULES** checklist por tipo de verificação + banner GMT-3.
 3. **Engagement Loop (Explore)**: `/explore` -> Sistema de **Shakes (🤝)** (Pontos de engajamento) + **Hall of Fame** (Podium visual) para retenção.
-4. **Live Accountability**: `/deal/[id]` -> Timeline visual da jornada + links de evidência auditáveis.
+4. **Live Accountability**: `/deal/[id]` -> Timeline visual da jornada + **RULE_SUBRULES** panel + aviso de janela estrita + links de evidência auditáveis.
 5. **Sovereign Finance**: `/wallet` -> Gestão de saldo multi-moeda (SOL/USD/BRL) com foco em privacidade (Hide Balance).
+
+### Novo Componente: ProfilePopover
+Substituiu o balloon de configurações no header. Localizado em `app/home-client.tsx`.
+
+| Funcionalidade | Implementação |
+|:---|:---|
+| Link para `/profile` | Navegação direta |
+| Referral copy | `truedeal.app/invite/[userId]` + guard null |
+| Language toggle | PT ↔ EN via `localStorage` |
+| Dark Mode toggle | Animação sol/lua, persiste em `localStorage` |
+
+### Sistema de Compliance Rules UI (2026-05-10)
+
+O mapa de sub-regras (`RULE_SUBRULES` / `VERIFICATION_SUBRULES`) é uma estrutura de dados front-end que espelha as regras de negócio definidas em `docs/06_REGRAS_FLUXO_COMPLETO.md §5.2`. Está presente em três telas:
+
+| Tela | Arquivo | Propósito |
+|:-----|:--------|:----------|
+| Criação | `app/create/page.tsx` | Mostrar ao criador o que será auditado |
+| Detalhe do deal | `app/deal/[id]/deal-client.tsx` | Lembrar participantes das regras vigentes |
+| Tracking | `app/tracking/tracking-client.tsx` | Visibilidade contínua durante o período ativo |
+
+**Tipos cobertos (10 total):**
+`post_feito`, `seguidores_recebidos`, `impressoes`, `reposts_recebidos`, `comentarios`, `km_corridos`, `horas_exercicio`, `pace`, `checkins`, `ambientes_diferentes`
 
 
 ---

@@ -2,6 +2,8 @@
 
 Este guia documenta os princípios visuais e componentes criados por Lukas para garantir que qualquer expansão do TrueDeal mantenha a estética de **Alta Fidelidade e Glassmorphism**.
 
+> **Última atualização:** 2026-05-10 — Countdown urgency colors, ProfilePopover, compliance subrule checklists, aviso de janela estrita.
+
 ---
 
 ## 1. Princípios de Design
@@ -32,6 +34,27 @@ Indicação visual do estado do contrato.
 - **Formação**: Laranja/Âmbar.
 - **Encerrado**: Cinza neutro.
 
+### CountdownBadge (DealCards em formação)
+Exibido em cards com `status = "formacao"` no dashboard.
+- **Padrão** (> 24h): texto `#6B7280` (cinza), sem animação.
+- **Urgente** (< 24h): texto `#F59E0B` (âmbar).
+- **Crítico** (< 1h): texto `#EF4444` (vermelho) + classe Tailwind `animate-pulse`.
+- Atualização: `setInterval` de **10 segundos**.
+- Helpers: `getStartTarget(startDate)` e `formatCountdown(ms)`.
+
+### ProfilePopover
+Substituiu o balloon de configurações. Abre ao clicar no avatar/ícone do header.
+- Fundo: `GlassCard` padrão com blur 30px.
+- Itens: Ícone + label, separados por `<hr>` fino.
+- Toggle de idioma: chip PT/EN com bordas arredondadas, swap via `localStorage`.
+- Toggle dark mode: ícone sol (☀️) / lua (🌙), transição `transition-all 300ms`.
+
+### ComplianceSubrulesCard
+Card de sub-regras presente em `/create`, `/deal/[id]` e `/tracking`.
+- Título: `"Regras de Verificação"` + ícone 📋.
+- Lista de sub-regras com prefixo `✅` para cada critério.
+- Banner de alerta (borda vermelha, fundo `rgba(239,68,68,0.08)`): `"Atenção: 1 janela perdida = eliminação permanente."`
+
 ---
 
 ## 3. Guia de Cores (Paleta AETHEL)
@@ -41,7 +64,9 @@ Indicação visual do estado do contrato.
 | **Brand Green** | `#16A34A` | Logotipo, Botões de Ação, Sucesso. |
 | **Background Dark** | `#0B0B10` | Fundo principal do modo escuro. |
 | **Glass White** | `rgba(255,255,255,0.42)` | Fundo dos cards (com blur). |
-| **Alert Red** | `#EF4444` | Erros, Fraudes (Risk Guardian). |
+| **Alert Red** | `#EF4444` | Erros, Fraudes (Risk Guardian), Countdown crítico (< 1h), borda de janela estrita. |
+| **Warning Amber** | `#F59E0B` | Countdown urgente (< 24h), avisos de atenção. |
+| **Info Blue** | `#3B82F6` | Banner de início automático GMT-3 na criação de deals. |
 
 ---
 

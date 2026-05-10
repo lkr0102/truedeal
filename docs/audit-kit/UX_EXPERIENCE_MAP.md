@@ -2,6 +2,8 @@
 
 This document provides a comprehensive mapping of the **TrueDeal** user journey, detailing the visual language, psychological triggers, and technical flows that define the platform's "Sovereign Trust" experience.
 
+> **Última atualização:** 2026-05-10 — Compliance Rules UI, ProfilePopover, countdown timer, correções de bugs.
+
 ---
 
 ## 🏛️ 1. Landing & Dashboard (The Hook)
@@ -17,6 +19,16 @@ This document provides a comprehensive mapping of the **TrueDeal** user journey,
 ### Psychological Triggers
 - **Live Status Dots**: Pulsing green dots for active deals indicate a "living" system.
 - **Financial summary**: Shows "Total at Stake" vs "Potential Win" to keep the user focused on the prize.
+- **Live Countdown on Pending DealCards**: Cards com `status = "formacao"` exibem um contador regressivo até o horário de início (00:00 GMT-3). Atualização a cada 10 segundos via `setInterval`. Lógica implementada em `getStartTarget` e `formatCountdown` em `home-client.tsx`.
+  - Cores progressivas: padrão → amarelo (< 24h) → vermelho + animação `pulse` (< 1h).
+  - Exibe `HH:MM:SS` ou `Xd Xh` dependendo do horizonte.
+
+### ProfilePopover (substituiu o settings balloon)
+O ícone de configurações no header foi substituído por um `ProfilePopover` com:
+- Link direto para `/profile`
+- **Invite and Earn**: copy do referral com ícone de cópia + URL construída como `truedeal.app/invite/[userId]` (guarda contra `null`)
+- **Language toggle**: PT ↔ EN persistido via `localStorage`
+- **Dark Mode**: toggle animado (sol/lua) com transição suave
 
 ---
 
@@ -32,8 +44,12 @@ This document provides a comprehensive mapping of the **TrueDeal** user journey,
 5. **Review Screen**: A high-fidelity preview of the Deal card as it will appear to others.
 
 ### Security UX
-- **Transparency Notice**: Prominent display of the "3% Protocol Fee".
+- **Transparency Notice**: Prominent display of the "3% Protocol Fee" (corrigido de 5% para 3%).
 - **Rule Proofing**: Users can see exactly which channel will audit their performance.
+- **VERIFICATION_SUBRULES Checklist**: Para cada `verification_type` selecionado, o formulário exibe as sub-regras aplicáveis como uma checklist com checkmarks visuais. Exemplo para `post_feito` (X): conta pública, +100 caracteres, conteúdo único no período.
+- **Aviso de Janela Estrita**: Banner vermelho informando que o descumprimento em qualquer janela (semana/dia) resulta em eliminação permanente, independente do desempenho nas demais.
+- **Banner de Início Automático GMT-3**: Na Tela 2 (Período), banner azul informando que o deal inicia automaticamente às `00h00 (Brasília, GMT-3)`. A linha "Período" exibe `"Início: [data] às 00h GMT-3"` explicitamente.
+- **Pace UX (Strava)**: Campo renomeado para `"Pace máximo (min/km)"` com hint direcional `"← menor = mais rápido"`, esclarecendo que o valor é um teto, não um alvo mínimo.
 
 ---
 
@@ -46,6 +62,8 @@ This document provides a comprehensive mapping of the **TrueDeal** user journey,
 - **Gamified Leaderboard**: Users are ranked by performance, with special badges for "Top 3" and "Winner".
 - **Evidence Links**: Clickable links to "Social Connection" or "Strava Profile" allow participants to audit each other.
 - **Proof of Stake**: Direct link to the Solana Explorer for the on-chain agreement hash.
+- **RULE_SUBRULES Panel**: Card "Regras do Acordo" expandido com checklist de sub-regras por `verification_type`. Exibe cada critério de validade com ícone ✅/❌. Presente tanto na visão de detalhe do deal quanto na página de tracking.
+- **Aviso de Janela Estrita**: Bloco de alerta vermelho fixo no topo do card de regras: `"Atenção: o descumprimento em qualquer janela resulta em eliminação permanente."` Garante que todos os participantes entendam a mecânica antes e durante o deal.
 
 ---
 
