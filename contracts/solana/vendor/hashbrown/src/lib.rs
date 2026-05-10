@@ -9,65 +9,75 @@
 //! [here]: https://github.com/abseil/abseil-cpp/blob/master/absl/container/internal/raw_hash_set.h
 //! [CppCon talk]: https://www.youtube.com/watch?v=ncHmEUmJZf4
 
-#![cfg_attr(not(doc), no_std)]
+#![no_std]
 #![cfg_attr(
     feature = "nightly",
     feature(
+        test,
         core_intrinsics,
         dropck_eyepatch,
         min_specialization,
-        trivial_clone,
         extend_one,
         allocator_api,
-        strict_provenance_lints
+        slice_ptr_get,
+        nonnull_slice_from_raw_parts,
+        maybe_uninit_array_assume_init
     )
 )]
-#![cfg_attr(feature = "nightly", warn(fuzzy_provenance_casts))]
-#![cfg_attr(feature = "rustc-dep-of-std", feature(rustc_attrs))]
-#![cfg_attr(feature = "nightly", expect(internal_features))]
-#![cfg_attr(
-    all(feature = "nightly", target_arch = "loongarch64"),
-    feature(stdarch_loongarch)
+#![allow(
+    clippy::doc_markdown,
+    clippy::module_name_repetitions,
+    clippy::must_use_candidate,
+    clippy::option_if_let_else,
+    clippy::redundant_else,
+    clippy::manual_map
 )]
-#![cfg_attr(
-    all(feature = "nightly", feature = "default-hasher"),
-    feature(hasher_prefixfree_extras)
-)]
+#![warn(missing_docs)]
+#![warn(rust_2018_idioms)]
 
 #[cfg(test)]
 #[macro_use]
 extern crate std;
 
 #[cfg_attr(test, macro_use)]
-#[cfg_attr(feature = "rustc-dep-of-std", allow(unused_extern_crates))]
-extern crate alloc as stdalloc;
+extern crate alloc;
 
-#[doc = include_str!("../README.md")]
+#[cfg(feature = "nightly")]
 #[cfg(doctest)]
-pub struct ReadmeDoctests;
+doc_comment::doctest!("../README.md");
 
 #[macro_use]
 mod macros;
 
-mod alloc;
-mod control;
-mod hasher;
+#[cfg(feature = "raw")]
+/// Experimental and unsafe `RawTable` API. This module is only available if the
+/// `raw` feature is enabled.
+pub mod raw {
+    // The RawTable API is still experimental and is not properly documented yet.
+    #[allow(missing_docs)]
+    #[path = "mod.rs"]
+    mod inner;
+    pub use inner::*;
+
+    #[cfg(feature = "rayon")]
+    /// [rayon]-based parallel iterator types for hash maps.
+    /// You will rarely need to interact with it directly unless you have need
+    /// to name one of the iterator types.
+    ///
+    /// [rayon]: https://docs.rs/rayon/1.0/rayon
+    pub mod rayon {
+        pub use crate::external_trait_impls::rayon::raw::*;
+    }
+}
+#[cfg(not(feature = "raw"))]
 mod raw;
-mod util;
 
 mod external_trait_impls;
 mod map;
-#[cfg(feature = "raw-entry")]
-mod raw_entry;
 #[cfg(feature = "rustc-internal-api")]
 mod rustc_entry;
 mod scopeguard;
 mod set;
-mod table;
-
-pub use crate::hasher::DefaultHashBuilder;
-#[cfg(feature = "default-hasher")]
-pub use crate::hasher::DefaultHasher;
 
 pub mod hash_map {
     //! A hash map implemented with quadratic probing and SIMD lookup.
@@ -81,7 +91,7 @@ pub mod hash_map {
     /// You will rarely need to interact with it directly unless you have need
     /// to name one of the iterator types.
     ///
-    /// [rayon]: ::rayon
+    /// [rayon]: https://docs.rs/rayon/1.0/rayon
     pub mod rayon {
         pub use crate::external_trait_impls::rayon::map::*;
     }
@@ -95,68 +105,14 @@ pub mod hash_set {
     /// You will rarely need to interact with it directly unless you have need
     /// to name one of the iterator types.
     ///
-    /// [rayon]: ::rayon
+    /// [rayon]: https://docs.rs/rayon/1.0/rayon
     pub mod rayon {
         pub use crate::external_trait_impls::rayon::set::*;
-    }
-}
-pub mod hash_table {
-    //! A hash table implemented with quadratic probing and SIMD lookup.
-    pub use crate::table::*;
-
-    #[cfg(feature = "rayon")]
-    /// [rayon]-based parallel iterator types for hash tables.
-    /// You will rarely need to interact with it directly unless you have need
-    /// to name one of the iterator types.
-    ///
-    /// [rayon]: ::rayon
-    pub mod rayon {
-        pub use crate::external_trait_impls::rayon::table::*;
     }
 }
 
 pub use crate::map::HashMap;
 pub use crate::set::HashSet;
-pub use crate::table::HashTable;
-
-#[cfg(feature = "equivalent")]
-pub use equivalent::Equivalent;
-
-// This is only used as a fallback when building as part of `std`.
-#[cfg(not(feature = "equivalent"))]
-/// Key equivalence trait.
-///
-/// This trait defines the function used to compare the input value with the
-/// map keys (or set values) during a lookup operation such as [`HashMap::get`]
-/// or [`HashSet::contains`].
-/// It is provided with a blanket implementation based on the
-/// [`Borrow`](core::borrow::Borrow) trait.
-///
-/// # Correctness
-///
-/// Equivalent values must hash to the same value.
-pub trait Equivalent<K: ?Sized> {
-    /// Checks if this value is equivalent to the given key.
-    ///
-    /// Returns `true` if both values are equivalent, and `false` otherwise.
-    ///
-    /// # Correctness
-    ///
-    /// When this function returns `true`, both `self` and `key` must hash to
-    /// the same value.
-    fn equivalent(&self, key: &K) -> bool;
-}
-
-#[cfg(not(feature = "equivalent"))]
-impl<Q: ?Sized, K: ?Sized> Equivalent<K> for Q
-where
-    Q: Eq,
-    K: core::borrow::Borrow<Q>,
-{
-    fn equivalent(&self, key: &K) -> bool {
-        self == key.borrow()
-    }
-}
 
 /// The error type for `try_reserve` methods.
 #[derive(Clone, PartialEq, Eq, Debug)]
@@ -168,22 +124,38 @@ pub enum TryReserveError {
     /// The memory allocator returned an error
     AllocError {
         /// The layout of the allocation request that failed.
-        layout: stdalloc::alloc::Layout,
+        layout: alloc::alloc::Layout,
     },
 }
 
-// matches stdalloc::collections::TryReserveError
-impl core::fmt::Display for TryReserveError {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str("memory allocation failed")?;
-        let reason = match self {
-            TryReserveError::CapacityOverflow => {
-                " because the computed capacity exceeded the collection's maximum"
-            }
-            TryReserveError::AllocError { .. } => " because the memory allocator returned an error",
-        };
-        f.write_str(reason)
-    }
+/// The error type for [`RawTable::get_each_mut`](crate::raw::RawTable::get_each_mut),
+/// [`HashMap::get_each_mut`], and [`HashMap::get_each_key_value_mut`].
+#[cfg(feature = "nightly")]
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum UnavailableMutError {
+    /// The requested entry is not present in the table.
+    Absent,
+    /// The requested entry is present, but a mutable reference to it was already created and
+    /// returned from this call to `get_each_mut` or `get_each_key_value_mut`.
+    ///
+    /// Includes the index of the existing mutable reference in the returned array.
+    Duplicate(usize),
 }
 
-impl core::error::Error for TryReserveError {}
+/// Wrapper around `Bump` which allows it to be used as an allocator for
+/// `HashMap`, `HashSet` and `RawTable`.
+///
+/// `Bump` can be used directly without this wrapper on nightly if you enable
+/// the `allocator-api` feature of the `bumpalo` crate.
+#[cfg(feature = "bumpalo")]
+#[derive(Clone, Copy, Debug)]
+pub struct BumpWrapper<'a>(pub &'a bumpalo::Bump);
+
+#[cfg(feature = "bumpalo")]
+#[test]
+fn test_bumpalo() {
+    use bumpalo::Bump;
+    let bump = Bump::new();
+    let mut map = HashMap::new_in(BumpWrapper(&bump));
+    map.insert(0, 1);
+}

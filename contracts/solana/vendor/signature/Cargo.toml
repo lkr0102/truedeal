@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.60"
 name = "signature"
 version = "1.6.4"
 authors = ["RustCrypto Developers"]
@@ -70,3 +70,4 @@ digest-preview = ["digest"]
 hazmat-preview = []
 rand-preview = ["rand_core"]
 std = []
+

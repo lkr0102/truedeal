@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60.0"
+rust-version = "1.60"
 name = "proc-macro-crate"
 version = "1.3.1"
 authors = ["Bastian Köcher <git@kchr.de>"]
@@ -44,3 +44,4 @@ version = "1.0.7"
 
 [dev-dependencies.syn]
 version = "1.0.33"
+

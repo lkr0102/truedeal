@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.56.0"
+rust-version = "1.60"
 name = "zerocopy"
 version = "0.8.48"
 authors = [
@@ -410,3 +410,4 @@ version = "=0.8.48"
 
 [target."cfg(any())".dependencies.zerocopy-derive]
 version = "=0.8.48"
+

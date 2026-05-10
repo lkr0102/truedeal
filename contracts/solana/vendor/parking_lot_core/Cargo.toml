@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.71.0"
+rust-version = "1.60"
 name = "parking_lot_core"
 version = "0.9.12"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
@@ -70,3 +70,4 @@ version = "0.2.95"
 
 [target."cfg(windows)".dependencies.windows-link]
 version = "0.2.0"
+

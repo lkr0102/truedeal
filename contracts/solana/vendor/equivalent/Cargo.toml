@@ -10,7 +10,7 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-rust-version = "1.6"
+rust-version = "1.60"
 name = "equivalent"
 version = "1.0.2"
 build = false
@@ -35,3 +35,4 @@ repository = "https://github.com/indexmap-rs/equivalent"
 [lib]
 name = "equivalent"
 path = "src/lib.rs"
+

@@ -1,14 +1,14 @@
-use crate::{Equivalent, TryReserveError};
-use core::cell::UnsafeCell;
+use crate::TryReserveError;
+use alloc::borrow::ToOwned;
+use core::borrow::Borrow;
 use core::fmt;
 use core::hash::{BuildHasher, Hash};
-use core::iter::{Chain, FusedIterator};
-use core::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Sub, SubAssign};
+use core::iter::{Chain, FromIterator, FusedIterator};
+use core::mem;
+use core::ops::{BitAnd, BitOr, BitXor, Sub};
 
-use super::map::{self, HashMap, Keys};
-use crate::DefaultHashBuilder;
-use crate::alloc::{Allocator, Global};
-use crate::raw::RawExtractIf;
+use super::map::{self, ConsumeAllOnDrop, DefaultHashBuilder, DrainFilterInner, HashMap, Keys};
+use crate::raw::{Allocator, Global};
 
 // Future Optimization (FIXME!)
 // =============================
@@ -102,13 +102,17 @@ use crate::raw::RawExtractIf;
 /// use hashbrown::HashSet;
 ///
 /// let viking_names: HashSet<&'static str> =
-///     [ "Einar", "Olaf", "Harald" ].into_iter().collect();
+///     [ "Einar", "Olaf", "Harald" ].iter().cloned().collect();
 /// // use the values stored in the set
 /// ```
 ///
-/// [`Cell`]: std::cell::Cell
-/// [`RefCell`]: std::cell::RefCell
-pub struct HashSet<T, S = DefaultHashBuilder, A: Allocator = Global> {
+/// [`Cell`]: https://doc.rust-lang.org/std/cell/struct.Cell.html
+/// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+/// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
+/// [`HashMap`]: struct.HashMap.html
+/// [`PartialEq`]: https://doc.rust-lang.org/std/cmp/trait.PartialEq.html
+/// [`RefCell`]: https://doc.rust-lang.org/std/cell/struct.RefCell.html
+pub struct HashSet<T, S = DefaultHashBuilder, A: Allocator + Clone = Global> {
     pub(crate) map: HashMap<T, (), S, A>,
 }
 
@@ -124,23 +128,12 @@ impl<T: Clone, S: Clone, A: Allocator + Clone> Clone for HashSet<T, S, A> {
     }
 }
 
-#[cfg(feature = "default-hasher")]
+#[cfg(feature = "ahash")]
 impl<T> HashSet<T, DefaultHashBuilder> {
     /// Creates an empty `HashSet`.
     ///
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
-    ///
-    /// # HashDoS resistance
-    ///
-    /// The `hash_builder` normally use a fixed key by default and that does
-    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
-    /// Users who require HashDoS resistance should explicitly use
-    /// [`std::hash::RandomState`]
-    /// as the hasher when creating a [`HashSet`], for example with
-    /// [`with_hasher`](HashSet::with_hasher) method.
-    ///
-    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
     ///
     /// # Examples
     ///
@@ -148,7 +141,6 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// use hashbrown::HashSet;
     /// let set: HashSet<i32> = HashSet::new();
     /// ```
-    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new() -> Self {
         Self {
@@ -161,17 +153,6 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// # HashDoS resistance
-    ///
-    /// The `hash_builder` normally use a fixed key by default and that does
-    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
-    /// Users who require HashDoS resistance should explicitly use
-    /// [`std::hash::RandomState`]
-    /// as the hasher when creating a [`HashSet`], for example with
-    /// [`with_capacity_and_hasher`](HashSet::with_capacity_and_hasher) method.
-    ///
-    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
-    ///
     /// # Examples
     ///
     /// ```
@@ -179,7 +160,6 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     /// let set: HashSet<i32> = HashSet::with_capacity(10);
     /// assert!(set.capacity() >= 10);
     /// ```
-    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
@@ -188,23 +168,12 @@ impl<T> HashSet<T, DefaultHashBuilder> {
     }
 }
 
-#[cfg(feature = "default-hasher")]
-impl<T: Hash + Eq, A: Allocator> HashSet<T, DefaultHashBuilder, A> {
+#[cfg(feature = "ahash")]
+impl<T: Hash + Eq, A: Allocator + Clone> HashSet<T, DefaultHashBuilder, A> {
     /// Creates an empty `HashSet`.
     ///
     /// The hash set is initially created with a capacity of 0, so it will not allocate until it
     /// is first inserted into.
-    ///
-    /// # HashDoS resistance
-    ///
-    /// The `hash_builder` normally use a fixed key by default and that does
-    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
-    /// Users who require HashDoS resistance should explicitly use
-    /// [`std::hash::RandomState`]
-    /// as the hasher when creating a [`HashSet`], for example with
-    /// [`with_hasher_in`](HashSet::with_hasher_in) method.
-    ///
-    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
     ///
     /// # Examples
     ///
@@ -212,7 +181,6 @@ impl<T: Hash + Eq, A: Allocator> HashSet<T, DefaultHashBuilder, A> {
     /// use hashbrown::HashSet;
     /// let set: HashSet<i32> = HashSet::new();
     /// ```
-    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn new_in(alloc: A) -> Self {
         Self {
@@ -225,17 +193,6 @@ impl<T: Hash + Eq, A: Allocator> HashSet<T, DefaultHashBuilder, A> {
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// # HashDoS resistance
-    ///
-    /// The `hash_builder` normally use a fixed key by default and that does
-    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
-    /// Users who require HashDoS resistance should explicitly use
-    /// [`std::hash::RandomState`]
-    /// as the hasher when creating a [`HashSet`], for example with
-    /// [`with_capacity_and_hasher_in`](HashSet::with_capacity_and_hasher_in) method.
-    ///
-    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
-    ///
     /// # Examples
     ///
     /// ```
@@ -243,7 +200,6 @@ impl<T: Hash + Eq, A: Allocator> HashSet<T, DefaultHashBuilder, A> {
     /// let set: HashSet<i32> = HashSet::with_capacity(10);
     /// assert!(set.capacity() >= 10);
     /// ```
-    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_in(capacity: usize, alloc: A) -> Self {
         Self {
@@ -252,7 +208,7 @@ impl<T: Hash + Eq, A: Allocator> HashSet<T, DefaultHashBuilder, A> {
     }
 }
 
-impl<T, S, A: Allocator> HashSet<T, S, A> {
+impl<T, S, A: Allocator + Clone> HashSet<T, S, A> {
     /// Returns the number of elements the set can hold without reallocating.
     ///
     /// # Examples
@@ -331,7 +287,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// ```
     /// use hashbrown::HashSet;
     ///
-    /// let mut set: HashSet<_> = [1, 2, 3].into_iter().collect();
+    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert!(!set.is_empty());
     ///
     /// // print 1, 2, 3 in an arbitrary order
@@ -358,7 +314,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// use hashbrown::HashSet;
     ///
     /// let xs = [1,2,3,4,5,6];
-    /// let mut set: HashSet<i32> = xs.into_iter().collect();
+    /// let mut set: HashSet<i32> = xs.iter().cloned().collect();
     /// set.retain(|&k| k % 2 == 0);
     /// assert_eq!(set.len(), 3);
     /// ```
@@ -375,11 +331,8 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// In other words, move all elements `e` such that `f(&e)` returns `true` out
     /// into another iterator.
     ///
-    /// If the returned `ExtractIf` is not exhausted, e.g. because it is dropped without iterating
-    /// or the iteration short-circuits, then the remaining elements will be retained.
-    /// Use [`retain()`] with a negated predicate if you do not need the returned iterator.
-    ///
-    /// [`retain()`]: HashSet::retain
+    /// When the returned DrainedFilter is dropped, any remaining elements that satisfy
+    /// the predicate are dropped from the set.
     ///
     /// # Examples
     ///
@@ -387,7 +340,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// use hashbrown::HashSet;
     ///
     /// let mut set: HashSet<i32> = (0..8).collect();
-    /// let drained: HashSet<i32> = set.extract_if(|v| v % 2 == 0).collect();
+    /// let drained: HashSet<i32> = set.drain_filter(|v| v % 2 == 0).collect();
     ///
     /// let mut evens = drained.into_iter().collect::<Vec<_>>();
     /// let mut odds = set.into_iter().collect::<Vec<_>>();
@@ -398,13 +351,13 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// assert_eq!(odds, vec![1, 3, 5, 7]);
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn extract_if<F>(&mut self, f: F) -> ExtractIf<'_, T, F, A>
+    pub fn drain_filter<F>(&mut self, f: F) -> DrainFilter<'_, T, F, A>
     where
         F: FnMut(&T) -> bool,
     {
-        ExtractIf {
+        DrainFilter {
             f,
-            inner: RawExtractIf {
+            inner: DrainFilterInner {
                 iter: unsafe { self.map.table.iter() },
                 table: &mut self.map.table,
             },
@@ -425,7 +378,7 @@ impl<T, S, A: Allocator> HashSet<T, S, A> {
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn clear(&mut self) {
-        self.map.clear();
+        self.map.clear()
     }
 }
 
@@ -433,35 +386,30 @@ impl<T, S> HashSet<T, S, Global> {
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
-    /// The hash set is initially created with a capacity of 0, so it will not
-    /// allocate until it is first inserted into.
+    /// The hash set is also created with the default initial capacity.
     ///
-    /// # HashDoS resistance
-    ///
-    /// The `hash_builder` normally use a fixed key by default and that does
-    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
-    /// Users who require HashDoS resistance should explicitly use
-    /// [`std::hash::RandomState`]
-    /// as the hasher when creating a [`HashSet`].
+    /// Warning: `hasher` is normally randomly generated, and
+    /// is designed to allow `HashSet`s to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the `HashSet` to be useful, see its documentation for details.
+    /// the HashMap to be useful, see its documentation for details.
     ///
-    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
     ///
     /// # Examples
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::DefaultHashBuilder;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
-    #[must_use]
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
-    #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
     pub const fn with_hasher(hasher: S) -> Self {
         Self {
             map: HashMap::with_hasher(hasher),
@@ -474,30 +422,26 @@ impl<T, S> HashSet<T, S, Global> {
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// # HashDoS resistance
-    ///
-    /// The `hash_builder` normally use a fixed key by default and that does
-    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
-    /// Users who require HashDoS resistance should explicitly use
-    /// [`std::hash::RandomState`]
-    /// as the hasher when creating a [`HashSet`].
+    /// Warning: `hasher` is normally randomly generated, and
+    /// is designed to allow `HashSet`s to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
     ///
     /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the `HashSet` to be useful, see its documentation for details.
-    ///
-    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// the HashMap to be useful, see its documentation for details.
     ///
     /// # Examples
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::DefaultHashBuilder;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
-    #[must_use]
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher(capacity: usize, hasher: S) -> Self {
         Self {
@@ -508,47 +452,30 @@ impl<T, S> HashSet<T, S, Global> {
 
 impl<T, S, A> HashSet<T, S, A>
 where
-    A: Allocator,
+    A: Allocator + Clone,
 {
-    /// Returns a reference to the underlying allocator.
-    #[inline]
-    pub fn allocator(&self) -> &A {
-        self.map.allocator()
-    }
-
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
     ///
-    /// The hash set is initially created with a capacity of 0, so it will not
-    /// allocate until it is first inserted into.
+    /// The hash set is also created with the default initial capacity.
     ///
-    /// # HashDoS resistance
-    ///
-    /// The `hash_builder` normally use a fixed key by default and that does
-    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
-    /// Users who require HashDoS resistance should explicitly use
-    /// [`std::hash::RandomState`]
-    /// as the hasher when creating a [`HashSet`].
-    ///
-    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the `HashSet` to be useful, see its documentation for details.
-    ///
-    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// Warning: `hasher` is normally randomly generated, and
+    /// is designed to allow `HashSet`s to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
     ///
     /// # Examples
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::DefaultHashBuilder;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_hasher(s);
     /// set.insert(2);
     /// ```
-    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
-    #[cfg_attr(feature = "rustc-dep-of-std", rustc_const_stable_indirect)]
-    pub const fn with_hasher_in(hasher: S, alloc: A) -> Self {
+    pub fn with_hasher_in(hasher: S, alloc: A) -> Self {
         Self {
             map: HashMap::with_hasher_in(hasher, alloc),
         }
@@ -560,30 +487,21 @@ where
     /// The hash set will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash set will not allocate.
     ///
-    /// # HashDoS resistance
-    ///
-    /// The `hash_builder` normally use a fixed key by default and that does
-    /// not allow the `HashSet` to be protected against attacks such as [`HashDoS`].
-    /// Users who require HashDoS resistance should explicitly use
-    /// [`std::hash::RandomState`]
-    /// as the hasher when creating a [`HashSet`].
-    ///
-    /// The `hash_builder` passed should implement the [`BuildHasher`] trait for
-    /// the `HashSet` to be useful, see its documentation for details.
-    ///
-    /// [`HashDoS`]: https://en.wikipedia.org/wiki/Collision_attack
+    /// Warning: `hasher` is normally randomly generated, and
+    /// is designed to allow `HashSet`s to be resistant to attacks that
+    /// cause many collisions and very poor performance. Setting it
+    /// manually using this function can expose a DoS attack vector.
     ///
     /// # Examples
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::DefaultHashBuilder;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
     ///
     /// let s = DefaultHashBuilder::default();
     /// let mut set = HashSet::with_capacity_and_hasher(10, s);
     /// set.insert(1);
     /// ```
-    #[must_use]
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn with_capacity_and_hasher_in(capacity: usize, hasher: S, alloc: A) -> Self {
         Self {
@@ -593,11 +511,13 @@ where
 
     /// Returns a reference to the set's [`BuildHasher`].
     ///
+    /// [`BuildHasher`]: https://doc.rust-lang.org/std/hash/trait.BuildHasher.html
+    ///
     /// # Examples
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// use hashbrown::DefaultHashBuilder;
+    /// use hashbrown::hash_map::DefaultHashBuilder;
     ///
     /// let hasher = DefaultHashBuilder::default();
     /// let set: HashSet<i32> = HashSet::with_hasher(hasher);
@@ -613,7 +533,7 @@ impl<T, S, A> HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     /// Reserves capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to avoid
@@ -621,11 +541,7 @@ where
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity exceeds [`isize::MAX`] bytes and [`abort`] the program
-    /// in case of allocation error. Use [`try_reserve`](HashSet::try_reserve) instead
-    /// if you want to handle memory allocation failure.
-    ///
-    /// [`abort`]: stdalloc::alloc::handle_alloc_error
+    /// Panics if the new allocation size overflows `usize`.
     ///
     /// # Examples
     ///
@@ -637,7 +553,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn reserve(&mut self, additional: usize) {
-        self.map.reserve(additional);
+        self.map.reserve(additional)
     }
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
@@ -679,7 +595,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to_fit(&mut self) {
-        self.map.shrink_to_fit();
+        self.map.shrink_to_fit()
     }
 
     /// Shrinks the capacity of the set with a lower limit. It will drop
@@ -705,7 +621,7 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn shrink_to(&mut self, min_capacity: usize) {
-        self.map.shrink_to(min_capacity);
+        self.map.shrink_to(min_capacity)
     }
 
     /// Visits the values representing the difference,
@@ -715,8 +631,8 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// let a: HashSet<_> = [1, 2, 3].into_iter().collect();
-    /// let b: HashSet<_> = [4, 2, 3, 4].into_iter().collect();
+    /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
     ///
     /// // Can be seen as `a - b`.
     /// for x in a.difference(&b) {
@@ -746,8 +662,8 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// let a: HashSet<_> = [1, 2, 3].into_iter().collect();
-    /// let b: HashSet<_> = [4, 2, 3, 4].into_iter().collect();
+    /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
     ///
     /// // Print 1, 4 in arbitrary order.
     /// for x in a.symmetric_difference(&b) {
@@ -774,8 +690,8 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// let a: HashSet<_> = [1, 2, 3].into_iter().collect();
-    /// let b: HashSet<_> = [4, 2, 3, 4].into_iter().collect();
+    /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
     ///
     /// // Print 2, 3 in arbitrary order.
     /// for x in a.intersection(&b) {
@@ -805,8 +721,8 @@ where
     ///
     /// ```
     /// use hashbrown::HashSet;
-    /// let a: HashSet<_> = [1, 2, 3].into_iter().collect();
-    /// let b: HashSet<_> = [4, 2, 3, 4].into_iter().collect();
+    /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
+    /// let b: HashSet<_> = [4, 2, 3, 4].iter().cloned().collect();
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order.
     /// for x in a.union(&b) {
@@ -841,15 +757,18 @@ where
     /// ```
     /// use hashbrown::HashSet;
     ///
-    /// let set: HashSet<_> = [1, 2, 3].into_iter().collect();
+    /// let set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
     ///
+    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+    /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn contains<Q>(&self, value: &Q) -> bool
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
     where
-        Q: Hash + Equivalent<T> + ?Sized,
+        T: Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.map.contains_key(value)
     }
@@ -865,15 +784,18 @@ where
     /// ```
     /// use hashbrown::HashSet;
     ///
-    /// let set: HashSet<_> = [1, 2, 3].into_iter().collect();
+    /// let set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.get(&2), Some(&2));
     /// assert_eq!(set.get(&4), None);
     /// ```
     ///
+    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+    /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn get<Q>(&self, value: &Q) -> Option<&T>
+    pub fn get<Q: ?Sized>(&self, value: &Q) -> Option<&T>
     where
-        Q: Hash + Equivalent<T> + ?Sized,
+        T: Borrow<Q>,
+        Q: Hash + Eq,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.map.get_key_value(value) {
@@ -890,7 +812,7 @@ where
     /// ```
     /// use hashbrown::HashSet;
     ///
-    /// let mut set: HashSet<_> = [1, 2, 3].into_iter().collect();
+    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.len(), 3);
     /// assert_eq!(set.get_or_insert(2), &2);
     /// assert_eq!(set.get_or_insert(100), &100);
@@ -898,12 +820,46 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn get_or_insert(&mut self, value: T) -> &T {
-        match self.map.entry(value) {
-            map::Entry::Occupied(entry) => entry,
-            map::Entry::Vacant(entry) => entry.insert_entry(()),
-        }
-        .into_entry()
-        .0
+        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
+        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
+        self.map
+            .raw_entry_mut()
+            .from_key(&value)
+            .or_insert(value, ())
+            .0
+    }
+
+    /// Inserts an owned copy of the given `value` into the set if it is not
+    /// present, then returns a reference to the value in the set.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use hashbrown::HashSet;
+    ///
+    /// let mut set: HashSet<String> = ["cat", "dog", "horse"]
+    ///     .iter().map(|&pet| pet.to_owned()).collect();
+    ///
+    /// assert_eq!(set.len(), 3);
+    /// for &pet in &["cat", "dog", "fish"] {
+    ///     let value = set.get_or_insert_owned(pet);
+    ///     assert_eq!(value, pet);
+    /// }
+    /// assert_eq!(set.len(), 4); // a new "fish" was inserted
+    /// ```
+    #[inline]
+    pub fn get_or_insert_owned<Q: ?Sized>(&mut self, value: &Q) -> &T
+    where
+        T: Borrow<Q>,
+        Q: Hash + Eq + ToOwned<Owned = T>,
+    {
+        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
+        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
+        self.map
+            .raw_entry_mut()
+            .from_key(value)
+            .or_insert_with(|| (value.to_owned(), ()))
+            .0
     }
 
     /// Inserts a value computed from `f` into the set if the given `value` is
@@ -924,66 +880,20 @@ where
     /// }
     /// assert_eq!(set.len(), 4); // a new "fish" was inserted
     /// ```
-    ///
-    /// The following example will panic because the new value doesn't match.
-    ///
-    /// ```should_panic
-    /// let mut set = hashbrown::HashSet::new();
-    /// set.get_or_insert_with("rust", |_| String::new());
-    /// ```
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn get_or_insert_with<Q, F>(&mut self, value: &Q, f: F) -> &T
+    pub fn get_or_insert_with<Q: ?Sized, F>(&mut self, value: &Q, f: F) -> &T
     where
-        Q: Hash + Equivalent<T> + ?Sized,
+        T: Borrow<Q>,
+        Q: Hash + Eq,
         F: FnOnce(&Q) -> T,
     {
-        match self.map.entry_ref(value) {
-            map::EntryRef::Occupied(entry) => entry,
-            map::EntryRef::Vacant(entry) => entry.insert_entry_with_key(f(value), ()),
-        }
-        .into_entry()
-        .0
-    }
-
-    /// Gets the given value's corresponding entry in the set for in-place manipulation.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    /// use hashbrown::hash_set::Entry::*;
-    ///
-    /// let mut singles = HashSet::new();
-    /// let mut dupes = HashSet::new();
-    ///
-    /// for ch in "a short treatise on fungi".chars() {
-    ///     if let Vacant(dupe_entry) = dupes.entry(ch) {
-    ///         // We haven't already seen a duplicate, so
-    ///         // check if we've at least seen it once.
-    ///         match singles.entry(ch) {
-    ///             Vacant(single_entry) => {
-    ///                 // We found a new character for the first time.
-    ///                 single_entry.insert();
-    ///             }
-    ///             Occupied(single_entry) => {
-    ///                 // We've already seen this once, "move" it to dupes.
-    ///                 single_entry.remove();
-    ///                 dupe_entry.insert();
-    ///             }
-    ///         }
-    ///     }
-    /// }
-    ///
-    /// assert!(!singles.contains(&'t') && dupes.contains(&'t'));
-    /// assert!(singles.contains(&'u') && !dupes.contains(&'u'));
-    /// assert!(!singles.contains(&'v') && !dupes.contains(&'v'));
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn entry(&mut self, value: T) -> Entry<'_, T, S, A> {
-        match self.map.entry(value) {
-            map::Entry::Occupied(entry) => Entry::Occupied(OccupiedEntry { inner: entry }),
-            map::Entry::Vacant(entry) => Entry::Vacant(VacantEntry { inner: entry }),
-        }
+        // Although the raw entry gives us `&mut T`, we only return `&T` to be consistent with
+        // `get`. Key mutation is "raw" because you're not supposed to affect `Eq` or `Hash`.
+        self.map
+            .raw_entry_mut()
+            .from_key(value)
+            .or_insert_with(|| (f(value), ()))
+            .0
     }
 
     /// Returns `true` if `self` has no elements in common with `other`.
@@ -994,7 +904,7 @@ where
     /// ```
     /// use hashbrown::HashSet;
     ///
-    /// let a: HashSet<_> = [1, 2, 3].into_iter().collect();
+    /// let a: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let mut b = HashSet::new();
     ///
     /// assert_eq!(a.is_disjoint(&b), true);
@@ -1004,7 +914,7 @@ where
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
     pub fn is_disjoint(&self, other: &Self) -> bool {
-        self.intersection(other).next().is_none()
+        self.iter().all(|v| !other.contains(v))
     }
 
     /// Returns `true` if the set is a subset of another,
@@ -1015,7 +925,7 @@ where
     /// ```
     /// use hashbrown::HashSet;
     ///
-    /// let sup: HashSet<_> = [1, 2, 3].into_iter().collect();
+    /// let sup: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// let mut set = HashSet::new();
     ///
     /// assert_eq!(set.is_subset(&sup), true);
@@ -1036,7 +946,7 @@ where
     /// ```
     /// use hashbrown::HashSet;
     ///
-    /// let sub: HashSet<_> = [1, 2].into_iter().collect();
+    /// let sub: HashSet<_> = [1, 2].iter().cloned().collect();
     /// let mut set = HashSet::new();
     ///
     /// assert_eq!(set.is_superset(&sub), false);
@@ -1075,34 +985,6 @@ where
         self.map.insert(value, ()).is_none()
     }
 
-    /// Insert a value the set without checking if the value already exists in the set.
-    ///
-    /// This operation is faster than regular insert, because it does not perform
-    /// lookup before insertion.
-    ///
-    /// This operation is useful during initial population of the set.
-    /// For example, when constructing a set from another set, we know
-    /// that values are unique.
-    ///
-    /// # Safety
-    ///
-    /// This operation is safe if a value does not exist in the set.
-    ///
-    /// However, if a value exists in the set already, the behavior is unspecified:
-    /// this operation may panic, loop forever, or any following operation with the set
-    /// may panic, loop forever or return arbitrary result.
-    ///
-    /// That said, this operation (and following operations) are guaranteed to
-    /// not violate memory safety.
-    ///
-    /// However this operation is still unsafe because the resulting `HashSet`
-    /// may be passed to unsafe code which does expect the set to behave
-    /// correctly, and would cause unsoundness as a result.
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub unsafe fn insert_unique_unchecked(&mut self, value: T) -> &T {
-        unsafe { self.map.insert_unique_unchecked(value, ()).0 }
-    }
-
     /// Adds a value to the set, replacing the existing value, if any, that is equal to the given
     /// one. Returns the replaced value.
     ///
@@ -1120,19 +1002,10 @@ where
     /// ```
     #[cfg_attr(feature = "inline-more", inline)]
     pub fn replace(&mut self, value: T) -> Option<T> {
-        let value = UnsafeCell::new(value);
-        // SAFETY: We know the key is no longer accessed after the initial check.
-        match self.map.entry_ref(unsafe { &*value.get() }) {
-            map::EntryRef::Occupied(mut entry) => {
-                // SAFETY: We know the key will not be accessed any more, and
-                //   that the key is equivalent to the one in the entry.
-                Some(unsafe { entry.replace_key_unchecked(value.into_inner()) })
-            }
-            map::EntryRef::Vacant(entry) => {
-                // SAFETY: A value is equivalent to itself.
-                unsafe {
-                    entry.insert_with_key_unchecked(value.into_inner(), ());
-                }
+        match self.map.entry(value) {
+            map::Entry::Occupied(occupied) => Some(occupied.replace_key()),
+            map::Entry::Vacant(vacant) => {
+                vacant.insert(());
                 None
             }
         }
@@ -1157,10 +1030,13 @@ where
     /// assert_eq!(set.remove(&2), false);
     /// ```
     ///
+    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+    /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn remove<Q>(&mut self, value: &Q) -> bool
+    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
     where
-        Q: Hash + Equivalent<T> + ?Sized,
+        T: Borrow<Q>,
+        Q: Hash + Eq,
     {
         self.map.remove(value).is_some()
     }
@@ -1176,15 +1052,18 @@ where
     /// ```
     /// use hashbrown::HashSet;
     ///
-    /// let mut set: HashSet<_> = [1, 2, 3].into_iter().collect();
+    /// let mut set: HashSet<_> = [1, 2, 3].iter().cloned().collect();
     /// assert_eq!(set.take(&2), Some(2));
     /// assert_eq!(set.take(&2), None);
     /// ```
     ///
+    /// [`Eq`]: https://doc.rust-lang.org/std/cmp/trait.Eq.html
+    /// [`Hash`]: https://doc.rust-lang.org/std/hash/trait.Hash.html
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn take<Q>(&mut self, value: &Q) -> Option<T>
+    pub fn take<Q: ?Sized>(&mut self, value: &Q) -> Option<T>
     where
-        Q: Hash + Equivalent<T> + ?Sized,
+        T: Borrow<Q>,
+        Q: Hash + Eq,
     {
         // Avoid `Option::map` because it bloats LLVM IR.
         match self.map.remove_entry(value) {
@@ -1192,23 +1071,13 @@ where
             None => None,
         }
     }
-
-    /// Returns the total amount of memory allocated internally by the hash
-    /// set, in bytes.
-    ///
-    /// The returned number is informational only. It is intended to be
-    /// primarily used for memory profiling.
-    #[inline]
-    pub fn allocation_size(&self) -> usize {
-        self.map.allocation_size()
-    }
 }
 
 impl<T, S, A> PartialEq for HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     fn eq(&self, other: &Self) -> bool {
         if self.len() != other.len() {
@@ -1223,14 +1092,15 @@ impl<T, S, A> Eq for HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
 }
 
 impl<T, S, A> fmt::Debug for HashSet<T, S, A>
 where
-    T: fmt::Debug,
-    A: Allocator,
+    T: Eq + Hash + fmt::Debug,
+    S: BuildHasher,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_set().entries(self.iter()).finish()
@@ -1239,7 +1109,7 @@ where
 
 impl<T, S, A> From<HashMap<T, (), S, A>> for HashSet<T, S, A>
 where
-    A: Allocator,
+    A: Allocator + Clone,
 {
     fn from(map: HashMap<T, (), S, A>) -> Self {
         Self { map }
@@ -1250,7 +1120,7 @@ impl<T, S, A> FromIterator<T> for HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher + Default,
-    A: Default + Allocator,
+    A: Default + Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
@@ -1260,32 +1130,11 @@ where
     }
 }
 
-// The default hasher is used to match the std implementation signature
-#[cfg(feature = "default-hasher")]
-impl<T, A, const N: usize> From<[T; N]> for HashSet<T, DefaultHashBuilder, A>
-where
-    T: Eq + Hash,
-    A: Default + Allocator,
-{
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let set1 = HashSet::from([1, 2, 3, 4]);
-    /// let set2: HashSet<_> = [1, 2, 3, 4].into();
-    /// assert_eq!(set1, set2);
-    /// ```
-    fn from(arr: [T; N]) -> Self {
-        arr.into_iter().collect()
-    }
-}
-
 impl<T, S, A> Extend<T> for HashSet<T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
@@ -1309,11 +1158,11 @@ impl<'a, T, S, A> Extend<&'a T> for HashSet<T, S, A>
 where
     T: 'a + Eq + Hash + Copy,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     #[cfg_attr(feature = "inline-more", inline)]
     fn extend<I: IntoIterator<Item = &'a T>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().copied());
+        self.extend(iter.into_iter().cloned());
     }
 
     #[inline]
@@ -1332,7 +1181,7 @@ where
 impl<T, S, A> Default for HashSet<T, S, A>
 where
     S: Default,
-    A: Default + Allocator,
+    A: Default + Allocator + Clone,
 {
     /// Creates an empty `HashSet<T, S>` with the `Default` value for the hasher.
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1347,9 +1196,9 @@ impl<T, S, A> BitOr<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator + Default,
+    A: Allocator + Clone,
 {
-    type Output = HashSet<T, S, A>;
+    type Output = HashSet<T, S>;
 
     /// Returns the union of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1371,7 +1220,7 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
+    fn bitor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
         self.union(rhs).cloned().collect()
     }
 }
@@ -1380,9 +1229,9 @@ impl<T, S, A> BitAnd<&HashSet<T, S, A>> for &HashSet<T, S, A>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator + Default,
+    A: Allocator + Clone,
 {
-    type Output = HashSet<T, S, A>;
+    type Output = HashSet<T, S>;
 
     /// Returns the intersection of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1404,18 +1253,17 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitand(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
+    fn bitand(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S> {
         self.intersection(rhs).cloned().collect()
     }
 }
 
-impl<T, S, A> BitXor<&HashSet<T, S, A>> for &HashSet<T, S, A>
+impl<T, S> BitXor<&HashSet<T, S>> for &HashSet<T, S>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator + Default,
 {
-    type Output = HashSet<T, S, A>;
+    type Output = HashSet<T, S>;
 
     /// Returns the symmetric difference of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1437,18 +1285,17 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn bitxor(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
+    fn bitxor(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.symmetric_difference(rhs).cloned().collect()
     }
 }
 
-impl<T, S, A> Sub<&HashSet<T, S, A>> for &HashSet<T, S, A>
+impl<T, S> Sub<&HashSet<T, S>> for &HashSet<T, S>
 where
     T: Eq + Hash + Clone,
     S: BuildHasher + Default,
-    A: Allocator + Default,
 {
-    type Output = HashSet<T, S, A>;
+    type Output = HashSet<T, S>;
 
     /// Returns the difference of `self` and `rhs` as a new `HashSet<T, S>`.
     ///
@@ -1470,151 +1317,8 @@ where
     /// }
     /// assert_eq!(i, expected.len());
     /// ```
-    fn sub(self, rhs: &HashSet<T, S, A>) -> HashSet<T, S, A> {
+    fn sub(self, rhs: &HashSet<T, S>) -> HashSet<T, S> {
         self.difference(rhs).cloned().collect()
-    }
-}
-
-impl<T, S, A> BitOrAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
-where
-    T: Eq + Hash + Clone,
-    S: BuildHasher,
-    A: Allocator,
-{
-    /// Modifies this set to contain the union of `self` and `rhs`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: HashSet<_> = vec![3, 4, 5].into_iter().collect();
-    ///
-    /// a |= &b;
-    ///
-    /// let mut i = 0;
-    /// let expected = [1, 2, 3, 4, 5];
-    /// for x in &a {
-    ///     assert!(expected.contains(x));
-    ///     i += 1;
-    /// }
-    /// assert_eq!(i, expected.len());
-    /// ```
-    fn bitor_assign(&mut self, rhs: &HashSet<T, S, A>) {
-        for item in rhs {
-            if !self.contains(item) {
-                self.insert(item.clone());
-            }
-        }
-    }
-}
-
-impl<T, S, A> BitAndAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
-where
-    T: Eq + Hash + Clone,
-    S: BuildHasher,
-    A: Allocator,
-{
-    /// Modifies this set to contain the intersection of `self` and `rhs`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: HashSet<_> = vec![2, 3, 4].into_iter().collect();
-    ///
-    /// a &= &b;
-    ///
-    /// let mut i = 0;
-    /// let expected = [2, 3];
-    /// for x in &a {
-    ///     assert!(expected.contains(x));
-    ///     i += 1;
-    /// }
-    /// assert_eq!(i, expected.len());
-    /// ```
-    fn bitand_assign(&mut self, rhs: &HashSet<T, S, A>) {
-        self.retain(|item| rhs.contains(item));
-    }
-}
-
-impl<T, S, A> BitXorAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
-where
-    T: Eq + Hash + Clone,
-    S: BuildHasher,
-    A: Allocator,
-{
-    /// Modifies this set to contain the symmetric difference of `self` and `rhs`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: HashSet<_> = vec![3, 4, 5].into_iter().collect();
-    ///
-    /// a ^= &b;
-    ///
-    /// let mut i = 0;
-    /// let expected = [1, 2, 4, 5];
-    /// for x in &a {
-    ///     assert!(expected.contains(x));
-    ///     i += 1;
-    /// }
-    /// assert_eq!(i, expected.len());
-    /// ```
-    fn bitxor_assign(&mut self, rhs: &HashSet<T, S, A>) {
-        for item in rhs {
-            match self.map.entry_ref(item) {
-                map::EntryRef::Occupied(entry) => {
-                    entry.remove();
-                }
-                map::EntryRef::Vacant(entry) => {
-                    entry.insert(());
-                }
-            }
-        }
-    }
-}
-
-impl<T, S, A> SubAssign<&HashSet<T, S, A>> for HashSet<T, S, A>
-where
-    T: Eq + Hash + Clone,
-    S: BuildHasher,
-    A: Allocator,
-{
-    /// Modifies this set to contain the difference of `self` and `rhs`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut a: HashSet<_> = vec![1, 2, 3].into_iter().collect();
-    /// let b: HashSet<_> = vec![3, 4, 5].into_iter().collect();
-    ///
-    /// a -= &b;
-    ///
-    /// let mut i = 0;
-    /// let expected = [1, 2];
-    /// for x in &a {
-    ///     assert!(expected.contains(x));
-    ///     i += 1;
-    /// }
-    /// assert_eq!(i, expected.len());
-    /// ```
-    fn sub_assign(&mut self, rhs: &HashSet<T, S, A>) {
-        if rhs.len() < self.len() {
-            for item in rhs {
-                self.remove(item);
-            }
-        } else {
-            self.retain(|item| !rhs.contains(item));
-        }
     }
 }
 
@@ -1623,7 +1327,8 @@ where
 /// This `struct` is created by the [`iter`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`iter`]: HashSet::iter
+/// [`HashSet`]: struct.HashSet.html
+/// [`iter`]: struct.HashSet.html#method.iter
 pub struct Iter<'a, K> {
     iter: Keys<'a, K, ()>,
 }
@@ -1633,8 +1338,9 @@ pub struct Iter<'a, K> {
 /// This `struct` is created by the [`into_iter`] method on [`HashSet`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
-/// [`into_iter`]: HashSet::into_iter
-pub struct IntoIter<K, A: Allocator = Global> {
+/// [`HashSet`]: struct.HashSet.html
+/// [`into_iter`]: struct.HashSet.html#method.into_iter
+pub struct IntoIter<K, A: Allocator + Clone = Global> {
     iter: map::IntoIter<K, (), A>,
 }
 
@@ -1643,21 +1349,25 @@ pub struct IntoIter<K, A: Allocator = Global> {
 /// This `struct` is created by the [`drain`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`drain`]: HashSet::drain
-pub struct Drain<'a, K, A: Allocator = Global> {
+/// [`HashSet`]: struct.HashSet.html
+/// [`drain`]: struct.HashSet.html#method.drain
+pub struct Drain<'a, K, A: Allocator + Clone = Global> {
     iter: map::Drain<'a, K, (), A>,
 }
 
 /// A draining iterator over entries of a `HashSet` which don't satisfy the predicate `f`.
 ///
-/// This `struct` is created by the [`extract_if`] method on [`HashSet`]. See its
+/// This `struct` is created by the [`drain_filter`] method on [`HashSet`]. See its
 /// documentation for more.
 ///
-/// [`extract_if`]: HashSet::extract_if
-#[must_use = "Iterators are lazy unless consumed"]
-pub struct ExtractIf<'a, K, F, A: Allocator = Global> {
+/// [`drain_filter`]: struct.HashSet.html#method.drain_filter
+/// [`HashSet`]: struct.HashSet.html
+pub struct DrainFilter<'a, K, F, A: Allocator + Clone = Global>
+where
+    F: FnMut(&K) -> bool,
+{
     f: F,
-    inner: RawExtractIf<'a, (K, ()), A>,
+    inner: DrainFilterInner<'a, K, (), A>,
 }
 
 /// A lazy iterator producing elements in the intersection of `HashSet`s.
@@ -1665,8 +1375,9 @@ pub struct ExtractIf<'a, K, F, A: Allocator = Global> {
 /// This `struct` is created by the [`intersection`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`intersection`]: HashSet::intersection
-pub struct Intersection<'a, T, S, A: Allocator = Global> {
+/// [`HashSet`]: struct.HashSet.html
+/// [`intersection`]: struct.HashSet.html#method.intersection
+pub struct Intersection<'a, T, S, A: Allocator + Clone = Global> {
     // iterator of the first set
     iter: Iter<'a, T>,
     // the second set
@@ -1678,8 +1389,9 @@ pub struct Intersection<'a, T, S, A: Allocator = Global> {
 /// This `struct` is created by the [`difference`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`difference`]: HashSet::difference
-pub struct Difference<'a, T, S, A: Allocator = Global> {
+/// [`HashSet`]: struct.HashSet.html
+/// [`difference`]: struct.HashSet.html#method.difference
+pub struct Difference<'a, T, S, A: Allocator + Clone = Global> {
     // iterator of the first set
     iter: Iter<'a, T>,
     // the second set
@@ -1691,8 +1403,9 @@ pub struct Difference<'a, T, S, A: Allocator = Global> {
 /// This `struct` is created by the [`symmetric_difference`] method on
 /// [`HashSet`]. See its documentation for more.
 ///
-/// [`symmetric_difference`]: HashSet::symmetric_difference
-pub struct SymmetricDifference<'a, T, S, A: Allocator = Global> {
+/// [`HashSet`]: struct.HashSet.html
+/// [`symmetric_difference`]: struct.HashSet.html#method.symmetric_difference
+pub struct SymmetricDifference<'a, T, S, A: Allocator + Clone = Global> {
     iter: Chain<Difference<'a, T, S, A>, Difference<'a, T, S, A>>,
 }
 
@@ -1701,12 +1414,13 @@ pub struct SymmetricDifference<'a, T, S, A: Allocator = Global> {
 /// This `struct` is created by the [`union`] method on [`HashSet`].
 /// See its documentation for more.
 ///
-/// [`union`]: HashSet::union
-pub struct Union<'a, T, S, A: Allocator = Global> {
+/// [`HashSet`]: struct.HashSet.html
+/// [`union`]: struct.HashSet.html#method.union
+pub struct Union<'a, T, S, A: Allocator + Clone = Global> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S, A>>,
 }
 
-impl<'a, T, S, A: Allocator> IntoIterator for &'a HashSet<T, S, A> {
+impl<'a, T, S, A: Allocator + Clone> IntoIterator for &'a HashSet<T, S, A> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -1716,7 +1430,7 @@ impl<'a, T, S, A: Allocator> IntoIterator for &'a HashSet<T, S, A> {
     }
 }
 
-impl<T, S, A: Allocator> IntoIterator for HashSet<T, S, A> {
+impl<T, S, A: Allocator + Clone> IntoIterator for HashSet<T, S, A> {
     type Item = T;
     type IntoIter = IntoIter<T, A>;
 
@@ -1756,14 +1470,6 @@ impl<K> Clone for Iter<'_, K> {
         }
     }
 }
-impl<K> Default for Iter<'_, K> {
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn default() -> Self {
-        Iter {
-            iter: Default::default(),
-        }
-    }
-}
 impl<'a, K> Iterator for Iter<'a, K> {
     type Item = &'a K;
 
@@ -1775,16 +1481,8 @@ impl<'a, K> Iterator for Iter<'a, K> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn fold<B, F>(self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.iter.fold(init, f)
-    }
 }
-impl<K> ExactSizeIterator for Iter<'_, K> {
+impl<'a, K> ExactSizeIterator for Iter<'a, K> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.iter.len()
@@ -1798,15 +1496,7 @@ impl<K: fmt::Debug> fmt::Debug for Iter<'_, K> {
     }
 }
 
-impl<K, A: Allocator> Default for IntoIter<K, A> {
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn default() -> Self {
-        IntoIter {
-            iter: Default::default(),
-        }
-    }
-}
-impl<K, A: Allocator> Iterator for IntoIter<K, A> {
+impl<K, A: Allocator + Clone> Iterator for IntoIter<K, A> {
     type Item = K;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1821,31 +1511,23 @@ impl<K, A: Allocator> Iterator for IntoIter<K, A> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn fold<B, F>(self, init: B, mut f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.iter.fold(init, |acc, (k, ())| f(acc, k))
-    }
 }
-impl<K, A: Allocator> ExactSizeIterator for IntoIter<K, A> {
+impl<K, A: Allocator + Clone> ExactSizeIterator for IntoIter<K, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
-impl<K, A: Allocator> FusedIterator for IntoIter<K, A> {}
+impl<K, A: Allocator + Clone> FusedIterator for IntoIter<K, A> {}
 
-impl<K: fmt::Debug, A: Allocator> fmt::Debug for IntoIter<K, A> {
+impl<K: fmt::Debug, A: Allocator + Clone> fmt::Debug for IntoIter<K, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let entries_iter = self.iter.iter().map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
     }
 }
 
-impl<K, A: Allocator> Iterator for Drain<'_, K, A> {
+impl<K, A: Allocator + Clone> Iterator for Drain<'_, K, A> {
     type Item = K;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -1860,31 +1542,37 @@ impl<K, A: Allocator> Iterator for Drain<'_, K, A> {
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn fold<B, F>(self, init: B, mut f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.iter.fold(init, |acc, (k, ())| f(acc, k))
-    }
 }
-impl<K, A: Allocator> ExactSizeIterator for Drain<'_, K, A> {
+impl<K, A: Allocator + Clone> ExactSizeIterator for Drain<'_, K, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn len(&self) -> usize {
         self.iter.len()
     }
 }
-impl<K, A: Allocator> FusedIterator for Drain<'_, K, A> {}
+impl<K, A: Allocator + Clone> FusedIterator for Drain<'_, K, A> {}
 
-impl<K: fmt::Debug, A: Allocator> fmt::Debug for Drain<'_, K, A> {
+impl<K: fmt::Debug, A: Allocator + Clone> fmt::Debug for Drain<'_, K, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let entries_iter = self.iter.iter().map(|(k, _)| k);
         f.debug_list().entries(entries_iter).finish()
     }
 }
 
-impl<K, F, A: Allocator> Iterator for ExtractIf<'_, K, F, A>
+impl<'a, K, F, A: Allocator + Clone> Drop for DrainFilter<'a, K, F, A>
+where
+    F: FnMut(&K) -> bool,
+{
+    #[cfg_attr(feature = "inline-more", inline)]
+    fn drop(&mut self) {
+        while let Some(item) = self.next() {
+            let guard = ConsumeAllOnDrop(self);
+            drop(item);
+            mem::forget(guard);
+        }
+    }
+}
+
+impl<K, F, A: Allocator + Clone> Iterator for DrainFilter<'_, K, F, A>
 where
     F: FnMut(&K) -> bool,
 {
@@ -1892,9 +1580,9 @@ where
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner
-            .next(|&mut (ref k, ())| (self.f)(k))
-            .map(|(k, ())| k)
+        let f = &mut self.f;
+        let (k, _) = self.inner.next(&mut |k, _| f(k))?;
+        Some(k)
     }
 
     #[inline]
@@ -1903,9 +1591,12 @@ where
     }
 }
 
-impl<K, F, A: Allocator> FusedIterator for ExtractIf<'_, K, F, A> where F: FnMut(&K) -> bool {}
+impl<K, F, A: Allocator + Clone> FusedIterator for DrainFilter<'_, K, F, A> where
+    F: FnMut(&K) -> bool
+{
+}
 
-impl<T, S, A: Allocator> Clone for Intersection<'_, T, S, A> {
+impl<T, S, A: Allocator + Clone> Clone for Intersection<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Intersection {
@@ -1919,7 +1610,7 @@ impl<'a, T, S, A> Iterator for Intersection<'a, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     type Item = &'a T;
 
@@ -1938,28 +1629,13 @@ where
         let (_, upper) = self.iter.size_hint();
         (0, upper)
     }
-
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn fold<B, F>(self, init: B, mut f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.iter.fold(init, |acc, elt| {
-            if self.other.contains(elt) {
-                f(acc, elt)
-            } else {
-                acc
-            }
-        })
-    }
 }
 
 impl<T, S, A> fmt::Debug for Intersection<'_, T, S, A>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
@@ -1970,11 +1646,11 @@ impl<T, S, A> FusedIterator for Intersection<'_, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
 }
 
-impl<T, S, A: Allocator> Clone for Difference<'_, T, S, A> {
+impl<T, S, A: Allocator + Clone> Clone for Difference<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Difference {
@@ -1988,7 +1664,7 @@ impl<'a, T, S, A> Iterator for Difference<'a, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     type Item = &'a T;
 
@@ -2004,23 +1680,8 @@ where
 
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (lower, upper) = self.iter.size_hint();
-        (lower.saturating_sub(self.other.len()), upper)
-    }
-
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn fold<B, F>(self, init: B, mut f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.iter.fold(init, |acc, elt| {
-            if self.other.contains(elt) {
-                acc
-            } else {
-                f(acc, elt)
-            }
-        })
+        let (_, upper) = self.iter.size_hint();
+        (0, upper)
     }
 }
 
@@ -2028,7 +1689,7 @@ impl<T, S, A> FusedIterator for Difference<'_, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
 }
 
@@ -2036,14 +1697,14 @@ impl<T, S, A> fmt::Debug for Difference<'_, T, S, A>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
 
-impl<T, S, A: Allocator> Clone for SymmetricDifference<'_, T, S, A> {
+impl<T, S, A: Allocator + Clone> Clone for SymmetricDifference<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         SymmetricDifference {
@@ -2056,7 +1717,7 @@ impl<'a, T, S, A> Iterator for SymmetricDifference<'a, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     type Item = &'a T;
 
@@ -2064,19 +1725,9 @@ where
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
-
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
-    }
-
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn fold<B, F>(self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.iter.fold(init, f)
     }
 }
 
@@ -2084,7 +1735,7 @@ impl<T, S, A> FusedIterator for SymmetricDifference<'_, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
 }
 
@@ -2092,14 +1743,14 @@ impl<T, S, A> fmt::Debug for SymmetricDifference<'_, T, S, A>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
     }
 }
 
-impl<T, S, A: Allocator> Clone for Union<'_, T, S, A> {
+impl<T, S, A: Allocator + Clone> Clone for Union<'_, T, S, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     fn clone(&self) -> Self {
         Union {
@@ -2112,7 +1763,7 @@ impl<T, S, A> FusedIterator for Union<'_, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
 }
 
@@ -2120,7 +1771,7 @@ impl<T, S, A> fmt::Debug for Union<'_, T, S, A>
 where
     T: fmt::Debug + Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_list().entries(self.clone()).finish()
@@ -2131,7 +1782,7 @@ impl<'a, T, S, A> Iterator for Union<'a, T, S, A>
 where
     T: Eq + Hash,
     S: BuildHasher,
-    A: Allocator,
+    A: Allocator + Clone,
 {
     type Item = &'a T;
 
@@ -2139,373 +1790,13 @@ where
     fn next(&mut self) -> Option<&'a T> {
         self.iter.next()
     }
-
     #[cfg_attr(feature = "inline-more", inline)]
     fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
-
-    #[cfg_attr(feature = "inline-more", inline)]
-    fn fold<B, F>(self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        self.iter.fold(init, f)
-    }
 }
 
-/// A view into a single entry in a set, which may either be vacant or occupied.
-///
-/// This `enum` is constructed from the [`entry`] method on [`HashSet`].
-///
-/// [`entry`]: HashSet::entry
-///
-/// # Examples
-///
-/// ```
-/// use hashbrown::hash_set::{Entry, HashSet, OccupiedEntry};
-///
-/// let mut set = HashSet::new();
-/// set.extend(["a", "b", "c"]);
-/// assert_eq!(set.len(), 3);
-///
-/// // Existing value (insert)
-/// let entry: Entry<_, _> = set.entry("a");
-/// let _raw_o: OccupiedEntry<_, _> = entry.insert();
-/// assert_eq!(set.len(), 3);
-/// // Nonexistent value (insert)
-/// set.entry("d").insert();
-///
-/// // Existing value (or_insert)
-/// set.entry("b").or_insert();
-/// // Nonexistent value (or_insert)
-/// set.entry("e").or_insert();
-///
-/// println!("Our HashSet: {:?}", set);
-///
-/// let mut vec: Vec<_> = set.iter().copied().collect();
-/// // The `Iter` iterator produces items in arbitrary order, so the
-/// // items must be sorted to test them against a sorted array.
-/// vec.sort_unstable();
-/// assert_eq!(vec, ["a", "b", "c", "d", "e"]);
-/// ```
-pub enum Entry<'a, T, S, A = Global>
-where
-    A: Allocator,
-{
-    /// An occupied entry.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::hash_set::{Entry, HashSet};
-    /// let mut set: HashSet<_> = ["a", "b"].into();
-    ///
-    /// match set.entry("a") {
-    ///     Entry::Vacant(_) => unreachable!(),
-    ///     Entry::Occupied(_) => { }
-    /// }
-    /// ```
-    Occupied(OccupiedEntry<'a, T, S, A>),
-
-    /// A vacant entry.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::hash_set::{Entry, HashSet};
-    /// let mut set: HashSet<&str> = HashSet::new();
-    ///
-    /// match set.entry("a") {
-    ///     Entry::Occupied(_) => unreachable!(),
-    ///     Entry::Vacant(_) => { }
-    /// }
-    /// ```
-    Vacant(VacantEntry<'a, T, S, A>),
-}
-
-impl<T: fmt::Debug, S, A: Allocator> fmt::Debug for Entry<'_, T, S, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Entry::Vacant(ref v) => f.debug_tuple("Entry").field(v).finish(),
-            Entry::Occupied(ref o) => f.debug_tuple("Entry").field(o).finish(),
-        }
-    }
-}
-
-/// A view into an occupied entry in a `HashSet`.
-/// It is part of the [`Entry`] enum.
-///
-/// # Examples
-///
-/// ```
-/// use hashbrown::hash_set::{Entry, HashSet, OccupiedEntry};
-///
-/// let mut set = HashSet::new();
-/// set.extend(["a", "b", "c"]);
-///
-/// let _entry_o: OccupiedEntry<_, _> = set.entry("a").insert();
-/// assert_eq!(set.len(), 3);
-///
-/// // Existing key
-/// match set.entry("a") {
-///     Entry::Vacant(_) => unreachable!(),
-///     Entry::Occupied(view) => {
-///         assert_eq!(view.get(), &"a");
-///     }
-/// }
-///
-/// assert_eq!(set.len(), 3);
-///
-/// // Existing key (take)
-/// match set.entry("c") {
-///     Entry::Vacant(_) => unreachable!(),
-///     Entry::Occupied(view) => {
-///         assert_eq!(view.remove(), "c");
-///     }
-/// }
-/// assert_eq!(set.get(&"c"), None);
-/// assert_eq!(set.len(), 2);
-/// ```
-pub struct OccupiedEntry<'a, T, S, A: Allocator = Global> {
-    inner: map::OccupiedEntry<'a, T, (), S, A>,
-}
-
-impl<T: fmt::Debug, S, A: Allocator> fmt::Debug for OccupiedEntry<'_, T, S, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("OccupiedEntry")
-            .field("value", self.get())
-            .finish()
-    }
-}
-
-/// A view into a vacant entry in a `HashSet`.
-/// It is part of the [`Entry`] enum.
-///
-/// # Examples
-///
-/// ```
-/// use hashbrown::hash_set::{Entry, HashSet, VacantEntry};
-///
-/// let mut set = HashSet::<&str>::new();
-///
-/// let entry_v: VacantEntry<_, _> = match set.entry("a") {
-///     Entry::Vacant(view) => view,
-///     Entry::Occupied(_) => unreachable!(),
-/// };
-/// entry_v.insert();
-/// assert!(set.contains("a") && set.len() == 1);
-///
-/// // Nonexistent key (insert)
-/// match set.entry("b") {
-///     Entry::Vacant(view) => { view.insert(); },
-///     Entry::Occupied(_) => unreachable!(),
-/// }
-/// assert!(set.contains("b") && set.len() == 2);
-/// ```
-pub struct VacantEntry<'a, T, S, A: Allocator = Global> {
-    inner: map::VacantEntry<'a, T, (), S, A>,
-}
-
-impl<T: fmt::Debug, S, A: Allocator> fmt::Debug for VacantEntry<'_, T, S, A> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("VacantEntry").field(self.get()).finish()
-    }
-}
-
-impl<'a, T, S, A: Allocator> Entry<'a, T, S, A> {
-    /// Sets the value of the entry, and returns an `OccupiedEntry`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut set: HashSet<&str> = HashSet::new();
-    /// let entry = set.entry("horseyland").insert();
-    ///
-    /// assert_eq!(entry.get(), &"horseyland");
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert(self) -> OccupiedEntry<'a, T, S, A>
-    where
-        T: Hash,
-        S: BuildHasher,
-    {
-        match self {
-            Entry::Occupied(entry) => entry,
-            Entry::Vacant(entry) => entry.insert(),
-        }
-    }
-
-    /// Ensures a value is in the entry by inserting if it was vacant.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut set: HashSet<&str> = HashSet::new();
-    ///
-    /// // nonexistent key
-    /// set.entry("poneyland").or_insert();
-    /// assert!(set.contains("poneyland"));
-    ///
-    /// // existing key
-    /// set.entry("poneyland").or_insert();
-    /// assert!(set.contains("poneyland"));
-    /// assert_eq!(set.len(), 1);
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn or_insert(self)
-    where
-        T: Hash,
-        S: BuildHasher,
-    {
-        if let Entry::Vacant(entry) = self {
-            entry.insert();
-        }
-    }
-
-    /// Returns a reference to this entry's value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut set: HashSet<&str> = HashSet::new();
-    /// set.entry("poneyland").or_insert();
-    /// // existing key
-    /// assert_eq!(set.entry("poneyland").get(), &"poneyland");
-    /// // nonexistent key
-    /// assert_eq!(set.entry("horseland").get(), &"horseland");
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn get(&self) -> &T {
-        match *self {
-            Entry::Occupied(ref entry) => entry.get(),
-            Entry::Vacant(ref entry) => entry.get(),
-        }
-    }
-}
-
-impl<T, S, A: Allocator> OccupiedEntry<'_, T, S, A> {
-    /// Gets a reference to the value in the entry.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::hash_set::{Entry, HashSet};
-    ///
-    /// let mut set: HashSet<&str> = HashSet::new();
-    /// set.entry("poneyland").or_insert();
-    ///
-    /// match set.entry("poneyland") {
-    ///     Entry::Vacant(_) => panic!(),
-    ///     Entry::Occupied(entry) => assert_eq!(entry.get(), &"poneyland"),
-    /// }
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn get(&self) -> &T {
-        self.inner.key()
-    }
-
-    /// Takes the value out of the entry, and returns it.
-    /// Keeps the allocated memory for reuse.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    /// use hashbrown::hash_set::Entry;
-    ///
-    /// let mut set: HashSet<&str> = HashSet::new();
-    /// // The set is empty
-    /// assert!(set.is_empty() && set.capacity() == 0);
-    ///
-    /// set.entry("poneyland").or_insert();
-    /// let capacity_before_remove = set.capacity();
-    ///
-    /// if let Entry::Occupied(o) = set.entry("poneyland") {
-    ///     assert_eq!(o.remove(), "poneyland");
-    /// }
-    ///
-    /// assert_eq!(set.contains("poneyland"), false);
-    /// // Now set hold none elements but capacity is equal to the old one
-    /// assert!(set.len() == 0 && set.capacity() == capacity_before_remove);
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn remove(self) -> T {
-        self.inner.remove_entry().0
-    }
-}
-
-impl<'a, T, S, A: Allocator> VacantEntry<'a, T, S, A> {
-    /// Gets a reference to the value that would be used when inserting
-    /// through the `VacantEntry`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    ///
-    /// let mut set: HashSet<&str> = HashSet::new();
-    /// assert_eq!(set.entry("poneyland").get(), &"poneyland");
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn get(&self) -> &T {
-        self.inner.key()
-    }
-
-    /// Take ownership of the value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::hash_set::{Entry, HashSet};
-    ///
-    /// let mut set: HashSet<&str> = HashSet::new();
-    ///
-    /// match set.entry("poneyland") {
-    ///     Entry::Occupied(_) => panic!(),
-    ///     Entry::Vacant(v) => assert_eq!(v.into_value(), "poneyland"),
-    /// }
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn into_value(self) -> T {
-        self.inner.into_key()
-    }
-
-    /// Sets the value of the entry with the `VacantEntry`'s value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use hashbrown::HashSet;
-    /// use hashbrown::hash_set::Entry;
-    ///
-    /// let mut set: HashSet<&str> = HashSet::new();
-    ///
-    /// if let Entry::Vacant(o) = set.entry("poneyland") {
-    ///     o.insert();
-    /// }
-    /// assert!(set.contains("poneyland"));
-    /// ```
-    #[cfg_attr(feature = "inline-more", inline)]
-    pub fn insert(self) -> OccupiedEntry<'a, T, S, A>
-    where
-        T: Hash,
-        S: BuildHasher,
-    {
-        OccupiedEntry {
-            inner: self.inner.insert_entry(()),
-        }
-    }
-}
-
-#[expect(dead_code)]
+#[allow(dead_code)]
 fn assert_covariance() {
     fn set<'new>(v: HashSet<&'static str>) -> HashSet<&'new str> {
         v
@@ -2513,39 +1804,42 @@ fn assert_covariance() {
     fn iter<'a, 'new>(v: Iter<'a, &'static str>) -> Iter<'a, &'new str> {
         v
     }
-    fn into_iter<'new, A: Allocator>(v: IntoIter<&'static str, A>) -> IntoIter<&'new str, A> {
+    fn into_iter<'new, A: Allocator + Clone>(
+        v: IntoIter<&'static str, A>,
+    ) -> IntoIter<&'new str, A> {
         v
     }
-    fn difference<'a, 'new, A: Allocator>(
+    fn difference<'a, 'new, A: Allocator + Clone>(
         v: Difference<'a, &'static str, DefaultHashBuilder, A>,
     ) -> Difference<'a, &'new str, DefaultHashBuilder, A> {
         v
     }
-    fn symmetric_difference<'a, 'new, A: Allocator>(
+    fn symmetric_difference<'a, 'new, A: Allocator + Clone>(
         v: SymmetricDifference<'a, &'static str, DefaultHashBuilder, A>,
     ) -> SymmetricDifference<'a, &'new str, DefaultHashBuilder, A> {
         v
     }
-    fn intersection<'a, 'new, A: Allocator>(
+    fn intersection<'a, 'new, A: Allocator + Clone>(
         v: Intersection<'a, &'static str, DefaultHashBuilder, A>,
     ) -> Intersection<'a, &'new str, DefaultHashBuilder, A> {
         v
     }
-    fn union<'a, 'new, A: Allocator>(
+    fn union<'a, 'new, A: Allocator + Clone>(
         v: Union<'a, &'static str, DefaultHashBuilder, A>,
     ) -> Union<'a, &'new str, DefaultHashBuilder, A> {
         v
     }
-    fn drain<'new, A: Allocator>(d: Drain<'static, &'static str, A>) -> Drain<'new, &'new str, A> {
+    fn drain<'new, A: Allocator + Clone>(
+        d: Drain<'static, &'static str, A>,
+    ) -> Drain<'new, &'new str, A> {
         d
     }
 }
 
 #[cfg(test)]
 mod test_set {
-    use super::{Equivalent, HashSet};
-    use crate::DefaultHashBuilder;
-    use crate::map::make_hash;
+    use super::super::map::DefaultHashBuilder;
+    use super::HashSet;
     use std::vec::Vec;
 
     #[test]
@@ -2669,7 +1963,7 @@ mod test_set {
         let expected = [3, 5, 11, 77];
         for x in a.intersection(&b) {
             assert!(expected.contains(x));
-            i += 1;
+            i += 1
         }
         assert_eq!(i, expected.len());
     }
@@ -2692,7 +1986,7 @@ mod test_set {
         let expected = [1, 5, 11];
         for x in a.difference(&b) {
             assert!(expected.contains(x));
-            i += 1;
+            i += 1
         }
         assert_eq!(i, expected.len());
     }
@@ -2718,23 +2012,7 @@ mod test_set {
         let expected = [-2, 1, 5, 11, 14, 22];
         for x in a.symmetric_difference(&b) {
             assert!(expected.contains(x));
-            i += 1;
-        }
-        assert_eq!(i, expected.len());
-    }
-
-    #[test]
-    fn test_sub_assign() {
-        let mut a: HashSet<_> = vec![1, 2, 3, 4, 5].into_iter().collect();
-        let b: HashSet<_> = vec![4, 5, 6].into_iter().collect();
-
-        a -= &b;
-
-        let mut i = 0;
-        let expected = [1, 2, 3];
-        for x in &a {
-            assert!(expected.contains(x));
-            i += 1;
+            i += 1
         }
         assert_eq!(i, expected.len());
     }
@@ -2764,7 +2042,7 @@ mod test_set {
         let expected = [-2, 1, 3, 5, 9, 11, 13, 16, 19, 24];
         for x in a.union(&b) {
             assert!(expected.contains(x));
-            i += 1;
+            i += 1
         }
         assert_eq!(i, expected.len());
     }
@@ -2790,7 +2068,7 @@ mod test_set {
     fn test_from_iter() {
         let xs = [1, 2, 2, 3, 4, 5, 6, 7, 8, 9];
 
-        let set: HashSet<_> = xs.iter().copied().collect();
+        let set: HashSet<_> = xs.iter().cloned().collect();
 
         for x in &xs {
             assert!(set.contains(x));
@@ -2844,10 +2122,10 @@ mod test_set {
         set.insert(1);
         set.insert(2);
 
-        let set_str = format!("{set:?}");
+        let set_str = format!("{:?}", set);
 
         assert!(set_str == "{1, 2}" || set_str == "{2, 1}");
-        assert_eq!(format!("{empty:?}"), "{}");
+        assert_eq!(format!("{:?}", empty), "{}");
     }
 
     #[test]
@@ -2880,7 +2158,7 @@ mod test_set {
                 assert_eq!(last_i, 49);
             }
 
-            if !s.is_empty() {
+            for _ in &s {
                 panic!("s should be empty!");
             }
 
@@ -2894,7 +2172,6 @@ mod test_set {
         use core::hash;
 
         #[derive(Debug)]
-        #[expect(dead_code)]
         struct Foo(&'static str, i32);
 
         impl PartialEq for Foo {
@@ -2927,7 +2204,7 @@ mod test_set {
         let mut a = HashSet::new();
         a.insert(1);
 
-        a.extend([2, 3, 4]);
+        a.extend(&[2, 3, 4]);
 
         assert_eq!(a.len(), 4);
         assert!(a.contains(&1));
@@ -2953,7 +2230,7 @@ mod test_set {
     #[test]
     fn test_retain() {
         let xs = [1, 2, 3, 4, 5, 6];
-        let mut set: HashSet<i32> = xs.iter().copied().collect();
+        let mut set: HashSet<i32> = xs.iter().cloned().collect();
         set.retain(|&k| k % 2 == 0);
         assert_eq!(set.len(), 3);
         assert!(set.contains(&2));
@@ -2962,10 +2239,10 @@ mod test_set {
     }
 
     #[test]
-    fn test_extract_if() {
+    fn test_drain_filter() {
         {
             let mut set: HashSet<i32> = (0..8).collect();
-            let drained = set.extract_if(|&k| k % 2 == 0);
+            let drained = set.drain_filter(|&k| k % 2 == 0);
             let mut out = drained.collect::<Vec<_>>();
             out.sort_unstable();
             assert_eq!(vec![0, 2, 4, 6], out);
@@ -2973,7 +2250,7 @@ mod test_set {
         }
         {
             let mut set: HashSet<i32> = (0..8).collect();
-            set.extract_if(|&k| k % 2 == 0).for_each(drop);
+            drop(set.drain_filter(|&k| k % 2 == 0));
             assert_eq!(set.len(), 4, "Removes non-matching items on drop");
         }
     }
@@ -2995,7 +2272,7 @@ mod test_set {
 
         const EMPTY_SET: HashSet<u32, MyHasher> = HashSet::with_hasher(MyHasher);
 
-        let mut set = EMPTY_SET;
+        let mut set = EMPTY_SET.clone();
         set.insert(19);
         assert!(set.contains(&19));
     }
@@ -3017,73 +2294,6 @@ mod test_set {
         for i in 100..1400 {
             set.remove(&(i - 100));
             set.insert(i);
-        }
-    }
-
-    #[test]
-    fn collect() {
-        // At the time of writing, this hits the ZST case in from_base_index
-        // (and without the `map`, it does not).
-        let mut _set: HashSet<_> = (0..3).map(|_| ()).collect();
-    }
-
-    #[test]
-    fn test_allocation_info() {
-        assert_eq!(HashSet::<()>::new().allocation_size(), 0);
-        assert_eq!(HashSet::<u32>::new().allocation_size(), 0);
-        assert!(HashSet::<u32>::with_capacity(1).allocation_size() > core::mem::size_of::<u32>());
-    }
-
-    #[test]
-    fn duplicate_insert() {
-        let mut set = HashSet::new();
-        set.insert(1);
-        set.get_or_insert_with(&1, |_| 1);
-        set.get_or_insert_with(&1, |_| 1);
-        assert!([1].iter().eq(set.iter()));
-    }
-
-    #[test]
-    #[should_panic]
-    fn some_invalid_equivalent() {
-        use core::hash::{Hash, Hasher};
-        struct Invalid {
-            count: u32,
-            other: u32,
-        }
-
-        struct InvalidRef {
-            count: u32,
-            other: u32,
-        }
-
-        impl PartialEq for Invalid {
-            fn eq(&self, other: &Self) -> bool {
-                self.count == other.count && self.other == other.other
-            }
-        }
-        impl Eq for Invalid {}
-
-        impl Equivalent<Invalid> for InvalidRef {
-            fn equivalent(&self, key: &Invalid) -> bool {
-                self.count == key.count && self.other == key.other
-            }
-        }
-        impl Hash for Invalid {
-            fn hash<H: Hasher>(&self, state: &mut H) {
-                self.count.hash(state);
-            }
-        }
-        impl Hash for InvalidRef {
-            fn hash<H: Hasher>(&self, state: &mut H) {
-                self.count.hash(state);
-            }
-        }
-        let mut set: HashSet<Invalid> = HashSet::new();
-        let key = InvalidRef { count: 1, other: 1 };
-        let value = Invalid { count: 1, other: 2 };
-        if make_hash(set.hasher(), &key) == make_hash(set.hasher(), &value) {
-            set.get_or_insert_with(&key, |_| value);
         }
     }
 }

@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.65.0"
+rust-version = "1.60"
 name = "hashbrown"
 version = "0.15.2"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]
@@ -171,3 +171,4 @@ rustc-dep-of-std = [
     "raw-entry",
 ]
 rustc-internal-api = []
+

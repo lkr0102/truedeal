@@ -1,5 +1,4 @@
 // See the cfg-if crate.
-#[expect(unused_macro_rules)]
 macro_rules! cfg_if {
     // match if/else chains with a final `else`
     ($(
@@ -37,7 +36,7 @@ macro_rules! cfg_if {
     // semicolon is all the remaining items
     (@__items ($($not:meta,)*) ; ) => {};
     (@__items ($($not:meta,)*) ; ( ($($m:meta),*) ($($it:item)*) ), $($rest:tt)*) => {
-        // Emit all items within one block, applying an appropriate #[cfg]. The
+        // Emit all items within one block, applying an approprate #[cfg]. The
         // #[cfg] will require all `$m` matchers specified and must also negate
         // all previous matchers.
         cfg_if! { @__apply cfg(all($($m,)* not(any($($not),*)))), $($it)* }
@@ -58,8 +57,8 @@ macro_rules! cfg_if {
 // default fn syntax for specialization changes in the future.
 #[cfg(feature = "nightly")]
 macro_rules! default_fn {
-	(#[$($a:tt)*] $($tt:tt)*) => {
-        #[$($a)*] default $($tt)*
+	($($tt:tt)*) => {
+        default $($tt)*
     }
 }
 #[cfg(not(feature = "nightly"))]

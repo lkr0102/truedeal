@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.66.0"
+rust-version = "1.60"
 name = "borsh-schema-derive-internal"
 version = "0.10.4"
 authors = ["Near Inc <hello@nearprotocol.com>"]
@@ -51,3 +51,4 @@ features = [
 
 [dev-dependencies.pretty_assertions]
 version = "1.1.0"
+

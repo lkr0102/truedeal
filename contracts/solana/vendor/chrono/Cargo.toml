@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.62.0"
+rust-version = "1.60"
 name = "chrono"
 version = "0.4.44"
 build = false
@@ -179,3 +179,4 @@ optional = true
 [target."cfg(windows)".dependencies.windows-link]
 version = "0.2"
 optional = true
+

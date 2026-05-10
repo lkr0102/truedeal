@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.46.0"
+rust-version = "1.60"
 name = "im"
 version = "15.1.0"
 authors = ["Bodil Stokke <bodil@bodil.org>"]
@@ -113,3 +113,4 @@ version = "0.9"
 
 [features]
 debug = []
+

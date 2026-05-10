@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.56.0"
+rust-version = "1.60"
 name = "bitflags"
 version = "2.4.0"
 authors = ["The Rust Project Developers"]
@@ -93,3 +93,4 @@ rustc-dep-of-std = [
     "compiler_builtins",
 ]
 std = []
+

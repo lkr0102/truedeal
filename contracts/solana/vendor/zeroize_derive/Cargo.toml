@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.60"
 name = "zeroize_derive"
 version = "1.4.3"
 authors = ["The RustCrypto Project Developers"]
@@ -61,3 +61,4 @@ features = [
     "extra-traits",
     "visit",
 ]
+

@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.85.0"
+rust-version = "1.60"
 name = "constant_time_eq"
 version = "0.4.2"
 authors = ["Cesar Eduardo Barros <cesarb@cesarb.eti.br>"]
@@ -81,4 +81,5 @@ features = [
     "cargo_bench_support",
     "html_reports",
 ]
+
 
