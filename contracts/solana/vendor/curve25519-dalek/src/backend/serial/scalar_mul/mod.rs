@@ -17,10 +17,8 @@
 //! scalar multiplication implementations, since it only uses one
 //! curve model.
 
-#[allow(missing_docs)]
 pub mod variable_base;
 
-#[allow(missing_docs)]
 pub mod vartime_double_base;
 
 #[cfg(feature = "alloc")]

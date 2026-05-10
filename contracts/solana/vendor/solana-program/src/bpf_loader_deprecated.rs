@@ -10,4 +10,5 @@
 //! your program against the proper entrypoint semantics.  All programs being
 //! deployed to this BPF loader must build against the deprecated entrypoint
 //! version located in `entrypoint_deprecated.rs`.
-pub use solana_sdk_ids::bpf_loader_deprecated::{check_id, id, ID};
+
+crate::declare_id!("BPFLoader1111111111111111111111111111111111");

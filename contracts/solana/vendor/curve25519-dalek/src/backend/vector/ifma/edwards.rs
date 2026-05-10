@@ -9,20 +9,15 @@
 
 #![allow(non_snake_case)]
 
-use crate::traits::Identity;
+use traits::Identity;
 
-use core::ops::{Add, Neg, Sub};
+use std::ops::{Add, Neg, Sub};
 
 use subtle::Choice;
 use subtle::ConditionallySelectable;
 
-use curve25519_dalek_derive::unsafe_target_feature;
-
-use crate::edwards;
-use crate::window::{LookupTable, NafLookupTable5};
-
-#[cfg(any(feature = "precomputed-tables", feature = "alloc"))]
-use crate::window::NafLookupTable8;
+use edwards;
+use window::{LookupTable, NafLookupTable5, NafLookupTable8};
 
 use super::constants;
 use super::field::{F51x4Reduced, F51x4Unreduced, Lanes, Shuffle};
@@ -33,14 +28,12 @@ pub struct ExtendedPoint(pub(super) F51x4Unreduced);
 #[derive(Copy, Clone, Debug)]
 pub struct CachedPoint(pub(super) F51x4Reduced);
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl From<edwards::EdwardsPoint> for ExtendedPoint {
     fn from(P: edwards::EdwardsPoint) -> ExtendedPoint {
         ExtendedPoint(F51x4Unreduced::new(&P.X, &P.Y, &P.Z, &P.T))
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl From<ExtendedPoint> for edwards::EdwardsPoint {
     fn from(P: ExtendedPoint) -> edwards::EdwardsPoint {
         let reduced = F51x4Reduced::from(P.0);
@@ -54,7 +47,6 @@ impl From<ExtendedPoint> for edwards::EdwardsPoint {
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl From<ExtendedPoint> for CachedPoint {
     fn from(P: ExtendedPoint) -> CachedPoint {
         let mut x = P.0;
@@ -67,27 +59,24 @@ impl From<ExtendedPoint> for CachedPoint {
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl Default for ExtendedPoint {
     fn default() -> ExtendedPoint {
         ExtendedPoint::identity()
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl Identity for ExtendedPoint {
     fn identity() -> ExtendedPoint {
         constants::EXTENDEDPOINT_IDENTITY
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl ExtendedPoint {
     pub fn double(&self) -> ExtendedPoint {
         // (Y1 X1 T1 Z1) -- uses vpshufd (1c latency @ 1/c)
         let mut tmp0 = self.0.shuffle(Shuffle::BADC);
 
-        // (X1+Y1 X1+Y1 X1+Y1 X1+Y1) -- can use vpinserti128
+        // (X1+Y1 X1+Y1 X1+Y1 X1+Y1) -- can use vpinserti128 
         let mut tmp1 = (self.0 + tmp0).shuffle(Shuffle::ABAB);
 
         // (X1 Y1 Z1 X1+Y1)
@@ -108,7 +97,7 @@ impl ExtendedPoint {
         //    =======================
         //        S5   S6   S8   S9
 
-        let zero = F51x4Unreduced::ZERO;
+        let zero = F51x4Unreduced::zero();
 
         let S1_S1_S1_S1 = tmp1.shuffle(Shuffle::AAAA);
         let S2_S2_S2_S2 = tmp1.shuffle(Shuffle::BBBB);
@@ -133,7 +122,6 @@ impl ExtendedPoint {
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl<'a, 'b> Add<&'b CachedPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
@@ -163,21 +151,18 @@ impl<'a, 'b> Add<&'b CachedPoint> for &'a ExtendedPoint {
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl Default for CachedPoint {
     fn default() -> CachedPoint {
         CachedPoint::identity()
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl Identity for CachedPoint {
     fn identity() -> CachedPoint {
         constants::CACHEDPOINT_IDENTITY
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl ConditionallySelectable for CachedPoint {
     fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         CachedPoint(F51x4Reduced::conditional_select(&a.0, &b.0, choice))
@@ -188,7 +173,6 @@ impl ConditionallySelectable for CachedPoint {
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl<'a> Neg for &'a CachedPoint {
     type Output = CachedPoint;
 
@@ -198,7 +182,6 @@ impl<'a> Neg for &'a CachedPoint {
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl<'a, 'b> Sub<&'b CachedPoint> for &'a ExtendedPoint {
     type Output = ExtendedPoint;
 
@@ -208,7 +191,6 @@ impl<'a, 'b> Sub<&'b CachedPoint> for &'a ExtendedPoint {
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl<'a> From<&'a edwards::EdwardsPoint> for LookupTable<CachedPoint> {
     fn from(point: &'a edwards::EdwardsPoint) -> Self {
         let P = ExtendedPoint::from(*point);
@@ -220,7 +202,6 @@ impl<'a> From<&'a edwards::EdwardsPoint> for LookupTable<CachedPoint> {
     }
 }
 
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl<'a> From<&'a edwards::EdwardsPoint> for NafLookupTable5<CachedPoint> {
     fn from(point: &'a edwards::EdwardsPoint) -> Self {
         let A = ExtendedPoint::from(*point);
@@ -234,8 +215,6 @@ impl<'a> From<&'a edwards::EdwardsPoint> for NafLookupTable5<CachedPoint> {
     }
 }
 
-#[cfg(any(feature = "precomputed-tables", feature = "alloc"))]
-#[unsafe_target_feature("avx512ifma,avx512vl")]
 impl<'a> From<&'a edwards::EdwardsPoint> for NafLookupTable8<CachedPoint> {
     fn from(point: &'a edwards::EdwardsPoint) -> Self {
         let A = ExtendedPoint::from(*point);
@@ -249,7 +228,6 @@ impl<'a> From<&'a edwards::EdwardsPoint> for NafLookupTable8<CachedPoint> {
     }
 }
 
-#[cfg(target_feature = "avx512ifma,avx512vl")]
 #[cfg(test)]
 mod test {
     use super::*;
@@ -280,8 +258,8 @@ mod test {
 
     #[test]
     fn vector_addition_vs_serial_addition_vs_edwards_extendedpoint() {
-        use crate::constants;
-        use crate::scalar::Scalar;
+        use constants;
+        use scalar::Scalar;
 
         println!("Testing id +- id");
         let P = edwards::EdwardsPoint::identity();
@@ -300,7 +278,7 @@ mod test {
 
         println!("Testing B +- kB");
         let P = constants::ED25519_BASEPOINT_POINT;
-        let Q = constants::ED25519_BASEPOINT_TABLE * &Scalar::from(8475983829u64);
+        let Q = &constants::ED25519_BASEPOINT_TABLE * &Scalar::from(8475983829u64);
         addition_test_helper(P, Q);
     }
 
@@ -319,8 +297,8 @@ mod test {
 
     #[test]
     fn vector_doubling_vs_serial_doubling_vs_edwards_extendedpoint() {
-        use crate::constants;
-        use crate::scalar::Scalar;
+        use constants;
+        use scalar::Scalar;
 
         println!("Testing [2]id");
         let P = edwards::EdwardsPoint::identity();
@@ -331,7 +309,7 @@ mod test {
         doubling_test_helper(P);
 
         println!("Testing [2]([k]B)");
-        let P = constants::ED25519_BASEPOINT_TABLE * &Scalar::from(8475983829u64);
+        let P = &constants::ED25519_BASEPOINT_TABLE * &Scalar::from(8475983829u64);
         doubling_test_helper(P);
     }
 }

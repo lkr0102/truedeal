@@ -7,14 +7,13 @@
 // Authors:
 // - Henry de Valence <hdevalence@hdevalence.ca>
 
-#![doc = include_str!("../../../../docs/ifma-notes.md")]
+#![cfg_attr(
+    feature = "nightly",
+    doc(include = "../../../../docs/ifma-notes.md")
+)]
 
-#[allow(missing_docs)]
 pub mod field;
 
-#[allow(missing_docs)]
 pub mod edwards;
 
 pub mod constants;
-
-pub(crate) use self::edwards::{CachedPoint, ExtendedPoint};

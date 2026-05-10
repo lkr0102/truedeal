@@ -1,5 +1,5 @@
-#![deprecated(since = "2.3.0", note = "Use `solana_sdk_ids::system_program` instead")]
 //! The [system native program][np].
 //!
-//! [np]: https://docs.solanalabs.com/runtime/programs#system-program
-pub use solana_sdk_ids::system_program::{check_id, id, ID};
+//! [np]: https://docs.solana.com/developing/runtime-facilities/programs#system-program
+
+crate::declare_id!("11111111111111111111111111111111");

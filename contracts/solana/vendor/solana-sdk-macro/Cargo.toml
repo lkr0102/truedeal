@@ -12,40 +12,35 @@
 [package]
 edition = "2021"
 name = "solana-sdk-macro"
-version = "2.2.1"
-authors = ["Anza Maintainers <maintainers@anza.xyz>"]
-build = false
-autolib = false
-autobins = false
-autoexamples = false
-autotests = false
-autobenches = false
+version = "1.17.17"
+authors = ["Solana Labs Maintainers <maintainers@solanalabs.com>"]
 description = "Solana SDK Macro"
-homepage = "https://anza.xyz/"
+homepage = "https://solanalabs.com/"
 documentation = "https://docs.rs/solana-sdk-macro"
-readme = false
 license = "Apache-2.0"
-repository = "https://github.com/anza-xyz/agave"
+repository = "https://github.com/solana-labs/solana"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
 
 [lib]
-name = "solana_sdk_macro"
-path = "src/lib.rs"
 proc-macro = true
 
 [dependencies.bs58]
-version = "0.5.1"
-features = ["alloc"]
-default-features = false
+version = "0.4.0"
 
 [dependencies.proc-macro2]
-version = "1.0.93"
+version = "1.0.67"
 
 [dependencies.quote]
 version = "1.0"
 
+[dependencies.rustversion]
+version = "1.0.14"
+
 [dependencies.syn]
 version = "2.0"
-features = ["full"]
+features = [
+    "full",
+    "extra-traits",
+]

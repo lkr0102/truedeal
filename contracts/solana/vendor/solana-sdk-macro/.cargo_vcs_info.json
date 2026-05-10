@@ -1,6 +1,6 @@
 {
   "git": {
-    "sha1": "1c1d667f161666f12f5a43ebef8eda9470a8c6ee"
+    "sha1": "27a438007568eae350ea83432727f347d1aaecdc"
   },
-  "path_in_vcs": "sdk-macro"
+  "path_in_vcs": "sdk/macro"
 }
