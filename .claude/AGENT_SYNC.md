@@ -3,10 +3,11 @@
 Este documento fornece o contexto técnico imediato para agentes de IA operando no repositório TrueDeal.
 
 ## 1. Estado Atual da Infraestrutura (Build & Deploy)
-- **Toolchain:** Solana 1.17.31 / Anchor 0.29.0 / Rust Edition 2021.
-- **Build System:** Sistema de **Vendoring Total** implementado em `contracts/solana/vendor/`.
-- **Status:** O build foi estabilizado para ser **100% Offline e Determinístico**, eliminando conflitos com a Rust Edition 2024 de dependências externas.
-- **Lockfile:** Fixado na **Versão 3** para compatibilidade com o compilador SBF.
+- **Toolchain:** Solana 1.17.31 / Anchor 0.30.1 / Rust Edition 2021 (SBF Legacy).
+- **Build System:** Sistema de **Vendoring Total** patcheado cirurgicamente em `contracts/solana/vendor/`.
+- **Status:** Estabilização v5 (Build #39). O lockfile foi sanitizado de blocos órfãos e as dependências Edition 2024 (toml_edit 0.25) foram neutralizadas.
+- **Lockfile:** Fixado na **Versão 3** e limpo via script para parsing determinístico.
+
 
 ## 2. Componentes Principais e Localização
 - **Smart Contract:** `contracts/solana/programs/truedeal/src/lib.rs` (Lógica de Escrow e Liquidação).
