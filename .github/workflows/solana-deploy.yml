@@ -63,9 +63,11 @@ jobs:
           anchor --version
 
       - name: Setup Deploy Wallet
+        env:
+          SOLANA_PAYER_KEY: ${{ secrets.SOLANA_PAYER_KEY }}
         run: |
           mkdir -p ~/.config/solana
-          echo '${{ secrets.SOLANA_PAYER_KEY }}' > ~/.config/solana/deploy.json
+          echo "$SOLANA_PAYER_KEY" > ~/.config/solana/deploy.json
           chmod 600 ~/.config/solana/deploy.json
           solana config set \
             --keypair ~/.config/solana/deploy.json \
