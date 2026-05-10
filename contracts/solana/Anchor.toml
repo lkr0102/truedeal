@@ -1,8 +1,8 @@
 [toolchain]
 
 [features]
-resolution = []
-skip-lint = []
+resolution = true
+skip-lint = false
 
 [programs.localnet]
 truedeal = "9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4"
