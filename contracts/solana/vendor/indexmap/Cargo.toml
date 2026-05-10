@@ -165,3 +165,4 @@ unsafe-code = "deny"
 
 [profile.bench]
 debug = 2
+

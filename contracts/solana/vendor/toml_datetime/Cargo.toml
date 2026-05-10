@@ -179,3 +179,4 @@ unused_qualifications = "warn"
 [lints.rust.rust_2018_idioms]
 level = "warn"
 priority = -1
+

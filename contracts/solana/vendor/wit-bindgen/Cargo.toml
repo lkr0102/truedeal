@@ -105,3 +105,4 @@ unnecessary_to_owned = "warn"
 [lints.clippy.all]
 level = "allow"
 priority = -1
+
