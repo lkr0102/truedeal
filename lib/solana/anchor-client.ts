@@ -40,6 +40,13 @@ export function deriveAgreementPDA(agreementId: string): [PublicKey, number] {
   )
 }
 
+export function deriveVaultPDA(agreementPDA: PublicKey): [PublicKey, number] {
+  return PublicKey.findProgramAddressSync(
+    [Buffer.from("vault"), agreementPDA.toBuffer()],
+    PROGRAM_ID
+  )
+}
+
 // ── Instruction: Init Performance Agreement ──────────────────────────────────
 // Called by the creator when a new Deal is submitted.
 
@@ -52,6 +59,7 @@ export async function initPerformanceAgreement(
   const provider = getProvider(signer)
   const program  = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
+  const [vault] = deriveVaultPDA(agreementAccount)
 
   const txSignature = await program.methods
     .initPerformanceAgreement(
@@ -62,7 +70,11 @@ export async function initPerformanceAgreement(
     .accounts({
       agreementAccount,
       creator: signer.publicKey,
+      mint: new PublicKey("So11111111111111111111111111111111111111112"), // Mock WSOL for test
+      vault,
       systemProgram: SystemProgram.programId,
+      tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+      rent: new PublicKey("SysvarRent111111111111111111111111111111111"),
     })
     .rpc()
 
@@ -79,22 +91,27 @@ export async function settlePerformanceAgreement(
   agreementId: string,
   beneficiaryPubkey: PublicKey,
   proofHash: Uint8Array, // 32-byte forensic proof from generateEvidenceHash
+  winnersCount: bigint,
 ): Promise<string> {
   const provider = getProvider(oracle1)
   const program  = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
+  const [vault] = deriveVaultPDA(agreementAccount)
 
   const txSignature = await program.methods
     .settlePerformanceAgreement(
-      beneficiaryPubkey,
       Array.from(proofHash),
+      new BN(winnersCount.toString()),
     )
     .accounts({
       agreementAccount,
       oracle1: oracle1.publicKey,
       oracle2: oracle2.publicKey,
+      vault,
+      treasuryTokenAccount: beneficiaryPubkey, // Use beneficiary for test
+      tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
     })
-    .signers([oracle2]) // oracle1 is the provider signer, oracle2 added explicitly
+    .signers([oracle2])
     .rpc()
 
   console.log(`[Anchor] Agreement settled via DealGuard Consensus: ${txSignature}`)

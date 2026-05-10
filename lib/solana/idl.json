@@ -1,62 +1,83 @@
 {
-  "version": "0.1.0",
-  "name": "truedeal",
+  "address": "9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4",
+  "metadata": {
+    "name": "truedeal",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
   "instructions": [
     {
-      "name": "initPerformanceAgreement",
+      "name": "init_performance_agreement",
+      "discriminator": [95, 230, 0, 111, 144, 112, 179, 240],
       "accounts": [
-        { "name": "agreementAccount", "isMut": true, "isSigner": false },
-        { "name": "creator", "isMut": true, "isSigner": true },
-        { "name": "systemProgram", "isMut": false, "isSigner": false }
+        { "name": "agreement_account", "writable": true, "signer": false },
+        { "name": "creator", "writable": true, "signer": true },
+        { "name": "mint", "writable": false, "signer": false },
+        { "name": "vault", "writable": true, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false },
+        { "name": "rent", "writable": false, "signer": false }
       ],
       "args": [
-        { "name": "agreementId", "type": "string" },
-        { "name": "guaranteeAmount", "type": "u64" },
-        { "name": "ruleHash", "type": { "array": ["u8", 32] } }
+        { "name": "agreement_id", "type": "string" },
+        { "name": "guarantee_amount", "type": "u64" },
+        { "name": "rule_hash", "type": { "array": ["u8", 32] } }
       ]
     },
     {
-      "name": "joinAgreement",
+      "name": "join_agreement",
+      "discriminator": [213, 1, 48, 4, 148, 97, 61, 200],
       "accounts": [
-        { "name": "agreementAccount", "isMut": true, "isSigner": false },
-        { "name": "participant", "isMut": true, "isSigner": true },
-        { "name": "participantTokenAccount", "isMut": true, "isSigner": false },
-        { "name": "vault", "isMut": true, "isSigner": false },
-        { "name": "tokenProgram", "isMut": false, "isSigner": false }
+        { "name": "agreement_account", "writable": true, "signer": false },
+        { "name": "participant", "writable": true, "signer": true },
+        { "name": "participant_token_account", "writable": true, "signer": false },
+        { "name": "vault", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
       ],
       "args": []
     },
     {
-      "name": "settlePerformanceAgreement",
+      "name": "settle_performance_agreement",
+      "discriminator": [86, 216, 11, 86, 70, 247, 27, 3],
       "accounts": [
-        { "name": "agreementAccount", "isMut": true, "isSigner": false },
-        { "name": "oracle1", "isMut": false, "isSigner": true },
-        { "name": "oracle2", "isMut": false, "isSigner": true }
+        { "name": "agreement_account", "writable": true, "signer": false },
+        { "name": "oracle1", "writable": false, "signer": true },
+        { "name": "oracle2", "writable": false, "signer": true },
+        { "name": "vault", "writable": true, "signer": false },
+        { "name": "treasury_token_account", "writable": true, "signer": false },
+        { "name": "token_program", "writable": false, "signer": false }
       ],
       "args": [
-        { "name": "beneficiaryPubkey", "type": "publicKey" },
-        { "name": "proofHash", "type": { "array": ["u8", 32] } }
+        { "name": "proof_hash", "type": { "array": ["u8", 32] } },
+        { "name": "winners_count", "type": "u64" }
       ]
     }
   ],
   "accounts": [
     {
       "name": "AgreementAccount",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          { "name": "creator", "type": "publicKey" },
-          { "name": "agreementId", "type": "string" },
-          { "name": "guaranteeAmount", "type": "u64" },
-          { "name": "totalGuarantee", "type": "u64" },
-          { "name": "ruleHash", "type": { "array": ["u8", 32] } },
-          { "name": "proofHash", "type": { "option": { "array": ["u8", 32] } } },
-          { "name": "status", "type": { "defined": "AgreementStatus" } }
-        ]
-      }
+      "discriminator": [214, 73, 214, 216, 140, 164, 250, 65]
     }
   ],
   "types": [
+    {
+      "name": "AgreementAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          { "name": "creator", "type": "pubkey" },
+          { "name": "agreement_id", "type": "string" },
+          { "name": "guarantee_amount", "type": "u64" },
+          { "name": "total_guarantee", "type": "u64" },
+          { "name": "participant_count", "type": "u64" },
+          { "name": "winners_count", "type": "u64" },
+          { "name": "vault", "type": "pubkey" },
+          { "name": "rule_hash", "type": { "array": ["u8", 32] } },
+          { "name": "proof_hash", "type": { "option": { "array": ["u8", 32] } } },
+          { "name": "status", "type": { "defined": { "name": "AgreementStatus" } } }
+        ]
+      }
+    },
     {
       "name": "AgreementStatus",
       "type": {

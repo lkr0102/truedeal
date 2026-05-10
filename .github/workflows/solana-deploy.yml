@@ -1,0 +1,42 @@
+name: Solana Contract Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'contracts/solana/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.18.15/install)"
+          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor CLI
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+          avm install latest
+          avm use latest
+
+      - name: Setup Wallet
+        run: |
+          echo "${{ secrets.SOLANA_PAYER_KEY }}" > deploy-keypair.json
+          chmod 600 deploy-keypair.json
+          solana config set --keypair deploy-keypair.json --url devnet
+
+      - name: Build and Deploy
+        run: |
+          cd contracts/solana
+          anchor build
+          # Deploy using the specific keypair to ensure the Program ID matches
+          solana program deploy target/deploy/truedeal.so --url devnet --program-id 9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4
