@@ -89,6 +89,26 @@ const PERIOD_PRESETS = [
   { id: "2m", label: "2 meses",  days: 60 },
 ]
 
+const RULE_SUBRULES: Record<string, { note: string; items: string[] }> = {
+  post: {
+    note: "Sub-regras de verificação",
+    items: [
+      "Conta deve ser pública no X",
+      "Post com mais de 100 caracteres",
+      "Conteúdo único — sem repetições dentro do período",
+    ],
+  },
+  comment_received: { note: "Ganho líquido por janela", items: ["Comentários recebidos em posts originais do período"] },
+  repost_received:  { note: "Ganho líquido por janela", items: ["Reposts recebidos em posts originais do período"] },
+  follower_gained:  { note: "Ganho líquido por janela", items: ["Novos seguidores líquidos na janela de frequência"] },
+  impressions:      { note: "Ganho por janela", items: ["Total de impressões nos posts da janela de frequência"] },
+  km_run:           { note: "Apenas atividades do tipo Corrida", items: ["Soma dos KMs de atividades Run registradas no Strava"] },
+  pace:             { note: "⏱ Quanto menor, mais rápido", items: ["Pace médio das corridas ≤ valor configurado", "Medido em min/km · Ex: 5 = 5 min/km, 5.5 = 5 min 30 seg/km"] },
+  workout_hours:    { note: "Total por janela", items: ["Soma das horas de todas as atividades registradas na janela"] },
+  checkin:          { note: "Por janela de frequência", items: ["Número de check-ins em academias ou locais parceiros"] },
+  different_venues: { note: "Por janela de frequência", items: ["Número de locais distintos visitados na janela"] },
+}
+
 const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
 const TODAY = new Date()
 
@@ -173,7 +193,7 @@ export default function CreateDealPage() {
   const [startDate,    setStartDate]    = useState<Date>(TODAY)
   const [endDate,      setEndDate]      = useState<Date>(addDays(TODAY, 30))
   const [showCal,      setShowCal]      = useState<"start" | "end" | null>(null)
-  const [calMonth,     setCalMonth]     = useState(new Date(2026, 3, 1))
+  const [calMonth,     setCalMonth]     = useState(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1))
 
   const [amount,       setAmount]       = useState(50)
   const [isCustomAmt,  setIsCustomAmt]  = useState(false)
@@ -296,7 +316,7 @@ export default function CreateDealPage() {
     {
       icon: "📅", iconBg: "rgba(239,68,68,0.08)",
       key: "Período",
-      val: `${fmtShort(startDate)} → ${fmtShort(endDate)} (${diffDays}d)`,
+      val: `${fmtShort(startDate)} 00h GMT-3 → ${fmtShort(endDate)} (${diffDays}d)`,
     },
     {
       icon: "💰", iconBg: "rgba(22,163,74,0.1)",
@@ -500,6 +520,20 @@ export default function CreateDealPage() {
                   </button>
                 ))}
               </div>
+              {rule && RULE_SUBRULES[rule] && (
+                <div className="mt-2 p-3 rounded-xl"
+                  style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.15)" }}>
+                  <p className="text-[10px] font-bold text-blue-500 mb-1.5">{RULE_SUBRULES[rule].note}</p>
+                  <ul className="space-y-1">
+                    {RULE_SUBRULES[rule].items.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-[11px] text-gray-600">
+                        <span className="text-blue-400 mt-0.5 flex-shrink-0">✓</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </SectionBlock>
           )}
 
@@ -508,7 +542,9 @@ export default function CreateDealPage() {
             <SectionBlock icon={<span className="text-base">🎯</span>} iconBg="rgba(59,130,246,0.1)" title="Meta" sub="Quantidade e frequência do objetivo">
               <div className="p-4 rounded-xl mb-3"
                 style={{ background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.7)" }}>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 text-center">Quantidade</p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 text-center">
+                  {rule === "pace" ? "Pace máximo (min/km)" : "Quantidade"}
+                </p>
                 <div className="flex items-center justify-center gap-4">
                   <button
                     onClick={() => { const n = Math.max(1, quantity - 1); setQuantity(n); setQtyStr(String(n)) }}
@@ -544,6 +580,19 @@ export default function CreateDealPage() {
                   </button>
                 ))}
               </div>
+              {rule === "pace" && (
+                <p className="text-[11px] text-amber-600 mt-2 text-center font-semibold">
+                  ⏱ Pace mais baixo = corrida mais rápida. Ex: 5 = 5 min/km.
+                </p>
+              )}
+              {frequency && (
+                <div className="mt-3 p-3 rounded-xl"
+                  style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)" }}>
+                  <p className="text-[11px] text-red-600 font-semibold leading-relaxed">
+                    ⚠️ A meta deve ser cumprida em <strong>cada janela</strong> de frequência. Uma janela perdida = eliminação permanente.
+                  </p>
+                </div>
+              )}
             </SectionBlock>
           )}
 
@@ -581,6 +630,16 @@ export default function CreateDealPage() {
                 <p className="text-[9px] font-bold text-[#16A34A] tracking-wider uppercase">Fim</p>
                 <p className="text-base font-bold text-[#16A34A] mt-0.5">{fmtShort(endDate)}</p>
               </button>
+            </div>
+            <div className="mt-3 p-3 rounded-xl flex items-center gap-2.5"
+              style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
+              <span className="text-lg flex-shrink-0">⏰</span>
+              <div>
+                <p className="text-[11px] font-bold text-[#16A34A]">Início automático às 00h</p>
+                <p className="text-[10px] text-gray-500 mt-0.5">
+                  {fmtFull(startDate)} · Horário de Brasília (GMT-3)
+                </p>
+              </div>
             </div>
           </SectionBlock>
 
@@ -900,6 +959,14 @@ export default function CreateDealPage() {
                 )
               })}
             </div>
+            {showCal === "start" && (
+              <div className="mt-4 p-2.5 rounded-xl text-center"
+                style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.12)" }}>
+                <p className="text-[10px] text-[#16A34A] font-semibold">
+                  ⏰ O deal inicia automaticamente às 00h (Brasília, GMT-3) do dia selecionado
+                </p>
+              </div>
+            )}
             <button onClick={() => setShowCal(null)}
               className="w-full mt-5 py-3 rounded-2xl font-semibold text-[#16A34A] text-sm"
               style={{ background: "rgba(22,163,74,0.07)", border: "1px solid rgba(22,163,74,0.15)" }}>
@@ -942,6 +1009,14 @@ export default function CreateDealPage() {
                 <p className="text-xs font-bold text-blue-500 mb-1.5">👥 Mínimo de 2 participantes</p>
                 <p className="text-sm text-gray-600 leading-relaxed">
                   Para o deal entrar em vigor, pelo menos 2 participantes precisam confirmar antes do prazo.
+                </p>
+              </div>
+              <div className="p-4 rounded-2xl"
+                style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                <p className="text-xs font-bold text-red-500 mb-1.5">⚠️ Regra estrita por janela de frequência</p>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  O participante precisa cumprir a meta em <strong>cada janela</strong> do período configurado.
+                  Uma janela perdida = <strong>eliminação permanente</strong>, mesmo que tenha cumprido todas as outras.
                 </p>
               </div>
             </div>

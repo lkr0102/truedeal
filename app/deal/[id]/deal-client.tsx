@@ -269,9 +269,22 @@ const DIST_META: Record<string, { label: string; icon: string; desc: string }> =
   proportional: { label: "Proporcional",   icon: "🤝", desc: "Pote final dividido entre todos que cumprirem o acordo." },
 }
 
+const VERIFICATION_SUBRULES: Record<string, { title: string; items: string[]; hint?: string }> = {
+  post:             { title: "Sub-regras — Post publicado", items: ["Conta pública no X", "Mais de 100 caracteres por post", "Conteúdo único — sem repetições dentro do período"] },
+  comment_received: { title: "Sub-regras — Comentário recebido", items: ["Ganho líquido de comentários por janela de frequência"] },
+  repost_received:  { title: "Sub-regras — Repost recebido", items: ["Ganho líquido de reposts por janela de frequência"] },
+  follower_gained:  { title: "Sub-regras — Seguidor recebido", items: ["Novos seguidores líquidos por janela de frequência"] },
+  impressions:      { title: "Sub-regras — Impressões", items: ["Total de impressões nos posts da janela de frequência"] },
+  km_run:           { title: "Sub-regras — Kms percorridos", items: ["Apenas atividades do tipo Corrida (Run)", "Soma dos KMs registrados na janela de frequência"] },
+  pace:             { title: "Pace médio — como é avaliado", items: ["Pace médio das corridas ≤ valor configurado pelo criador", "Medido em min/km · quanto menor, mais rápido", "Exemplo: pace 5 = 5 min 0 seg por km"], hint: "⏱ Pace mais baixo = você correu mais rápido" },
+  workout_hours:    { title: "Sub-regras — Horas de treino", items: ["Soma das horas de todas as atividades registradas na janela"] },
+  checkin:          { title: "Sub-regras — Check-ins", items: ["Número de check-ins em academias ou locais parceiros por janela"] },
+  different_venues: { title: "Sub-regras — Diferentes ambientes", items: ["Número de locais distintos visitados por janela"] },
+}
+
 function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithParticipants }) {
   const diffDays   = deal.daysTotal
-  const feeRate    = dealData.fee_pct ?? 5
+  const feeRate    = dealData.fee_pct ?? 3
   const distMeta   = DIST_META[dealData.distribution] ?? DIST_META.winner
   const channelNames = (dealData.verification_channels ?? [])
     .map(c => CHANNEL_LABELS[c] ?? c).join(" + ")
@@ -364,6 +377,37 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
           <p className="text-sm text-gray-700 leading-relaxed">{deal.description}</p>
         </div>
       )}
+
+      {dealData.verification_type && VERIFICATION_SUBRULES[dealData.verification_type] && (
+        <div className="mt-2 p-3.5 rounded-xl"
+          style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.15)" }}>
+          <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wide mb-2">
+            {VERIFICATION_SUBRULES[dealData.verification_type].title}
+          </p>
+          <ul className="space-y-1.5">
+            {VERIFICATION_SUBRULES[dealData.verification_type].items.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 text-[11px] text-gray-600">
+                <span className="text-blue-400 mt-0.5 flex-shrink-0">✓</span>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+          {VERIFICATION_SUBRULES[dealData.verification_type].hint && (
+            <p className="text-[10px] text-amber-600 mt-2 font-semibold">
+              {VERIFICATION_SUBRULES[dealData.verification_type].hint}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="mt-2 p-3.5 rounded-xl"
+        style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
+        <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-1">⚠️ Regra estrita</p>
+        <p className="text-[11px] text-red-800 leading-relaxed">
+          A meta deve ser cumprida em <strong>cada janela de frequência</strong> do período.
+          Uma janela perdida = <strong>eliminação permanente</strong>.
+        </p>
+      </div>
     </div>
   )
 }

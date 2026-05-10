@@ -13,6 +13,19 @@ import type { DealWithParticipants } from "@/lib/supabase/types"
 const PLAYER_COLORS = ["#4AABFF", "#BF4ADF", "#16A34A", "#F59E0B", "#EF4444", "#10B981"]
 const PLAYER_BG    = ["#1A2E3A", "#2E1A2E", "#1A2E1A", "#2E2A1A", "#2E1A1A", "#1A2E26"]
 
+const VERIFICATION_SUBRULES: Record<string, { title: string; items: string[]; hint?: string }> = {
+  post:             { title: "Sub-regras — Post publicado", items: ["Conta pública no X", "Mais de 100 caracteres por post", "Conteúdo único — sem repetições dentro do período"] },
+  comment_received: { title: "Sub-regras — Comentário recebido", items: ["Ganho líquido de comentários por janela de frequência"] },
+  repost_received:  { title: "Sub-regras — Repost recebido", items: ["Ganho líquido de reposts por janela de frequência"] },
+  follower_gained:  { title: "Sub-regras — Seguidor recebido", items: ["Novos seguidores líquidos por janela de frequência"] },
+  impressions:      { title: "Sub-regras — Impressões", items: ["Total de impressões nos posts da janela de frequência"] },
+  km_run:           { title: "Sub-regras — Kms percorridos", items: ["Apenas atividades do tipo Corrida (Run)", "Soma dos KMs registrados na janela de frequência"] },
+  pace:             { title: "Pace médio — como é avaliado", items: ["Pace médio das corridas ≤ valor configurado pelo criador", "Medido em min/km · quanto menor, mais rápido", "Exemplo: pace 5 = 5 min 0 seg por km"], hint: "⏱ Pace mais baixo = você correu mais rápido" },
+  workout_hours:    { title: "Sub-regras — Horas de treino", items: ["Soma das horas de todas as atividades registradas na janela"] },
+  checkin:          { title: "Sub-regras — Check-ins", items: ["Número de check-ins em academias ou locais parceiros por janela"] },
+  different_venues: { title: "Sub-regras — Diferentes ambientes", items: ["Número de locais distintos visitados por janela"] },
+}
+
 function getInitials(name: string) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
 }
@@ -350,28 +363,48 @@ export default function TrackingClient({
           </div>
         </GlassCard>
 
-        {/* Description/Rules accordion */}
-        {rules.length > 0 && (
-          <GlassCard style={{ padding: 14 }}>
-            <button
-              onClick={() => setRulesOpen(v => !v)}
-              style={{
-                width: "100%", display: "flex", justifyContent: "space-between",
-                alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: 0,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <ShieldCheck size={16} color="#16A34A" />
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#1f2937" }}>Sobre o Deal</span>
-              </div>
-              <ChevronDown
-                size={14} color="#9CA3AF"
-                style={{ transform: rulesOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}
-              />
-            </button>
-            {rulesOpen && (
-              <div style={{ marginTop: 10, borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: 10 }}>
-                {rules.map((line, i) => (
+        {/* Rules accordion */}
+        <GlassCard style={{ padding: 14 }}>
+          <button
+            onClick={() => setRulesOpen(v => !v)}
+            style={{
+              width: "100%", display: "flex", justifyContent: "space-between",
+              alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: 0,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <ShieldCheck size={16} color="#16A34A" />
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#1f2937" }}>Regras de verificação</span>
+            </div>
+            <ChevronDown
+              size={14} color="#9CA3AF"
+              style={{ transform: rulesOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }}
+            />
+          </button>
+          {rulesOpen && (
+            <div style={{ marginTop: 10, borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: 10 }}>
+              {deal.verification_type && VERIFICATION_SUBRULES[deal.verification_type] ? (
+                <>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "#3B82F6", marginBottom: 8 }}>
+                    {VERIFICATION_SUBRULES[deal.verification_type].title}
+                  </p>
+                  {VERIFICATION_SUBRULES[deal.verification_type].items.map((item, i) => (
+                    <div key={i} style={{
+                      display: "flex", gap: 8, padding: "5px 0",
+                      borderTop: i > 0 ? "1px solid rgba(0,0,0,0.04)" : "none",
+                    }}>
+                      <span style={{ color: "#3B82F6", fontSize: 11, fontWeight: 700, flexShrink: 0 }}>✓</span>
+                      <span style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.5 }}>{item}</span>
+                    </div>
+                  ))}
+                  {VERIFICATION_SUBRULES[deal.verification_type].hint && (
+                    <p style={{ fontSize: 11, color: "#D97706", fontWeight: 600, marginTop: 8 }}>
+                      {VERIFICATION_SUBRULES[deal.verification_type].hint}
+                    </p>
+                  )}
+                </>
+              ) : rules.length > 0 ? (
+                rules.map((line, i) => (
                   <div key={i} style={{
                     display: "flex", gap: 10, padding: "6px 0",
                     borderTop: i > 0 ? "1px solid rgba(0,0,0,0.04)" : "none",
@@ -379,11 +412,36 @@ export default function TrackingClient({
                     <span style={{ fontSize: 11, color: "#16A34A", fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
                     <span style={{ fontSize: 12, color: "#6B7280", lineHeight: 1.5 }}>{line}</span>
                   </div>
-                ))}
+                ))
+              ) : null}
+              <div style={{
+                marginTop: 12, padding: "10px 12px", borderRadius: 10,
+                background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)",
+              }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "#EF4444", marginBottom: 4 }}>
+                  ⚠️ Regra estrita por janela
+                </p>
+                <p style={{ fontSize: 11, color: "#6B7280", lineHeight: 1.5 }}>
+                  A meta deve ser cumprida em <strong>cada janela de frequência</strong>.
+                  Uma janela perdida = <strong>eliminação permanente</strong>.
+                </p>
               </div>
-            )}
-          </GlassCard>
-        )}
+            </div>
+          )}
+        </GlassCard>
+
+        {/* Compliance warning */}
+        <div style={{
+          padding: "12px 14px", borderRadius: 12,
+          background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)",
+        }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#EF4444", marginBottom: 4 }}>
+            ⚠️ Regra estrita por janela de frequência
+          </p>
+          <p style={{ fontSize: 11, color: "#6B7280", lineHeight: 1.5 }}>
+            Cumpra a meta em <strong>cada janela</strong>. Uma falha = <strong>eliminado permanentemente</strong>.
+          </p>
+        </div>
 
         {/* Live ranking label */}
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

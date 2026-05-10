@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import {
   Bell, Home, Compass, Wallet, User, Plus,
@@ -8,6 +8,7 @@ import {
   Trophy, Star,
   ChevronLeft, ChevronRight,
   PieChart, Award, Search,
+  Globe, Moon,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { DealWithParticipants, Profile } from "@/lib/supabase/types"
@@ -36,6 +37,7 @@ interface Deal {
   myRank?: number
   potentialWin?: number
   daysToStart?: number
+  startDateISO?: string
 }
 
 // ── Mapping from DB → UI ──────────────────────────────────────────────────────
@@ -87,6 +89,7 @@ function toDealUI(d: DealWithParticipants, userId: string | null): Deal {
     myRank:        isParticipating ? (myP?.rank ?? undefined) : undefined,
     potentialWin:  isParticipating ? Math.round(d.net_pot * 0.9) : undefined,
     daysToStart:   uiStatus === "pendente" ? daysToStart : undefined,
+    startDateISO:  d.start_date,
   }
 }
 
@@ -170,10 +173,38 @@ function TypeBadge({ type }: { type: DealTypeUI }) {
 
 // ── Deal Card ─────────────────────────────────────────────────────────────────
 
+function getStartTarget(iso: string): Date {
+  return new Date(`${iso}T03:00:00Z`)  // 00h GMT-3 = 03h UTC
+}
+
+function formatCountdown(ms: number): { label: string; urgency: "normal" | "warning" | "critical" } {
+  if (ms <= 0) return { label: "Iniciando...", urgency: "critical" }
+  const s   = Math.floor(ms / 1000)
+  const d   = Math.floor(s / 86400)
+  const h   = Math.floor((s % 86400) / 3600)
+  const m   = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  const p   = (n: number) => String(n).padStart(2, "0")
+  if (d > 0) return { label: `${d}d ${p(h)}h`, urgency: "normal" }
+  if (h > 0) return { label: `${h}h ${p(m)}m`, urgency: "warning" }
+  return { label: `${p(m)}m ${p(sec)}s`, urgency: "critical" }
+}
+
 function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
   const daysLeft = deal.daysTotal - deal.daysGone
   const isWinning = deal.myRank != null && deal.myRank <= Math.ceil(deal.participants * 0.3)
   const ss = STATUS_STYLE[deal.status]
+
+  const [nowMs, setNowMs] = useState(() => Date.now())
+  useEffect(() => {
+    if (deal.status !== "pendente" || !deal.startDateISO) return
+    const id = setInterval(() => setNowMs(Date.now()), 10_000)
+    return () => clearInterval(id)
+  }, [deal.status, deal.startDateISO])
+
+  const countdown = deal.status === "pendente" && deal.startDateISO
+    ? formatCountdown(getStartTarget(deal.startDateISO).getTime() - nowMs)
+    : null
 
   return (
     <button onClick={onClick}
@@ -250,19 +281,32 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
       )}
 
       {deal.status === "pendente" && (
-        <div className="flex items-center justify-between mt-2">
-          <div className="flex items-center gap-1.5">
-            <Clock className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-[11px] text-amber-600 font-semibold">
-              {(deal.daysToStart ?? 0) === 0 ? "Inicia hoje" : `Inicia em ${deal.daysToStart}d`}
-            </span>
+        <div className="mt-2 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Clock
+                className={`w-3.5 h-3.5 ${countdown?.urgency === "critical" ? "animate-pulse" : ""}`}
+                style={{ color: countdown?.urgency === "critical" ? "#EF4444" : "#D97706" }}
+              />
+              <span
+                className="text-[11px] font-bold"
+                style={{ color: countdown?.urgency === "critical" ? "#DC2626" : "#D97706" }}
+              >
+                {countdown
+                  ? `Inicia em ${countdown.label}`
+                  : (deal.daysToStart === 0 ? "Inicia hoje" : `Inicia em ${deal.daysToStart}d`)}
+              </span>
+            </div>
+            {!deal.isParticipating && (
+              <span className="text-[11px] font-bold px-2.5 py-1 rounded-full text-white"
+                style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}>
+                Entrar →
+              </span>
+            )}
           </div>
-          {!deal.isParticipating && (
-            <span className="text-[11px] font-bold px-2.5 py-1 rounded-full text-white"
-              style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}>
-              Entrar →
-            </span>
-          )}
+          <p className="text-[9px] font-medium" style={{ color: "#9CA3AF" }}>
+            ⏰ 00h · Horário de Brasília (GMT-3)
+          </p>
         </div>
       )}
 
@@ -429,56 +473,193 @@ function NotificationPopover({ isOpen, onClose }: { isOpen: boolean; onClose: ()
 // ── Profile Popover ───────────────────────────────────────────────────────────
 
 function ProfilePopover({
-  isOpen, onClose, profile,
-}: { isOpen: boolean; onClose: () => void; profile: Profile | null }) {
+  isOpen, onClose, profile, userId,
+}: { isOpen: boolean; onClose: () => void; profile: Profile | null; userId: string | null }) {
   const router = useRouter()
+  const [language, setLanguage] = useState<"pt-br" | "en">("pt-br")
+  const [darkMode, setDarkMode]  = useState(false)
+  const [copied,   setCopied]    = useState(false)
 
-  if (!isOpen) return null
+  useEffect(() => {
+    const savedLang = localStorage.getItem("td-language") as "pt-br" | "en" | null
+    if (savedLang) setLanguage(savedLang)
+    const savedDark = localStorage.getItem("td-dark-mode") === "true"
+    setDarkMode(savedDark)
+  }, [])
 
-  const displayName = profile?.display_name ?? "Usuário"
-  const initials = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?"
-  const username = profile?.username ? `@${profile.username}` : ""
+  function toggleDarkMode() {
+    const next = !darkMode
+    setDarkMode(next)
+    localStorage.setItem("td-dark-mode", String(next))
+    document.documentElement.classList.toggle("dark", next)
+  }
+
+  function toggleLanguage() {
+    const next: "pt-br" | "en" = language === "pt-br" ? "en" : "pt-br"
+    setLanguage(next)
+    localStorage.setItem("td-language", next)
+  }
+
+  function handleCopyReferral() {
+    if (!userId) return
+    const url = `${window.location.origin}/invite/${userId}`
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }
 
   async function handleSignOut() {
     const supabase = createClient()
     await supabase.auth.signOut()
-    // Limpa o cookie de demo se existir
     document.cookie = "truedeal-demo-session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT"
     router.push("/login")
   }
 
+  if (!isOpen) return null
+
+  const displayName = profile?.display_name ?? "Usuário"
+  const initials    = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?"
+  const username    = profile?.username ? `@${profile.username}` : ""
+  const shakes      = profile?.tdp_points ?? 0
+
   return (
     <div className="fixed inset-0 z-30" onClick={onClose}>
-      <div className="absolute top-16 right-5 w-80 rounded-3xl p-5"
-        style={{ background: "rgba(255,255,255,0.95)", backdropFilter: "blur(40px)", border: "1px solid rgba(255,255,255,0.6)" }}
-        onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E5A)" }}>
-              <span className="text-blue-300 font-semibold text-sm">{initials}</span>
-            </div>
-            <div>
-              <p className="font-bold text-gray-800">{displayName}</p>
-              {username && <p className="text-xs text-gray-500">{username}</p>}
-              {profile && (
-                <p className="text-xs text-[#16A34A] font-semibold mt-0.5">{profile.tdp_points} 🤝</p>
-              )}
-            </div>
+      <div
+        className="absolute top-16 right-5 w-72 rounded-3xl overflow-hidden"
+        style={{
+          background: "rgba(255,255,255,0.97)",
+          backdropFilter: "blur(40px)",
+          border: "1px solid rgba(0,0,0,0.08)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="px-5 py-4 flex items-center gap-3"
+          style={{ borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
+          <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E5A)" }}>
+            <span className="text-blue-300 font-semibold text-sm">{initials}</span>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-800 text-sm truncate">{displayName}</p>
+            {username && <p className="text-xs text-gray-400 truncate">{username}</p>}
+            <p className="text-xs text-[#16A34A] font-bold mt-0.5">{shakes} 🤝</p>
+          </div>
+          <button onClick={onClose}
+            className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(0,0,0,0.06)" }}>
+            <span className="text-gray-400 text-base leading-none">×</span>
+          </button>
         </div>
-        <div className="space-y-1">
-          <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition-all text-sm">Editar perfil</button>
-          <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition-all text-sm">Privacidade e segurança</button>
-          <button className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition-all text-sm">Notificações</button>
+
+        {/* Menu items */}
+        <div className="py-2">
+
+          {/* Profile */}
+          <button
+            onClick={() => { onClose(); router.push("/profile") }}
+            className="w-full flex items-center gap-3 px-5 py-3 transition-colors"
+            style={{ background: "transparent" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+          >
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(22,163,74,0.1)" }}>
+              <User className="w-4 h-4 text-[#16A34A]" />
+            </div>
+            <span className="flex-1 text-sm font-semibold text-gray-800 text-left">Perfil</span>
+          </button>
+
+          {/* Invite & Earn */}
+          <button
+            onClick={handleCopyReferral}
+            className="w-full flex items-center gap-3 px-5 py-3 transition-colors"
+            style={{ background: "transparent" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+          >
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(168,85,247,0.1)" }}>
+              <span className="text-base">🎁</span>
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-semibold text-gray-800">Invite &amp; Earn Shakes</p>
+              {copied
+                ? <p className="text-[10px] text-[#16A34A] font-bold">Link copiado! ✓</p>
+                : <p className="text-[10px] text-gray-400">Compartilhe seu link de referral</p>
+              }
+            </div>
+          </button>
+
+          <div className="mx-5 my-1" style={{ height: 1, background: "rgba(0,0,0,0.05)" }} />
+
+          {/* Language */}
+          <button
+            onClick={toggleLanguage}
+            className="w-full flex items-center gap-3 px-5 py-3 transition-colors"
+            style={{ background: "transparent" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+          >
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(59,130,246,0.1)" }}>
+              <Globe className="w-4 h-4 text-blue-500" />
+            </div>
+            <span className="flex-1 text-sm font-semibold text-gray-800 text-left">Idioma</span>
+            <div className="flex items-center rounded-lg overflow-hidden flex-shrink-0"
+              style={{ background: "rgba(0,0,0,0.06)" }}>
+              {(["pt-br", "en"] as const).map((lang) => (
+                <span key={lang}
+                  className="text-[11px] font-bold px-2 py-1 transition-all"
+                  style={{
+                    background: language === lang ? "#16A34A" : "transparent",
+                    color:      language === lang ? "white"   : "#9CA3AF",
+                  }}>
+                  {lang === "pt-br" ? "PT" : "EN"}
+                </span>
+              ))}
+            </div>
+          </button>
+
+          {/* Dark Mode */}
+          <button
+            onClick={toggleDarkMode}
+            className="w-full flex items-center gap-3 px-5 py-3 transition-colors"
+            style={{ background: "transparent" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.04)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+          >
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{ background: "rgba(107,114,128,0.1)" }}>
+              <Moon className="w-4 h-4 text-gray-500" />
+            </div>
+            <span className="flex-1 text-sm font-semibold text-gray-800 text-left">Dark Mode</span>
+            <div
+              className="relative w-11 h-6 rounded-full flex-shrink-0 transition-colors duration-200"
+              style={{ background: darkMode ? "#16A34A" : "rgba(0,0,0,0.15)" }}
+            >
+              <div
+                className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200"
+                style={{ transform: darkMode ? "translateX(22px)" : "translateX(2px)" }}
+              />
+            </div>
+          </button>
         </div>
-        <button
-          onClick={handleSignOut}
-          className="w-full mt-4 px-3 py-2 rounded-lg hover:bg-red-50 transition-all text-sm text-red-600 font-medium"
-        >
-          Sair
-        </button>
+
+        {/* Sign out */}
+        <div className="px-5 pb-4 pt-2" style={{ borderTop: "1px solid rgba(0,0,0,0.06)" }}>
+          <button
+            onClick={handleSignOut}
+            className="w-full py-2.5 rounded-xl text-sm font-semibold transition-colors"
+            style={{ color: "#EF4444", background: "transparent" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.06)")}
+            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+          >
+            Sair
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -595,7 +776,7 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
       </header>
 
       <NotificationPopover isOpen={showNotifications} onClose={() => setShowNotifications(false)} />
-      <ProfilePopover isOpen={showProfile} onClose={() => setShowProfile(false)} profile={profile} />
+      <ProfilePopover isOpen={showProfile} onClose={() => setShowProfile(false)} profile={profile} userId={userId} />
 
       {/* Hero */}
       <HeroBanner onJoin={() => router.push("/create")} />
