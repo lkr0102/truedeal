@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.66"
 name = "indexmap"
 version = "2.14.0"
 build = false
@@ -165,4 +165,5 @@ unsafe-code = "deny"
 
 [profile.bench]
 debug = 2
+
 

@@ -12,8 +12,8 @@
 [package]
 edition = "2021"
 rust-version = "1.66"
-name = "ctutils"
-version = "0.4.2"
+name = "digest"
+version = "0.11.3"
 authors = ["RustCrypto Developers"]
 build = false
 autolib = false
@@ -21,50 +21,76 @@ autobins = false
 autoexamples = false
 autotests = false
 autobenches = false
-description = """
-Constant-time utility library with selection and equality testing support targeting cryptographic
-applications. Supports `const fn` where appropriate. Built on the `cmov` crate which provides
-architecture-specific predication intrinsics. Heavily inspired by the `subtle` crate.
-"""
-homepage = "https://github.com/RustCrypto/utils/tree/master/ctselect"
+description = "Traits for cryptographic hash functions and message authentication codes"
+documentation = "https://docs.rs/digest"
 readme = "README.md"
 keywords = [
-    "constant-time",
+    "digest",
     "crypto",
-    "intrinsics",
+    "hash",
 ]
 categories = [
     "cryptography",
     "no-std",
 ]
-license = "Apache-2.0 OR MIT"
-repository = "https://github.com/RustCrypto/utils"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/RustCrypto/traits"
 
 [package.metadata.docs.rs]
 all-features = true
 
 [features]
 alloc = []
-subtle = ["dep:subtle"]
+block-api = ["dep:block-buffer"]
+default = ["block-api"]
+dev = ["blobby"]
+getrandom = [
+    "common/getrandom",
+    "rand_core",
+]
+mac = ["dep:ctutils"]
+oid = ["dep:const-oid"]
+rand_core = ["common/rand_core"]
+zeroize = [
+    "dep:zeroize",
+    "block-buffer?/zeroize",
+]
 
 [lib]
-name = "ctutils"
+name = "digest"
 path = "src/lib.rs"
 
 [[test]]
-name = "proptests"
-path = "tests/proptests.rs"
+name = "dummy_fixed"
+path = "tests/dummy_fixed.rs"
 
-[dependencies.cmov]
-version = "0.5.3"
+[dependencies.blobby]
+version = "0.4"
+optional = true
 
-[dependencies.subtle]
-version = "2"
+[dependencies.block-buffer]
+version = "0.12"
+optional = true
+
+[dependencies.common]
+version = "0.2"
+package = "crypto-common"
+
+[dependencies.const-oid]
+version = "0.10"
+optional = true
+
+[dependencies.ctutils]
+version = "0.4"
+optional = true
+
+[dependencies.zeroize]
+version = "1.7"
 optional = true
 default-features = false
 
-[dev-dependencies.proptest]
-version = "1.11"
+[dev-dependencies.sha2]
+version = "0.11"
 
 [lints.clippy]
 borrow_as_ptr = "warn"
@@ -74,7 +100,6 @@ cast_possible_wrap = "warn"
 cast_precision_loss = "warn"
 cast_sign_loss = "warn"
 checked_conversions = "warn"
-doc_markdown = "warn"
 from_iter_instead_of_collect = "warn"
 implicit_saturating_sub = "warn"
 manual_assert = "warn"

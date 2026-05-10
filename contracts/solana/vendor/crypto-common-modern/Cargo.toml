@@ -12,8 +12,8 @@
 [package]
 edition = "2021"
 rust-version = "1.66"
-name = "ctutils"
-version = "0.4.2"
+name = "crypto-common"
+version = "0.2.1"
 authors = ["RustCrypto Developers"]
 build = false
 autolib = false
@@ -21,50 +21,46 @@ autobins = false
 autoexamples = false
 autotests = false
 autobenches = false
-description = """
-Constant-time utility library with selection and equality testing support targeting cryptographic
-applications. Supports `const fn` where appropriate. Built on the `cmov` crate which provides
-architecture-specific predication intrinsics. Heavily inspired by the `subtle` crate.
-"""
-homepage = "https://github.com/RustCrypto/utils/tree/master/ctselect"
+description = "Common traits used by cryptographic algorithms"
+documentation = "https://docs.rs/crypto-common"
 readme = "README.md"
 keywords = [
-    "constant-time",
     "crypto",
-    "intrinsics",
+    "traits",
 ]
 categories = [
     "cryptography",
     "no-std",
 ]
-license = "Apache-2.0 OR MIT"
-repository = "https://github.com/RustCrypto/utils"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/RustCrypto/traits"
 
 [package.metadata.docs.rs]
 all-features = true
 
 [features]
-alloc = []
-subtle = ["dep:subtle"]
+getrandom = [
+    "rand_core",
+    "dep:getrandom",
+]
+rand_core = ["dep:rand_core"]
+zeroize = ["hybrid-array/zeroize"]
 
 [lib]
-name = "ctutils"
+name = "crypto_common"
 path = "src/lib.rs"
 
-[[test]]
-name = "proptests"
-path = "tests/proptests.rs"
-
-[dependencies.cmov]
-version = "0.5.3"
-
-[dependencies.subtle]
-version = "2"
+[dependencies.getrandom]
+version = "0.4"
+features = ["sys_rng"]
 optional = true
-default-features = false
 
-[dev-dependencies.proptest]
-version = "1.11"
+[dependencies.hybrid-array]
+version = "0.4.7"
+
+[dependencies.rand_core]
+version = "0.10"
+optional = true
 
 [lints.clippy]
 borrow_as_ptr = "warn"
@@ -74,7 +70,6 @@ cast_possible_wrap = "warn"
 cast_precision_loss = "warn"
 cast_sign_loss = "warn"
 checked_conversions = "warn"
-doc_markdown = "warn"
 from_iter_instead_of_collect = "warn"
 implicit_saturating_sub = "warn"
 manual_assert = "warn"

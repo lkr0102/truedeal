@@ -84,7 +84,8 @@ version = "0.4.2"
 default-features = false
 
 [dependencies.digest]
-version = "0.11.2"
+version = "0.10"
+
 features = ["mac"]
 optional = true
 
