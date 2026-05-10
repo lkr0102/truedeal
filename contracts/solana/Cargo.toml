@@ -1,7 +1,9 @@
 [workspace]
+resolver = "2"
 members = [
     "programs/*"
 ]
+
 
 [profile.release]
 overflow-checks = true
@@ -12,14 +14,6 @@ opt-level = 3
 incremental = false
 codegen-units = 1
 
-[patch.crates-io]
-block-buffer = { git = "https://github.com/RustCrypto/utils", package = "block-buffer", tag = "block-buffer-v0.10.4" }
-sha2 = { git = "https://github.com/RustCrypto/hashes", package = "sha2", tag = "sha2-v0.10.8" }
-ctutils = { git = "https://github.com/RustCrypto/utils", package = "ctutils", tag = "ctutils-v0.4.1" }
-subtle = { git = "https://github.com/RustCrypto/utils", package = "subtle", tag = "subtle-v2.4.1" }
-digest = { git = "https://github.com/RustCrypto/traits", package = "digest", tag = "digest-v0.10.7" }
-generic-array = { git = "https://github.com/fizyk20/generic-array", tag = "v0.14.7" }
-toml_datetime = { git = "https://github.com/toml-rs/toml", package = "toml_datetime", tag = "toml_datetime-v0.6.5" }
 
 
 

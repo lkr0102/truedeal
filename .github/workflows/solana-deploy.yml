@@ -77,8 +77,8 @@ jobs:
       - name: Build Program
         run: |
           cd contracts/solana
-          rm -f Cargo.lock
           anchor build
+
 
       - name: Deploy to Devnet
         run: |
