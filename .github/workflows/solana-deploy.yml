@@ -39,6 +39,9 @@ jobs:
           sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
           echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
 
+      - name: Install Linux Dependencies
+        run: sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
+
       - name: Cache Anchor binary
         uses: actions/cache@v4
         id: cache-anchor
@@ -47,10 +50,11 @@ jobs:
           key: anchor-0.30.1
 
       - name: Install Anchor CLI
-        run: |
-          cargo install --version 0.30.1 anchor-cli --locked 2>&1 || true
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-          anchor --version
+        if: steps.cache-anchor.outputs.cache-hit != 'true'
+        run: cargo install --version 0.30.1 anchor-cli --locked
+
+      - name: Add Cargo to Path
+        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Verify tool versions
         run: |
