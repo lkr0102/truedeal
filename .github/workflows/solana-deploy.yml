@@ -18,15 +18,15 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Solana CLI
-        run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v1.18.15/install)"
-          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+        uses: metaplex-foundation/setup-solana@v1
+        with:
+          solana-version: '1.18.15'
 
       - name: Install Anchor CLI
         run: |
           cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-          avm install latest
-          avm use latest
+          avm install 0.30.1
+          avm use 0.30.1
 
       - name: Setup Wallet
         run: |
