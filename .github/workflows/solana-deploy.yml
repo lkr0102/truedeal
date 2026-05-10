@@ -1,11 +1,13 @@
 name: Solana Contract Deploy
 
 on:
+  workflow_dispatch: # Permite disparo manual pela UI do GitHub
   push:
     branches:
       - main
     paths:
       - 'contracts/solana/**'
+      - '.github/workflows/solana-deploy.yml'
 
 jobs:
   deploy:

@@ -60,6 +60,7 @@ This document defines the implemented features, boundaries, and roadmap for the 
     - [x] Multi-winner payout orchestration using Remaining Accounts
     - [x] Dual-oracle multi-sig attestation required for execution
 - [x] Account Abstraction: managed wallets (AES-256-GCM) — no browser extension needed
+- [x] Sovereign CI/CD: Automated build & deploy pipeline via GitHub Actions for Devnet
 
 ### 2.7 User Experience
 - [x] Institutional onboarding with social account linking

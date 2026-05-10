@@ -39,5 +39,11 @@ The "Shakes" reputation system is integrated into the application lifecycle:
 - **Audit Consistency**: Sentinel AI (Risk Guardian) analyzes behavioral data to prevent fraudulent Shakes accumulation.
 - **On-Chain Proof**: Final wins are recorded with the transaction signature directly in the user's history.
 
+## 6. Institutional CI/CD & Automation
+The protocol now features a professional deployment pipeline ensuring full operational sovereignty:
+- **GitHub Actions (CI/CD):** Automatic build and deploy to Devnet upon codebase updates.
+- **IDL v1 Synchronization:** Full compatibility with Anchor 0.32.1 standards for robust frontend-to-contract communication.
+- **Sovereign Key Management:** Secrets-based deployment (SOLANA_PAYER_KEY) for secure, automated infrastructure management.
+
 ---
-**Status:** Operational | **Environment:** Devnet | **Integrity:** Verified
+**Status:** Institutional Beta | **Environment:** Devnet | **Integrity:** Verified | **Deployment:** CI/CD Active

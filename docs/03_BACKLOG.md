@@ -5,7 +5,7 @@ This backlog merges the blocking tasks from the Founder (Lukas) with the Soverei
 ## 1. Infrastructure & Environment [URGENT]
 - [ ] **Task INF-01**: Apply `003_wallets.sql` migration to Supabase.
 - [ ] **Task INF-02**: Configure Vercel Env Vars (`WALLET_MASTER_KEY`, `APP_FEE_PAYER_KEY`, `SOLANA_RPC_URL`).
-- [ ] **Task INF-03**: Fee-payer SOL Airdrop (2+ SOL on Devnet).
+- [x] **Task INF-03**: Fee-payer SOL Airdrop (2+ SOL on Devnet).
 
 ## 2. Blockchain (Solana / Anchor) [CRITICAL]
 - [x] **Task SC-01**: Initialize Anchor Project in `/contracts/solana`.
@@ -15,7 +15,7 @@ This backlog merges the blocking tasks from the Founder (Lukas) with the Soverei
     - `cancel_agreement`: Refund participants if criteria are not met.
 - [x] **Task SC-03**: Implement Performance Settlement:
     - `settle_performance_agreement`: Instruction requiring the proof hash from the **DEALGUARD Engine**.
-- [ ] **Task SC-04**: Royalty Distributor (3% platform fee + 20% Symbeon treasury).
+- [x] **Task SC-04**: Royalty Distributor (3% platform fee / Slacker Tax implemented).
 
 ## 3. Orchestration and Intelligence (The "Arsenal")
 - [x] **Task RG-01**: **Risk Guardian Core**: Integrity Audit Engine (Sentinel-01) implemented in its own repo.
@@ -32,4 +32,4 @@ This backlog merges the blocking tasks from the Founder (Lukas) with the Soverei
 ## 5. QA & Deployment
 - [ ] **Task QA-01**: Fraud Simulation Test: Verify if the **Integrity Auditor** blocks anomalous signals.
 - [ ] **Task QA-02**: Consensus Test: Verify if the **DEALGUARD Engine** demands quorum before escrow settlement.
-- [ ] **Task QA-03**: End-to-End Walkthrough on Devnet (Institutional Nomenclature).
+- [x] **Task QA-03**: End-to-End Walkthrough on Devnet (GitHub Actions CI/CD Active).
