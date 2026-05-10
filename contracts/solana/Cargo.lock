@@ -3480,6 +3480,7 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "solana-program 1.17.17",
+ "toml_datetime 0.6.5",
 ]
 
 [[package]]
