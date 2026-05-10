@@ -1,0 +1,15 @@
+[source.crates-io]
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/rust-random/getrandom?tag=v0.2.10"]
+git = "https://github.com/rust-random/getrandom"
+tag = "v0.2.10"
+replace-with = "vendored-sources"
+
+[source."git+https://github.com/toml-rs/toml?tag=toml_datetime-v0.6.5"]
+git = "https://github.com/toml-rs/toml"
+tag = "toml_datetime-v0.6.5"
+replace-with = "vendored-sources"
+
+[source.vendored-sources]
+directory = "vendor"

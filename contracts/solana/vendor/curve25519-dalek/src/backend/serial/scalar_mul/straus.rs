@@ -13,15 +13,15 @@
 
 #![allow(non_snake_case)]
 
+use alloc::vec::Vec;
+
 use core::borrow::Borrow;
+use core::cmp::Ordering;
 
-use edwards::EdwardsPoint;
-use scalar::Scalar;
-use traits::MultiscalarMul;
-use traits::VartimeMultiscalarMul;
-
-#[allow(unused_imports)]
-use prelude::*;
+use crate::edwards::EdwardsPoint;
+use crate::scalar::Scalar;
+use crate::traits::MultiscalarMul;
+use crate::traits::VartimeMultiscalarMul;
 
 /// Perform multiscalar multiplication by the interleaved window
 /// method, also known as Straus' method (since it was apparently
@@ -107,11 +107,9 @@ impl MultiscalarMul for Straus {
         J: IntoIterator,
         J::Item: Borrow<EdwardsPoint>,
     {
-        use zeroize::Zeroizing;
-
-        use backend::serial::curve_models::ProjectiveNielsPoint;
-        use window::LookupTable;
-        use traits::Identity;
+        use crate::backend::serial::curve_models::ProjectiveNielsPoint;
+        use crate::traits::Identity;
+        use crate::window::LookupTable;
 
         let lookup_tables: Vec<_> = points
             .into_iter()
@@ -121,11 +119,11 @@ impl MultiscalarMul for Straus {
         // This puts the scalar digits into a heap-allocated Vec.
         // To ensure that these are erased, pass ownership of the Vec into a
         // Zeroizing wrapper.
-        let scalar_digits_vec: Vec<_> = scalars
+        #[cfg_attr(not(feature = "zeroize"), allow(unused_mut))]
+        let mut scalar_digits: Vec<_> = scalars
             .into_iter()
-            .map(|s| s.borrow().to_radix_16())
+            .map(|s| s.borrow().as_radix_16())
             .collect();
-        let scalar_digits = Zeroizing::new(scalar_digits_vec);
 
         let mut Q = EdwardsPoint::identity();
         for j in (0..64).rev() {
@@ -135,9 +133,12 @@ impl MultiscalarMul for Straus {
                 // R_i = s_{i,j} * P_i
                 let R_i = lookup_table_i.select(s_i[j]);
                 // Q = Q + R_i
-                Q = (&Q + &R_i).to_extended();
+                Q = (&Q + &R_i).as_extended();
             }
         }
+
+        #[cfg(feature = "zeroize")]
+        zeroize::Zeroize::zeroize(&mut scalar_digits);
 
         Q
     }
@@ -161,9 +162,11 @@ impl VartimeMultiscalarMul for Straus {
         I::Item: Borrow<Scalar>,
         J: IntoIterator<Item = Option<EdwardsPoint>>,
     {
-        use backend::serial::curve_models::{CompletedPoint, ProjectiveNielsPoint, ProjectivePoint};
-        use window::NafLookupTable5;
-        use traits::Identity;
+        use crate::backend::serial::curve_models::{
+            CompletedPoint, ProjectiveNielsPoint, ProjectivePoint,
+        };
+        use crate::traits::Identity;
+        use crate::window::NafLookupTable5;
 
         let nafs: Vec<_> = scalars
             .into_iter()
@@ -181,16 +184,18 @@ impl VartimeMultiscalarMul for Straus {
             let mut t: CompletedPoint = r.double();
 
             for (naf, lookup_table) in nafs.iter().zip(lookup_tables.iter()) {
-                if naf[i] > 0 {
-                    t = &t.to_extended() + &lookup_table.select(naf[i] as usize);
-                } else if naf[i] < 0 {
-                    t = &t.to_extended() - &lookup_table.select(-naf[i] as usize);
+                match naf[i].cmp(&0) {
+                    Ordering::Greater => {
+                        t = &t.as_extended() + &lookup_table.select(naf[i] as usize)
+                    }
+                    Ordering::Less => t = &t.as_extended() - &lookup_table.select(-naf[i] as usize),
+                    Ordering::Equal => {}
                 }
             }
 
-            r = t.to_projective();
+            r = t.as_projective();
         }
 
-        Some(r.to_extended())
+        Some(r.as_extended())
     }
 }

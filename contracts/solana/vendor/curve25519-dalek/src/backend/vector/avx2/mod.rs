@@ -9,13 +9,12 @@
 // - isis agora lovecruft <isis@patternsinthevoid.net>
 // - Henry de Valence <hdevalence@hdevalence.ca>
 
-#![cfg_attr(
-    feature = "nightly",
-    doc(include = "../../../../docs/avx2-notes.md")
-)]
+#![doc = include_str!("../../../../docs/avx2-notes.md")]
 
 pub(crate) mod field;
 
 pub(crate) mod edwards;
 
 pub(crate) mod constants;
+
+pub(crate) use self::edwards::{CachedPoint, ExtendedPoint};

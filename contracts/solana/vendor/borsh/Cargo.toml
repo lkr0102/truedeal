@@ -11,11 +11,13 @@
 
 [package]
 edition = "2018"
-rust-version = "1.66.0"
+rust-version = "1.77.0"
 name = "borsh"
-version = "0.10.4"
+version = "1.6.1"
 authors = ["Near Inc <hello@near.org>"]
-build = false
+build = "build.rs"
+exclude = ["*.snap"]
+autolib = false
 autobins = false
 autoexamples = false
 autotests = false
@@ -23,7 +25,7 @@ autobenches = false
 description = """
 Binary Object Representation Serializer for Hashing
 """
-homepage = "http://borsh.io"
+homepage = "https://borsh.io"
 readme = "README.md"
 categories = [
     "encoding",
@@ -32,6 +34,25 @@ categories = [
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/near/borsh-rs"
 
+[package.metadata.docs.rs]
+features = [
+    "derive",
+    "unstable__schema",
+    "rc",
+]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[features]
+de_strict_order = []
+default = ["std"]
+derive = ["borsh-derive"]
+rc = []
+std = ["bytes?/std"]
+unstable__schema = [
+    "derive",
+    "borsh-derive/schema",
+]
+
 [lib]
 name = "borsh"
 path = "src/lib.rs"
@@ -39,106 +60,61 @@ path = "src/lib.rs"
 [[bin]]
 name = "generate_schema_schema"
 path = "src/generate_schema_schema.rs"
+required-features = [
+    "std",
+    "unstable__schema",
+]
+
+[[example]]
+name = "serde_json_value"
+path = "examples/serde_json_value.rs"
+required-features = [
+    "std",
+    "derive",
+]
+
+[[test]]
+name = "common_macro"
+path = "tests/common_macro.rs"
 
 [[test]]
 name = "smoke"
 path = "tests/smoke.rs"
 
 [[test]]
-name = "test_arrays"
-path = "tests/test_arrays.rs"
+name = "tests"
+path = "tests/tests.rs"
 
-[[test]]
-name = "test_binary_heaps"
-path = "tests/test_binary_heaps.rs"
-
-[[test]]
-name = "test_custom_reader"
-path = "tests/test_custom_reader.rs"
-
-[[test]]
-name = "test_de_errors"
-path = "tests/test_de_errors.rs"
-
-[[test]]
-name = "test_generic_struct"
-path = "tests/test_generic_struct.rs"
-
-[[test]]
-name = "test_hash_map"
-path = "tests/test_hash_map.rs"
-
-[[test]]
-name = "test_macro_namespace_collisions"
-path = "tests/test_macro_namespace_collisions.rs"
-
-[[test]]
-name = "test_nonzero_integers"
-path = "tests/test_nonzero_integers.rs"
-
-[[test]]
-name = "test_primitives"
-path = "tests/test_primitives.rs"
-
-[[test]]
-name = "test_rc"
-path = "tests/test_rc.rs"
-
-[[test]]
-name = "test_schema_enums"
-path = "tests/test_schema_enums.rs"
-
-[[test]]
-name = "test_schema_nested"
-path = "tests/test_schema_nested.rs"
-
-[[test]]
-name = "test_schema_primitives"
-path = "tests/test_schema_primitives.rs"
-
-[[test]]
-name = "test_schema_structs"
-path = "tests/test_schema_structs.rs"
-
-[[test]]
-name = "test_schema_tuple"
-path = "tests/test_schema_tuple.rs"
-
-[[test]]
-name = "test_simple_structs"
-path = "tests/test_simple_structs.rs"
-
-[[test]]
-name = "test_strings"
-path = "tests/test_strings.rs"
-
-[[test]]
-name = "test_tuple"
-path = "tests/test_tuple.rs"
-
-[[test]]
-name = "test_vecs"
-path = "tests/test_vecs.rs"
-
-[[test]]
-name = "test_zero_size"
-path = "tests/test_zero_size.rs"
+[dependencies.ascii]
+version = "1.1"
+optional = true
 
 [dependencies.borsh-derive]
-version = "0.10.3"
+version = "~1.6.1"
+optional = true
+
+[dependencies.bson]
+version = "2"
+optional = true
 
 [dependencies.bytes]
 version = "1"
 optional = true
+default-features = false
 
 [dependencies.hashbrown]
-version = ">=0.11,<0.14"
+version = ">=0.11,<0.16.0"
+optional = true
 
-[dev-dependencies.bytes]
+[dependencies.indexmap]
+version = "2"
+optional = true
+
+[dev-dependencies.insta]
+version = "1.29.0"
+
+[dev-dependencies.serde_json]
 version = "1"
 
-[features]
-const-generics = []
-default = ["std"]
-rc = []
-std = []
+[build-dependencies.cfg_aliases]
+version = "0.2.1"
