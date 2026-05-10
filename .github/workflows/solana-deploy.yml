@@ -74,7 +74,23 @@ jobs:
             --url devnet
           solana balance
 
+      - name: Fetch Dependencies
+        run: |
+          cd contracts/solana
+          cargo fetch || true
+
+      - name: Hot Patch Edition 2024 Dependencies
+        run: |
+          # Intercept and down-convert Edition 2024 manifests to Edition 2021
+          # This allows the SBF compiler (Cargo 1.75/1.79) to parse the files
+          find /home/runner/.cargo/registry/src/ -name "Cargo.toml" -exec sed -i 's/edition = "2024"/edition = "2021"/g' {} +
+          # Also patch the lockfile if it mentions edition 2024 (unlikely but safe)
+          sed -i 's/edition = "2024"/edition = "2021"/g' contracts/solana/Cargo.toml || true
+        continue-on-error: true
+
       - name: Build Program
+
+
         run: |
           cd contracts/solana
           anchor build
