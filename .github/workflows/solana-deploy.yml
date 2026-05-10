@@ -76,10 +76,13 @@ jobs:
 
       - name: Build Program
         run: |
-          rustup toolchain install stable
-          rustup default stable
           cd contracts/solana
           rm -f Cargo.lock
+          cargo generate-lockfile
+          cargo update -p block-buffer@0.12.0 --precise 0.10.4 || true
+          cargo update -p hashbrown@0.15.2 --precise 0.14.3 || true
+          cargo update -p hashbrown@0.17.1 --precise 0.14.3 || true
+          cargo update -p toml_datetime@0.6.8 --precise 0.6.5 || true
           anchor build
 
       - name: Deploy to Devnet
