@@ -83,12 +83,3 @@ impl digest::KeyInit for Hasher {
         Hasher::new_keyed(&key_bytes)
     }
 }
-
-//*
-#[cfg(test)]
-mod test {
-    use digest::array::AsArrayMut;
-    use super::*;
-    // ... tests omitted for compatibility ...
-}
-*/
