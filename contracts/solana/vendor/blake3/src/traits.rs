@@ -66,11 +66,11 @@ impl digest::XofReader for OutputReader {
     }
 }
 
-impl digest::KeySizeUser for Hasher {
+impl digest::crypto_common::KeySizeUser for Hasher {
     type KeySize = U32;
 }
 
-impl digest::BlockSizeUser for Hasher {
+impl digest::crypto_common::BlockSizeUser for Hasher {
     type BlockSize = U64;
 }
 
