@@ -63,12 +63,18 @@ export async function settleDealProtocol(
       new Uint8Array(Buffer.from(process.env.APP_ORACLE2_KEY!, "base64"))
     )
 
+    // winners_count: number of winners from the audit results
+    const winnersCount = BigInt(
+      audit.results.filter((r: any) => r.status === "compliant").length
+    )
+
     txSignature = await settlePerformanceAgreement(
       oracle1,
       oracle2,
       dealId,
       new PublicKey(beneficiaryWalletAddress),
       proofHashBytes,
+      winnersCount,
     )
   }
 

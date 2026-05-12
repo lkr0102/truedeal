@@ -3,6 +3,8 @@ import {
   PublicKey,
   Keypair,
   SystemProgram,
+  Transaction,
+  sendAndConfirmTransaction,
 } from "@solana/web3.js"
 import { getConnection } from "./fee-payer"
 import idl from "./idl.json"
@@ -12,6 +14,9 @@ import idl from "./idl.json"
 export const PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_TRUEDEAL_PROGRAM_ID ?? "9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4"
 )
+
+// Devnet SOL conversion: 1 BRL = 1_000_000 lamports (0.001 SOL) for demo
+export const LAMPORTS_PER_BRL = 1_000_000
 
 const AGREEMENT_SEED = Buffer.from("agreement")
 
@@ -48,7 +53,8 @@ export function deriveVaultPDA(agreementPDA: PublicKey): [PublicKey, number] {
 }
 
 // ── Instruction: Init Performance Agreement ──────────────────────────────────
-// Called by the creator when a new Deal is submitted.
+// Called by the fee-payer (server oracle) when a new Deal is created.
+// The fee-payer acts as the on-chain creator; its pubkey is stored as vault (treasury).
 
 export async function initPerformanceAgreement(
   signer: Keypair,
@@ -59,7 +65,6 @@ export async function initPerformanceAgreement(
   const provider = getProvider(signer)
   const program  = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
-  const [vault] = deriveVaultPDA(agreementAccount)
 
   const txSignature = await program.methods
     .initPerformanceAgreement(
@@ -69,21 +74,58 @@ export async function initPerformanceAgreement(
     )
     .accounts({
       agreementAccount,
-      creator: signer.publicKey,
-      mint: new PublicKey("So11111111111111111111111111111111111111112"), // Mock WSOL for test
-      vault,
+      creator:       signer.publicKey,
+      mint:          new PublicKey("So11111111111111111111111111111111111111112"), // WSOL (IDL compat)
+      vault:         signer.publicKey, // Fee-payer is the on-chain treasury/vault reference
       systemProgram: SystemProgram.programId,
-      tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-      rent: new PublicKey("SysvarRent111111111111111111111111111111111"),
+      tokenProgram:  new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+      rent:          new PublicKey("SysvarRent111111111111111111111111111111111"),
     })
     .rpc()
 
-  console.log(`[Anchor] Agreement initialized: ${txSignature}`)
+  console.log(`[Anchor] Agreement initialized on-chain: ${txSignature}`)
   return txSignature
 }
 
+// ── Native SOL: Stake Deposit ────────────────────────────────────────────────
+// Transfers native SOL from the participant's managed wallet to the treasury.
+// This is the actual escrow mechanism for the hackathon demo (avoids SPL token complexity).
+
+export async function joinAgreementNativeSOL(
+  signer: Keypair,
+  treasuryPubkey: PublicKey,
+  lamports: number,
+): Promise<string> {
+  const connection = getConnection()
+  const tx = new Transaction().add(
+    SystemProgram.transfer({ fromPubkey: signer.publicKey, toPubkey: treasuryPubkey, lamports })
+  )
+  const sig = await sendAndConfirmTransaction(connection, tx, [signer], { commitment: "confirmed" })
+  console.log(`[Native SOL] Stake deposited to treasury: ${sig}`)
+  return sig
+}
+
+// ── Native SOL: Winner Payout ────────────────────────────────────────────────
+// Sends native SOL from the treasury (fee-payer) to a winner's wallet.
+
+export async function payoutNativeSOL(
+  treasury: Keypair,
+  toPubkey: PublicKey,
+  lamports: number,
+): Promise<string> {
+  const connection = getConnection()
+  const tx = new Transaction().add(
+    SystemProgram.transfer({ fromPubkey: treasury.publicKey, toPubkey, lamports })
+  )
+  const sig = await sendAndConfirmTransaction(connection, tx, [treasury], { commitment: "confirmed" })
+  console.log(`[Native SOL] Payout sent to ${toPubkey.toBase58()}: ${sig}`)
+  return sig
+}
+
 // ── Instruction: Settle Performance Agreement ─────────────────────────────────
-// Called by the DealGuard oracle server wallet after the audit concludes.
+// Called by DealGuard dual-oracle after the audit concludes.
+// NOTE: For the devnet demo, actual SOL movement is handled via payoutNativeSOL above.
+// This instruction updates the on-chain AgreementAccount state to Settled.
 
 export async function settlePerformanceAgreement(
   oracle1: Keypair,
@@ -96,8 +138,9 @@ export async function settlePerformanceAgreement(
   const provider = getProvider(oracle1)
   const program  = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
-  const [vault] = deriveVaultPDA(agreementAccount)
+  const [vault]            = deriveVaultPDA(agreementAccount)
 
+  // Args order matches IDL: proof_hash first, winners_count second
   const txSignature = await program.methods
     .settlePerformanceAgreement(
       Array.from(proofHash),
@@ -105,15 +148,15 @@ export async function settlePerformanceAgreement(
     )
     .accounts({
       agreementAccount,
-      oracle1: oracle1.publicKey,
-      oracle2: oracle2.publicKey,
+      oracle1:               oracle1.publicKey,
+      oracle2:               oracle2.publicKey,
       vault,
-      treasuryTokenAccount: beneficiaryPubkey, // Use beneficiary for test
-      tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+      treasuryTokenAccount:  beneficiaryPubkey,
+      tokenProgram:          new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
     })
     .signers([oracle2])
     .rpc()
 
-  console.log(`[Anchor] Agreement settled via DealGuard Consensus: ${txSignature}`)
+  console.log(`[Anchor] Agreement settled via DualGuard Consensus: ${txSignature}`)
   return txSignature
 }

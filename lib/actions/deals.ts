@@ -3,11 +3,10 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import type {
-  DealInsert, DealWithParticipants,
+  DealWithParticipants,
   DealStatus, DealType, DealCategory,
 } from "@/lib/supabase/types"
 import { decryptSecret } from "@/lib/solana/keypair"
-import { getProvider, getProgram } from "@/lib/solana/anchor-client"
 import { PublicKey } from "@solana/web3.js"
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -80,6 +79,31 @@ export async function createDeal(input: CreateDealInput) {
     user_id: user.id,
     status:  "active",
   })
+
+  // ── On-chain: register AgreementAccount PDA (TX 1) ──────────────────────────
+  // Non-blocking — deal exists in Supabase regardless of on-chain success.
+  try {
+    const { createHash } = await import("crypto")
+    const { getFeePayer } = await import("@/lib/solana/fee-payer")
+    const { initPerformanceAgreement, deriveAgreementPDA, LAMPORTS_PER_BRL } = await import("@/lib/solana/anchor-client")
+
+    const feePayer  = getFeePayer()
+    const ruleHash  = createHash("sha256")
+      .update(`${input.verification_type}:${input.verification_channels.join(",")}`)
+      .digest()
+    const lamports  = BigInt(Math.round(input.entry_amount * LAMPORTS_PER_BRL))
+
+    const txSig = await initPerformanceAgreement(feePayer, deal.id, lamports, ruleHash)
+    const [pda]  = deriveAgreementPDA(deal.id)
+
+    await (supabase.from("deals") as any)
+      .update({ solana_tx_signature: txSig, pda_address: pda.toString() })
+      .eq("id", deal.id)
+
+    console.log(`[Anchor] Deal ${deal.id} registered on-chain: ${txSig}`)
+  } catch (err) {
+    console.error("[Anchor] initPerformanceAgreement failed (non-blocking):", err)
+  }
 
   revalidatePath("/")
   return { deal }
@@ -202,7 +226,7 @@ export async function joinDeal(dealId: string) {
 
   // Verifica se o deal existe e tem vagas
   const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
-    .select("id, status, max_participants, mode")
+    .select("id, status, max_participants, mode, entry_amount, verification_channels")
     .eq("id", dealId)
     .single()
 
@@ -232,20 +256,50 @@ export async function joinDeal(dealId: string) {
     }
   }
 
-  const { error } = await (supabase.from("deal_participants") as any).insert({
+  const { error: insertErr } = await (supabase.from("deal_participants") as any).insert({
     deal_id: dealId,
     user_id: user.id,
     status:  "active",
   })
 
-  if (error) {
-    if ((error as any).code === "23505") return { error: "Você já está participando deste acordo" }
-    return { error: (error as any).message }
+  if (insertErr) {
+    if ((insertErr as any).code === "23505") return { error: "Você já está participando deste acordo" }
+    return { error: (insertErr as any).message }
+  }
+
+  // ── On-chain: stake SOL to treasury escrow (TX 2) ───────────────────────────
+  // Non-blocking — participant is registered in DB regardless of on-chain result.
+  let txSignature: string | undefined
+  try {
+    const { data: walletData } = await (supabase.from("user_wallets") as any)
+      .select("encrypted_secret")
+      .eq("user_id", user.id)
+      .single()
+
+    if (walletData?.encrypted_secret && deal.entry_amount > 0) {
+      const { getFeePayer } = await import("@/lib/solana/fee-payer")
+      const { joinAgreementNativeSOL, LAMPORTS_PER_BRL } = await import("@/lib/solana/anchor-client")
+
+      const userKeypair = decryptSecret(walletData.encrypted_secret)
+      const treasury    = getFeePayer()
+      const lamports    = Math.round(deal.entry_amount * LAMPORTS_PER_BRL)
+
+      txSignature = await joinAgreementNativeSOL(userKeypair, treasury.publicKey, lamports)
+
+      await (supabase.from("deal_participants") as any)
+        .update({ transaction_hash: txSignature, status: "staked" })
+        .eq("deal_id", dealId)
+        .eq("user_id", user.id)
+
+      console.log(`[Native SOL] Participant ${user.id} staked for deal ${dealId}: ${txSignature}`)
+    }
+  } catch (err) {
+    console.error("[Solana] joinAgreementNativeSOL failed (non-blocking):", err)
   }
 
   revalidatePath("/")
   revalidatePath(`/tracking?id=${dealId}`)
-  return { success: true }
+  return { success: true, txSignature }
 }
 
 // ── Update status ─────────────────────────────────────────────────────────────
@@ -256,7 +310,6 @@ export async function updateDealStatus(dealId: string, status: DealStatus) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { error: "Não autenticado" }
 
-  // Se o status for 'ativo', usamos a lógica de ativação institucional
   if (status === "ativo") {
     return await activateDeal(dealId)
   }
@@ -273,14 +326,13 @@ export async function updateDealStatus(dealId: string, status: DealStatus) {
 }
 
 /**
- * 🚀 Institutional Activation Protocol
+ * Institutional Activation Protocol
  * Transitions a deal from 'formacao' to 'ativo'.
  * Checks quorum, sets snapshots, and awards Shakes.
  */
 export async function activateDeal(dealId: string) {
   const supabase = await createClient()
 
-  // 1. Fetch deal and participants
   const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
     .select("*, participants:deal_participants(*)")
     .eq("id", dealId)
@@ -289,19 +341,15 @@ export async function activateDeal(dealId: string) {
   if (dealErr || !deal) return { error: "Deal não encontrado" }
   if (deal.status !== "formacao") return { error: "Deal já está ativo ou encerrado" }
 
-  // 2. Quorum Check (min 2 participants)
   if (deal.participants.length < 2) {
     await (supabase.from("deals") as any).update({ status: "cancelado" }).eq("id", dealId)
     return { error: "Quorum insuficiente. Deal cancelado.", status: "cancelado" }
   }
 
-  // 3. Transition to 'ativo'
   await (supabase.from("deals") as any).update({ status: "ativo" }).eq("id", dealId)
 
-  // 4. Award Shakes (TDP)
   const transactions = []
-  
-  // Creator: +500
+
   transactions.push({
     user_id: deal.creator_id,
     amount:  500,
@@ -309,8 +357,6 @@ export async function activateDeal(dealId: string) {
     deal_id: deal.id,
   })
 
-  // Participants: +200 each (including creator if double-reward is desired, 
-  // but usually it's unique. Here we follow: Creator (+500), Others (+200))
   for (const p of deal.participants) {
     if (p.user_id !== deal.creator_id) {
       transactions.push({
@@ -329,11 +375,11 @@ export async function activateDeal(dealId: string) {
   return { success: true, status: "ativo" }
 }
 
-// ── On-chain Escrow ───────────────────────────────────────────────────────────
+// ── On-chain Escrow (legacy single-step) ─────────────────────────────────────
 
 /**
- * Deposits the user's stake into the Deal's Escrow PDA on Solana.
- * Uses the server-managed wallet (Account Abstraction).
+ * Deposits the user's stake into the treasury escrow via native SOL transfer.
+ * Checks if already staked to prevent double-charging.
  */
 export async function depositToEscrow(dealId: string) {
   const supabase = await createClient()
@@ -341,7 +387,17 @@ export async function depositToEscrow(dealId: string) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { error: "Não autenticado" }
 
-  // 1. Get encrypted wallet secret
+  // Guard: skip if already staked (joinDeal already handled it)
+  const { data: participant } = await (supabase.from("deal_participants") as any)
+    .select("status, transaction_hash")
+    .eq("deal_id", dealId)
+    .eq("user_id", user.id)
+    .single()
+
+  if (participant?.transaction_hash) {
+    return { success: true, txSignature: participant.transaction_hash }
+  }
+
   const { data: walletData, error: walletErr } = await (supabase.from("user_wallets") as any)
     .select("encrypted_secret")
     .eq("user_id", user.id)
@@ -349,7 +405,6 @@ export async function depositToEscrow(dealId: string) {
 
   if (walletErr || !walletData) return { error: "Carteira gerenciada não encontrada" }
 
-  // 2. Get deal entry amount
   const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
     .select("entry_amount")
     .eq("id", dealId)
@@ -358,33 +413,24 @@ export async function depositToEscrow(dealId: string) {
   if (dealErr || !deal) return { error: "Acordo não encontrado" }
 
   try {
-    // 3. Decrypt wallet and set up Anchor Provider
+    const { getFeePayer } = await import("@/lib/solana/fee-payer")
+    const { joinAgreementNativeSOL, LAMPORTS_PER_BRL } = await import("@/lib/solana/anchor-client")
+
     const userKeypair = decryptSecret(walletData.encrypted_secret)
-    const provider    = getProvider(userKeypair)
-    const program     = getProgram(provider)
+    const treasury    = getFeePayer()
+    const lamports    = Math.round(deal.entry_amount * LAMPORTS_PER_BRL)
 
-    // 4. Execute on-chain instruction (join_deal)
-    const [dealPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("deal"), Buffer.from(dealId)],
-      program.programId
-    )
+    const txSignature = await joinAgreementNativeSOL(userKeypair, treasury.publicKey, lamports)
 
-    // For now, we simulate success until the IDL is ready
-    const txSignature = "simulated_on_chain_tx_" + Math.random().toString(36).slice(2)
-
-    // 5. Update participant status to 'staked'
     await (supabase.from("deal_participants") as any)
-      .update({ 
-        status: "staked",
-        transaction_hash: txSignature 
-      })
+      .update({ status: "staked", transaction_hash: txSignature })
       .eq("deal_id", dealId)
       .eq("user_id", user.id)
 
-    revalidatePath(`/deals/${dealId}`)
+    revalidatePath(`/deal/${dealId}`)
     return { success: true, txSignature }
   } catch (err: any) {
-    console.error("Escrow Error:", err)
+    console.error("[Solana] depositToEscrow failed:", err)
     return { error: `Erro na transação on-chain: ${err.message}` }
   }
 }
@@ -430,9 +476,12 @@ export async function declareWinner(dealId: string, winnerId: string) {
   return { success: true }
 }
 
+// ── Settlement: DealGuard Sovereign Payout (TX 3) ────────────────────────────
+
 /**
- * Distributes the pot to the winner(s) after DealGuard Engine verification.
- * Requires a valid verification hash/proof.
+ * Distributes the staked SOL to winners after DealGuard Engine verification.
+ * Uses dual-oracle keypairs and native SOL transfers for devnet demo compatibility.
+ * Slacker Tax: 3% of the loser pool goes to treasury; remainder split among winners.
  */
 export async function withdrawFromEscrow(dealId: string, proofHash: string) {
   const supabase = await createClient()
@@ -441,70 +490,71 @@ export async function withdrawFromEscrow(dealId: string, proofHash: string) {
   if (authErr || !user) return { error: "Não autenticado" }
 
   try {
-    // 1. Fetch winners from database
+    // 1. Fetch winners and their wallet pubkeys
     const { data: winners, error: winErr } = await (supabase.from("deal_participants") as any)
       .select("user_id, user_wallets(pubkey, token_account)")
       .eq("deal_id", dealId)
       .eq("status", "winner")
 
-    if (winErr || !winners || winners.length === 0) return { error: "Nenhum vencedor encontrado para liquidação." }
+    if (winErr || !winners || winners.length === 0) {
+      return { error: "Nenhum vencedor encontrado para liquidação." }
+    }
 
-    // 2. Get Oracle/Fee Payer
-    const { getFeePayer } = await import("@/lib/solana/fee-payer")
-    const oracleKeypair = getFeePayer() 
-    const provider      = getProvider(oracleKeypair)
-    const program       = getProgram(provider)
+    // 2. Fetch deal for economic calculation
+    const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
+      .select("entry_amount, participants:deal_participants(user_id)")
+      .eq("id", dealId)
+      .single()
 
-    // 3. Prepare Accounts & Remaining Accounts (Winners)
-    const [agreementPDA] = PublicKey.findProgramAddressSync(
-      [Buffer.from("agreement"), Buffer.from(dealId)],
-      program.programId
-    )
-    const agreementAccount = await program.account.agreementAccount.fetch(agreementPDA)
+    if (dealErr || !deal) return { error: "Deal não encontrado para liquidação." }
 
-    const proofHashBytes = Buffer.from(proofHash.replace("0x", ""), "hex")
-    const winnerRemainingAccounts = winners.map((w: any) => ({
-      pubkey: new PublicKey(w.user_wallets.token_account),
-      isWritable: true,
-      isSigner: false,
-    }))
+    // 3. Load dual-oracle keypairs
+    const { getFeePayer, getOracle2 } = await import("@/lib/solana/fee-payer")
+    const { payoutNativeSOL, LAMPORTS_PER_BRL } = await import("@/lib/solana/anchor-client")
 
-    // 4. Execute settle_performance_agreement on-chain
-    // In MVP, we use the same oracleKeypair for both oracle_1 and oracle_2 for demo purposes
-    const treasuryTokenAccount = process.env.TREASURY_TOKEN_ACCOUNT 
-      ? new PublicKey(process.env.TREASURY_TOKEN_ACCOUNT)
-      : oracleKeypair.publicKey // Fallback to oracle for demo
+    const oracle1 = getFeePayer()  // treasury + oracle 1
+    const oracle2 = getOracle2()   // oracle 2 (for dual-sig record)
 
-    const txSignature = await program.methods
-      .settlePerformanceAgreement(
-        new (await import("bn.js")).default(winners.length),
-        Array.from(proofHashBytes)
-      )
-      .accounts({
-        agreementAccount: agreementPDA,
-        oracle1: oracleKeypair.publicKey,
-        oracle2: oracleKeypair.publicKey,
-        vault: agreementAccount.vault, // Fetching from state
-        treasuryTokenAccount: treasuryTokenAccount,
-        tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-      })
-      .remainingAccounts(winnerRemainingAccounts)
-      .signers([oracleKeypair])
-      .rpc()
+    // 4. Slacker Tax economics
+    const totalParticipants = (deal.participants ?? []).length
+    const winnerCount       = winners.length
+    const loserCount        = Math.max(0, totalParticipants - winnerCount)
+    const entryLamports     = Math.round(deal.entry_amount * LAMPORTS_PER_BRL)
+    const slackerPool       = loserCount * entryLamports
+    const platformFee       = Math.floor(slackerPool * 3 / 100)
+    const distributable     = slackerPool - platformFee
+    const rewardPerWinner   = winnerCount > 0 ? Math.floor(distributable / winnerCount) : 0
+    const payoutPerWinner   = entryLamports + rewardPerWinner
 
-    // 5. Update Deal status to 'settled'
+    console.log(`[Settlement] ${winnerCount} winners, ${loserCount} losers, ${payoutPerWinner} lamports each`)
+
+    // 5. Pay each winner (native SOL from treasury)
+    let lastTxSig = ""
+    for (const w of winners) {
+      const pubkeyStr = w.user_wallets?.pubkey
+      if (!pubkeyStr) continue
+      const winnerPubkey = new PublicKey(pubkeyStr)
+      lastTxSig = await payoutNativeSOL(oracle1, winnerPubkey, payoutPerWinner)
+    }
+
+    // 6. Send platform fee to oracle2 wallet (dual-oracle record on-chain)
+    if (platformFee > 0) {
+      await payoutNativeSOL(oracle1, oracle2.publicKey, platformFee)
+    }
+
+    // 7. Persist final settlement state
     await (supabase.from("deals") as any)
-      .update({ 
-        status: "settled",
-        final_proof_hash: proofHash,
-        solana_tx_signature: txSignature
+      .update({
+        status:              "settled",
+        final_proof_hash:    proofHash,
+        solana_tx_signature: lastTxSig,
       })
       .eq("id", dealId)
 
     revalidatePath(`/deal/${dealId}`)
-    return { success: true, txSignature }
+    return { success: true, txSignature: lastTxSig }
   } catch (err: any) {
-    console.error("Settlement Error:", err)
+    console.error("[Settlement] withdrawFromEscrow failed:", err)
     return { error: `Erro na liquidação on-chain: ${err.message}` }
   }
 }

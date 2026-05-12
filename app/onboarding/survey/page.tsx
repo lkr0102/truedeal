@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowRight, ArrowLeft, ChevronDown, X } from "lucide-react"
+import { saveSurveyResponses } from "@/lib/actions/survey"
 
 // ── Lista completa de países ──────────────────────────────────────────────────
 const ALL_COUNTRIES = [
@@ -111,10 +112,10 @@ export default function SurveyPage() {
     return !!a
   }
 
-  function handleNext() {
+  async function handleNext() {
     if (!canAdvance()) return
     if (isLast) {
-      // TODO: enviar respostas ao backend
+      await saveSurveyResponses(answers)
       router.push("/")
     } else {
       setStep((s) => s + 1)

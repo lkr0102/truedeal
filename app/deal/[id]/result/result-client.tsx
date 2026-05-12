@@ -354,14 +354,29 @@ export default function DealResultClient({
           </div>
         </div>
 
-        {/* On-chain link (placeholder) */}
-        <button className="w-full p-4 rounded-2xl flex items-center justify-between transition-all"
-          style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <span className="text-gray-700 font-semibold text-sm">Smart contract executado</span>
-          <span className="text-[#16A34A] flex items-center gap-1 text-sm font-medium">
-            Ver on-chain <ExternalLink className="w-4 h-4" />
-          </span>
-        </button>
+        {/* On-chain link */}
+        {(deal as any).solana_tx_signature ? (
+          <a
+            href={`https://explorer.solana.com/tx/${(deal as any).solana_tx_signature}?cluster=devnet`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full p-4 rounded-2xl flex items-center justify-between transition-all active:scale-[0.98]"
+            style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.6)" }}
+          >
+            <span className="text-gray-700 font-semibold text-sm">Smart contract executado</span>
+            <span className="text-[#16A34A] flex items-center gap-1 text-sm font-medium">
+              Ver on-chain <ExternalLink className="w-4 h-4" />
+            </span>
+          </a>
+        ) : (
+          <div className="w-full p-4 rounded-2xl flex items-center justify-between opacity-50 cursor-default"
+            style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+            <span className="text-gray-700 font-semibold text-sm">Smart contract executado</span>
+            <span className="text-gray-400 flex items-center gap-1 text-sm font-medium">
+              Processando... <ExternalLink className="w-4 h-4" />
+            </span>
+          </div>
+        )}
 
         {/* Share preview */}
         <div className="rounded-2xl p-5 relative overflow-hidden text-white text-center"
