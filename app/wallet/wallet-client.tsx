@@ -241,6 +241,9 @@ export default function WalletClient({
                 ? <Check className="w-4 h-4 text-white" />
                 : <Copy className="w-4 h-4 text-white/60" />}
             </button>
+            <p className="mt-2 text-[9px] text-white/40 text-center uppercase tracking-widest font-bold">
+              🔐 Sovereign Managed Wallet · AES-256-GCM Secured
+            </p>
           </div>
         </div>
 
@@ -349,6 +352,13 @@ export default function WalletClient({
                 <p className="text-xs text-gray-400 text-center leading-relaxed">
                   Envie SOL para esse endereço. O saldo é atualizado automaticamente.
                 </p>
+                <div className="pt-2">
+                  <a href="https://faucet.solana.com/" target="_blank" rel="noreferrer"
+                    className="block w-full py-2 text-center text-[11px] font-bold text-blue-500 rounded-lg"
+                    style={{ background: "rgba(59,130,246,0.06)", border: "1px dashed rgba(59,130,246,0.3)" }}>
+                    Precisa de SOL de teste? Use o Faucet da Solana →
+                  </a>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">

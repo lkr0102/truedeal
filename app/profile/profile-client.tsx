@@ -611,6 +611,12 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
               {USER.verified && <CheckCircle2 className="w-5 h-5 text-[#16A34A]" />}
             </div>
             <p className="text-sm text-gray-500 mt-0.5">{USER.username}</p>
+            <div className="flex items-center justify-center gap-2 mt-2">
+              <span className="text-[10px] font-bold text-[#16A34A] px-2 py-0.5 rounded-full"
+                style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.2)" }}>
+                Reputação: Integridade Total
+              </span>
+            </div>
           </div>
 
           {/* Dark glass stats card */}
