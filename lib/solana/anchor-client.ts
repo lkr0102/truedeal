@@ -130,18 +130,14 @@ export async function settlePerformanceAgreement(
   oracle2: Keypair,
   agreementId: string,
   winnerPubkeys: PublicKey[],
-  treasuryUsdcATA: PublicKey,
-  proofHash: Uint8Array,
+  treasuryTokenAccount: PublicKey,
+  proofHash: Uint8Array, // 32-byte forensic proof from generateEvidenceHash
   winnersCount: bigint,
 ): Promise<string> {
   const provider = getProvider(oracle1)
   const program  = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
-  const [vault]            = deriveVaultPDA(agreementId)
-
-  const winnerATAs = await Promise.all(
-    winnerPubkeys.map(pk => getAssociatedTokenAddress(USDC_MINT, pk))
-  )
+  const [vault] = deriveVaultPDA(agreementAccount.toBase58())
 
   const txSignature = await program.methods
     .settlePerformanceAgreement(
@@ -150,19 +146,23 @@ export async function settlePerformanceAgreement(
     )
     .accounts({
       agreementAccount,
-      oracle1:              oracle1.publicKey,
-      oracle2:              oracle2.publicKey,
+      oracle1: oracle1.publicKey,
+      oracle2: oracle2.publicKey,
       vault,
-      treasuryTokenAccount: treasuryUsdcATA,
-      usdcMint:             USDC_MINT,
-      tokenProgram:         TOKEN_PROGRAM_ID,
+      treasuryTokenAccount,
+      usdcMint: new PublicKey("So11111111111111111111111111111111111111112"), // Mock WSOL for test
+      tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
     })
     .remainingAccounts(
-      winnerATAs.map(pk => ({ pubkey: pk, isWritable: true, isSigner: false }))
+      winnerPubkeys.map(pubkey => ({
+        pubkey,
+        isWritable: true,
+        isSigner: false,
+      }))
     )
     .signers([oracle2])
     .rpc()
 
-  console.log(`[Anchor] Agreement settled via DualGuard Consensus: ${txSignature}`)
+  console.log(`[Anchor] Agreement settled via DealGuard Consensus: ${txSignature}`)
   return txSignature
 }
