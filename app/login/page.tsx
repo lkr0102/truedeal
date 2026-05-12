@@ -84,11 +84,18 @@ export default function LoginPage() {
 
   // Redireciona se já há sessão Supabase ativa (login anterior por e-mail/Google)
   useEffect(() => {
+    if (isDemoMode) {
+      // Se estamos em demo mode, verificamos o cookie manualmente
+      const hasDemoCookie = document.cookie.includes("truedeal-demo-session=true")
+      if (hasDemoCookie) router.push("/")
+      return
+    }
+
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) router.push("/")
     })
-  }, [router])
+  }, [router, isDemoMode])
 
   // Quando o wallet muda (após select()), dispara connect()
   useEffect(() => {
@@ -116,6 +123,17 @@ export default function LoginPage() {
     if (!email || !password) return
     setIsLoading(true)
     setAuthError(null)
+
+    if (isDemoMode) {
+      if (email === "demo@truedeal.io" && password === "truedeal123") {
+        handleDemoOverride()
+      } else {
+        setAuthError("Modo Demo: use demo@truedeal.io ou o botão de Override.")
+        setIsLoading(false)
+      }
+      return
+    }
+
     const supabase = createClient()
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({ email, password })
