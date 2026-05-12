@@ -5,19 +5,20 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     env:
-      ANCHOR_VERSION: "0.30.1"
+      ANCHOR_VERSION: "0.29.0"
       SOLANA_VERSION: "1.18.26"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust (1.79.0)
+      - name: Install Rust (pinned 1.79.0 for SBF compatibility)
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.79.0
+          targets: x86_64-unknown-linux-gnu
 
       - name: Install Solana CLI
         run: |
@@ -27,16 +28,18 @@ jobs:
       - name: Install Linux Dependencies
         run: sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
 
-      - name: Cache Anchor binary
-        uses: actions/cache@v4
+      - name: Cache Anchor CLI binary
         id: cache-anchor
+        uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/anchor
-          key: anchor-${{ env.ANCHOR_VERSION }}
+          key: anchor-bin-${{ env.ANCHOR_VERSION }}-rust-1.79.0
 
-      - name: Install Anchor CLI
+      - name: Install Anchor CLI (via cargo with pinned Rust 1.79.0)
         if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: cargo install --version ${{ env.ANCHOR_VERSION }} anchor-cli --locked
+        run: |
+          cargo +1.79.0 install anchor-cli --version ${{ env.ANCHOR_VERSION }} --locked 2>/dev/null || \
+          cargo +1.79.0 install anchor-cli --version ${{ env.ANCHOR_VERSION }}
 
       - name: Add Cargo to Path
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
@@ -64,7 +67,7 @@ jobs:
           echo "$TRUEDEAL_DEPLOY_KEY" > contracts/solana/target/deploy/truedeal-keypair.json
           chmod 600 contracts/solana/target/deploy/truedeal-keypair.json
 
-      - name: Remove vendor config (use network)
+      - name: Remove vendor config (use network crates)
         run: rm -f contracts/solana/.cargo/config.toml
 
       - name: Build Program
