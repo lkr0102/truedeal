@@ -14,11 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust (pinned 1.79.0 for SBF compatibility)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: 1.79.0
-          targets: x86_64-unknown-linux-gnu
+      # Install stable Rust (1.85+) as default — needed so `cargo metadata`
+      # can parse manifests that declare `edition = "2024"`.
+      - name: Install Rust stable (default) + 1.79.0 (for anchor-cli build)
+        run: |
+          rustup install stable
+          rustup default stable
+          rustup install 1.79.0
 
       - name: Install Solana CLI
         run: |
@@ -28,24 +30,26 @@ jobs:
       - name: Install Linux Dependencies
         run: sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
 
+      # Anchor CLI is compiled with Rust 1.79.0 to avoid the `time v0.3.29`
+      # inference regression introduced in Rust 1.80.0.
       - name: Cache Anchor CLI binary
         id: cache-anchor
         uses: actions/cache@v4
         with:
           path: ~/.cargo/bin/anchor
-          key: anchor-bin-${{ env.ANCHOR_VERSION }}-rust-1.79.0
+          key: anchor-bin-${{ env.ANCHOR_VERSION }}-rust-1.79.0-v2
 
-      - name: Install Anchor CLI (via cargo with pinned Rust 1.79.0)
+      - name: Install Anchor CLI via Rust 1.79.0
         if: steps.cache-anchor.outputs.cache-hit != 'true'
-        run: |
-          cargo +1.79.0 install anchor-cli --version ${{ env.ANCHOR_VERSION }} --locked 2>/dev/null || \
-          cargo +1.79.0 install anchor-cli --version ${{ env.ANCHOR_VERSION }}
+        run: cargo +1.79.0 install anchor-cli --version ${{ env.ANCHOR_VERSION }} --locked
 
-      - name: Add Cargo to Path
+      - name: Add Cargo to PATH
         run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH
 
       - name: Verify tool versions
         run: |
+          rustc --version
+          cargo --version
           solana --version
           anchor --version
 
@@ -67,7 +71,7 @@ jobs:
           echo "$TRUEDEAL_DEPLOY_KEY" > contracts/solana/target/deploy/truedeal-keypair.json
           chmod 600 contracts/solana/target/deploy/truedeal-keypair.json
 
-      - name: Remove vendor config (use network crates)
+      - name: Remove vendor override (use network crates)
         run: rm -f contracts/solana/.cargo/config.toml
 
       - name: Build Program
