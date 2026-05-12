@@ -14,11 +14,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust (pinned 1.79.0 for SBF compatibility)
+      - name: Install Rust 1.79.0 (for anchor-cli compilation)
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.79.0
-          targets: x86_64-unknown-linux-gnu
+
+      - name: Install Rust 1.85.0 (default, for program build — handles edition2024)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.85.0
 
       - name: Install Solana CLI
         run: |
