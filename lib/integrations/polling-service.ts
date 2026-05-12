@@ -42,7 +42,7 @@ export async function auditDeal(dealId: string) {
       const conn = connections.find((c: any) => c.platform === channel)
       if (!conn || !conn.access_token) continue
 
-      let rawData = []
+      let rawData: any[] = []
       if (channel === "strava") {
         rawData = await fetchStravaActivities(conn.access_token)
         isSuccess = validateStravaRule(rawData, "km_run", 10)

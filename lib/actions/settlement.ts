@@ -1,11 +1,13 @@
 "use server"
 
 import { PublicKey, Keypair } from "@solana/web3.js"
+import { getAssociatedTokenAddress } from "@solana/spl-token"
 import { auditDeal } from "../integrations/polling-service"
 import { generateEvidenceHash } from "../integrations/crypto-proof"
 import { createClient } from "../supabase/server"
 import { settlePerformanceAgreement } from "../solana/anchor-client"
 import { getFeePayer } from "../solana/fee-payer"
+import { USDC_MINT } from "../solana/constants"
 
 /**
  * 🏛️ Sovereign Settlement Protocol (DealGuard Engine)
@@ -63,18 +65,30 @@ export async function settleDealProtocol(
       new Uint8Array(Buffer.from(process.env.APP_ORACLE2_KEY!, "base64"))
     )
 
-    // winners_count: number of winners from the audit results
-    const winnersCount = BigInt(
-      audit.results.filter((r: any) => r.status === "compliant").length
-    )
+    // Fetch wallet addresses of winners from Supabase
+    const winnerUserIds = audit.results
+      .filter((r: any) => r.is_success === true)
+      .map((r: any) => r.user_id)
+
+    const { data: winnerProfiles } = await (supabase.from("profiles") as any)
+      .select("wallet_address")
+      .in("id", winnerUserIds)
+
+    const winnerPubkeys: PublicKey[] = (winnerProfiles ?? [])
+      .filter((p: any) => p.wallet_address)
+      .map((p: any) => new PublicKey(p.wallet_address))
+
+    // Oracle1's USDC ATA receives the 3% platform fee (Slacker Tax)
+    const treasuryUsdcATA = await getAssociatedTokenAddress(USDC_MINT, oracle1.publicKey)
 
     txSignature = await settlePerformanceAgreement(
       oracle1,
       oracle2,
       dealId,
-      new PublicKey(beneficiaryWalletAddress),
+      winnerPubkeys,
+      treasuryUsdcATA,
       proofHashBytes,
-      winnersCount,
+      BigInt(winnerPubkeys.length),
     )
   }
 

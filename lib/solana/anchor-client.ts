@@ -1,12 +1,12 @@
 import { AnchorProvider, Program, type Idl, BN } from "@coral-xyz/anchor"
+import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js"
 import {
-  PublicKey,
-  Keypair,
-  SystemProgram,
-  Transaction,
-  sendAndConfirmTransaction,
-} from "@solana/web3.js"
+  TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
+  getOrCreateAssociatedTokenAccount,
+} from "@solana/spl-token"
 import { getConnection } from "./fee-payer"
+import { USDC_MINT } from "./constants"
 import idl from "./idl.json"
 
 // ── Constants ────────────────────────────────────────────────────────────────
@@ -15,10 +15,8 @@ export const PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_TRUEDEAL_PROGRAM_ID ?? "885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ"
 )
 
-// Devnet SOL conversion: 1 BRL = 1_000_000 lamports (0.001 SOL) for demo
-export const LAMPORTS_PER_BRL = 1_000_000
-
 const AGREEMENT_SEED = Buffer.from("agreement")
+const VAULT_SEED     = Buffer.from("vault")
 
 // ── Provider / Program factory ───────────────────────────────────────────────
 
@@ -26,7 +24,7 @@ export function getProvider(signer: Keypair): AnchorProvider {
   const connection = getConnection()
   const wallet = {
     publicKey: signer.publicKey,
-    signTransaction: async (tx: any) => { tx.partialSign(signer); return tx },
+    signTransaction:     async (tx: any) => { tx.partialSign(signer); return tx },
     signAllTransactions: async (txs: any[]) => { txs.forEach(tx => tx.partialSign(signer)); return txs },
   }
   return new AnchorProvider(connection, wallet as any, { commitment: "confirmed" })
@@ -45,37 +43,40 @@ export function deriveAgreementPDA(agreementId: string): [PublicKey, number] {
   )
 }
 
-export function deriveVaultPDA(agreementPDA: PublicKey): [PublicKey, number] {
+/** Vault PDA — seeds: [b"vault", agreement_id.as_bytes()] */
+export function deriveVaultPDA(agreementId: string): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [Buffer.from("vault"), agreementPDA.toBuffer()],
+    [VAULT_SEED, Buffer.from(agreementId)],
     PROGRAM_ID
   )
 }
 
-// ── Instruction: Init Performance Agreement ──────────────────────────────────
-// Called by the fee-payer (server oracle) when a new Deal is created.
-// The fee-payer acts as the on-chain creator; its pubkey is stored as vault (treasury).
+// ── TX 1: Init Performance Agreement ─────────────────────────────────────────
+// Creates AgreementAccount PDA + USDC SPL vault in one transaction.
 
 export async function initPerformanceAgreement(
   signer: Keypair,
   agreementId: string,
-  guaranteeAmountLamports: bigint,
-  ruleHash: Uint8Array, // 32-byte SHA-256 of the deal rules
+  guaranteeAmountUSDC: bigint,  // USDC micro-units (1 USDC = 1_000_000)
+  ruleHash: Uint8Array,         // 32-byte SHA-256 of deal rules
 ): Promise<string> {
   const provider = getProvider(signer)
   const program  = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
+  const [vault]            = deriveVaultPDA(agreementId)
 
   const txSignature = await program.methods
     .initPerformanceAgreement(
       agreementId,
-      new BN(guaranteeAmountLamports.toString()),
+      new BN(guaranteeAmountUSDC.toString()),
       Array.from(ruleHash),
     )
     .accounts({
       agreementAccount,
+      vault,
       creator:       signer.publicKey,
-      vault:         signer.publicKey,
+      usdcMint:      USDC_MINT,
+      tokenProgram:  TOKEN_PROGRAM_ID,
       systemProgram: SystemProgram.programId,
     })
     .rpc()
@@ -84,60 +85,64 @@ export async function initPerformanceAgreement(
   return txSignature
 }
 
-// ── Native SOL: Stake Deposit ────────────────────────────────────────────────
-// Transfers native SOL from the participant's managed wallet to the treasury.
-// This is the actual escrow mechanism for the hackathon demo (avoids SPL token complexity).
+// ── TX 2: Join Agreement (USDC) ───────────────────────────────────────────────
+// Transfers USDC from participant's ATA → vault PDA.
+// feePayer (oracle1) covers ATA creation rent if the account doesn't exist.
 
-export async function joinAgreementNativeSOL(
-  signer: Keypair,
-  treasuryPubkey: PublicKey,
-  lamports: number,
+export async function joinAgreementUSDC(
+  participant: Keypair,
+  feePayer: Keypair,
+  agreementId: string,
 ): Promise<string> {
   const connection = getConnection()
-  const tx = new Transaction().add(
-    SystemProgram.transfer({ fromPubkey: signer.publicKey, toPubkey: treasuryPubkey, lamports })
+  const provider   = getProvider(participant)
+  const program    = getProgram(provider)
+  const [agreementAccount] = deriveAgreementPDA(agreementId)
+  const [vault]            = deriveVaultPDA(agreementId)
+
+  const participantUsdcATA = await getOrCreateAssociatedTokenAccount(
+    connection, feePayer, USDC_MINT, participant.publicKey,
   )
-  const sig = await sendAndConfirmTransaction(connection, tx, [signer], { commitment: "confirmed" })
-  console.log(`[Native SOL] Stake deposited to treasury: ${sig}`)
-  return sig
+
+  const txSignature = await program.methods
+    .joinAgreement()
+    .accounts({
+      agreementAccount,
+      participant:            participant.publicKey,
+      participantUsdcAccount: participantUsdcATA.address,
+      vault,
+      usdcMint:               USDC_MINT,
+      tokenProgram:           TOKEN_PROGRAM_ID,
+    })
+    .rpc()
+
+  console.log(`[Anchor] Participant staked USDC: ${txSignature}`)
+  return txSignature
 }
 
-// ── Native SOL: Winner Payout ────────────────────────────────────────────────
-// Sends native SOL from the treasury (fee-payer) to a winner's wallet.
-
-export async function payoutNativeSOL(
-  treasury: Keypair,
-  toPubkey: PublicKey,
-  lamports: number,
-): Promise<string> {
-  const connection = getConnection()
-  const tx = new Transaction().add(
-    SystemProgram.transfer({ fromPubkey: treasury.publicKey, toPubkey, lamports })
-  )
-  const sig = await sendAndConfirmTransaction(connection, tx, [treasury], { commitment: "confirmed" })
-  console.log(`[Native SOL] Payout sent to ${toPubkey.toBase58()}: ${sig}`)
-  return sig
-}
-
-// ── Instruction: Settle Performance Agreement ─────────────────────────────────
-// Called by DealGuard dual-oracle after the audit concludes.
-// NOTE: For the devnet demo, actual SOL movement is handled via payoutNativeSOL above.
-// This instruction updates the on-chain AgreementAccount state to Settled.
+// ── TX 3: Settle Performance Agreement (USDC) ─────────────────────────────────
+// Dual-oracle settlement: vault → winners' ATAs + 3% fee → treasury ATA.
+// winnerPubkeys: wallet pubkeys of all winners.
+// treasuryUsdcATA: oracle1's USDC ATA to receive platform fee.
 
 export async function settlePerformanceAgreement(
   oracle1: Keypair,
   oracle2: Keypair,
   agreementId: string,
-  beneficiaryPubkey: PublicKey,
-  proofHash: Uint8Array, // 32-byte forensic proof from generateEvidenceHash
+  winnerPubkeys: PublicKey[],
+  treasuryUsdcATA: PublicKey,
+  proofHash: Uint8Array,
   winnersCount: bigint,
 ): Promise<string> {
   const provider = getProvider(oracle1)
   const program  = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
-  const [vault]            = deriveVaultPDA(agreementAccount)
+  const [vault]            = deriveVaultPDA(agreementId)
 
-  // Args order matches Rust: winners_count first, proof_hash second
+  const winnerATAs = await Promise.all(
+    winnerPubkeys.map(pk => getAssociatedTokenAddress(USDC_MINT, pk))
+  )
+
   const txSignature = await program.methods
     .settlePerformanceAgreement(
       new BN(winnersCount.toString()),
@@ -145,12 +150,16 @@ export async function settlePerformanceAgreement(
     )
     .accounts({
       agreementAccount,
-      oracle1:               oracle1.publicKey,
-      oracle2:               oracle2.publicKey,
+      oracle1:              oracle1.publicKey,
+      oracle2:              oracle2.publicKey,
       vault,
-      treasuryTokenAccount:  beneficiaryPubkey,
-      tokenProgram:          new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+      treasuryTokenAccount: treasuryUsdcATA,
+      usdcMint:             USDC_MINT,
+      tokenProgram:         TOKEN_PROGRAM_ID,
     })
+    .remainingAccounts(
+      winnerATAs.map(pk => ({ pubkey: pk, isWritable: true, isSigner: false }))
+    )
     .signers([oracle2])
     .rpc()
 

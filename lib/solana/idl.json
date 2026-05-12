@@ -10,26 +10,29 @@
       "name": "init_performance_agreement",
       "discriminator": [95, 230, 0, 111, 144, 112, 179, 240],
       "accounts": [
-        { "name": "agreement_account", "writable": true, "signer": false },
-        { "name": "creator", "writable": true, "signer": true },
-        { "name": "vault", "writable": false, "signer": false },
-        { "name": "system_program", "writable": false, "signer": false }
+        { "name": "agreement_account", "writable": true,  "signer": false },
+        { "name": "vault",             "writable": true,  "signer": false },
+        { "name": "creator",           "writable": true,  "signer": true  },
+        { "name": "usdc_mint",         "writable": false, "signer": false },
+        { "name": "token_program",     "writable": false, "signer": false },
+        { "name": "system_program",    "writable": false, "signer": false }
       ],
       "args": [
-        { "name": "agreement_id", "type": "string" },
+        { "name": "agreement_id",     "type": "string" },
         { "name": "guarantee_amount", "type": "u64" },
-        { "name": "rule_hash", "type": { "array": ["u8", 32] } }
+        { "name": "rule_hash",        "type": { "array": ["u8", 32] } }
       ]
     },
     {
       "name": "join_agreement",
       "discriminator": [213, 1, 48, 4, 148, 97, 61, 200],
       "accounts": [
-        { "name": "agreement_account", "writable": true, "signer": false },
-        { "name": "participant", "writable": true, "signer": true },
-        { "name": "participant_token_account", "writable": true, "signer": false },
-        { "name": "vault", "writable": true, "signer": false },
-        { "name": "token_program", "writable": false, "signer": false }
+        { "name": "agreement_account",        "writable": true,  "signer": false },
+        { "name": "participant",              "writable": true,  "signer": true  },
+        { "name": "participant_usdc_account", "writable": true,  "signer": false },
+        { "name": "vault",                    "writable": true,  "signer": false },
+        { "name": "usdc_mint",                "writable": false, "signer": false },
+        { "name": "token_program",            "writable": false, "signer": false }
       ],
       "args": []
     },
@@ -37,16 +40,17 @@
       "name": "settle_performance_agreement",
       "discriminator": [86, 216, 11, 86, 70, 247, 27, 3],
       "accounts": [
-        { "name": "agreement_account", "writable": true, "signer": false },
-        { "name": "oracle_1", "writable": false, "signer": true },
-        { "name": "oracle_2", "writable": false, "signer": true },
-        { "name": "vault", "writable": true, "signer": false },
-        { "name": "treasury_token_account", "writable": true, "signer": false },
-        { "name": "token_program", "writable": false, "signer": false }
+        { "name": "agreement_account",      "writable": true,  "signer": false },
+        { "name": "oracle_1",               "writable": false, "signer": true  },
+        { "name": "oracle_2",               "writable": false, "signer": true  },
+        { "name": "vault",                  "writable": true,  "signer": false },
+        { "name": "treasury_token_account", "writable": true,  "signer": false },
+        { "name": "usdc_mint",              "writable": false, "signer": false },
+        { "name": "token_program",          "writable": false, "signer": false }
       ],
       "args": [
         { "name": "winners_count", "type": "u64" },
-        { "name": "proof_hash", "type": { "array": ["u8", 32] } }
+        { "name": "proof_hash",    "type": { "array": ["u8", 32] } }
       ]
     }
   ],
@@ -62,16 +66,16 @@
       "type": {
         "kind": "struct",
         "fields": [
-          { "name": "creator", "type": "pubkey" },
-          { "name": "agreement_id", "type": "string" },
-          { "name": "guarantee_amount", "type": "u64" },
-          { "name": "total_guarantee", "type": "u64" },
+          { "name": "creator",           "type": "pubkey" },
+          { "name": "agreement_id",      "type": "string" },
+          { "name": "guarantee_amount",  "type": "u64" },
+          { "name": "total_guarantee",   "type": "u64" },
           { "name": "participant_count", "type": "u64" },
-          { "name": "winners_count", "type": "u64" },
-          { "name": "vault", "type": "pubkey" },
-          { "name": "rule_hash", "type": { "array": ["u8", 32] } },
-          { "name": "proof_hash", "type": { "option": { "array": ["u8", 32] } } },
-          { "name": "status", "type": { "defined": { "name": "AgreementStatus" } } }
+          { "name": "winners_count",     "type": "u64" },
+          { "name": "vault",             "type": "pubkey" },
+          { "name": "rule_hash",         "type": { "array": ["u8", 32] } },
+          { "name": "proof_hash",        "type": { "option": { "array": ["u8", 32] } } },
+          { "name": "status",            "type": { "defined": { "name": "AgreementStatus" } } }
         ]
       }
     },
@@ -89,15 +93,8 @@
     }
   ],
   "errors": [
-    {
-      "code": 6000,
-      "name": "InvalidStatus",
-      "msg": "The agreement is not in a valid status for this operation."
-    },
-    {
-      "code": 6001,
-      "name": "DealGuardConsensusFailed",
-      "msg": "DealGuard consensus validation failed. Missing required node signatures."
-    }
+    { "code": 6000, "name": "InvalidStatus",            "msg": "The agreement is not in a valid status for this operation." },
+    { "code": 6001, "name": "DealGuardConsensusFailed", "msg": "DealGuard consensus validation failed. Missing required node signatures." },
+    { "code": 6002, "name": "InvalidTokenAccount",      "msg": "Token account invalid: mint or owner does not match." }
   ]
 }

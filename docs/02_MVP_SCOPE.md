@@ -52,8 +52,8 @@ This document defines the implemented features, boundaries, and roadmap for the 
 - [x] Demo Mode: full UX simulation without gas when oracle keys are absent
 
 ### 2.6 On-Chain Escrow (Solana / Anchor)
-- [x] Program ID: `9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4`
-- [x] Deterministic PDA vault: `[b"agreement", deal_id]`
+- [x] Program ID: `885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ`
+- [x] Deterministic PDAs: agreement `[b"agreement", deal_id]`, vault `[b"vault", deal_id]` (USDC SPL token account)
 - [x] `join_agreement`: exact stake amount enforced on-chain with participant tracking
 - [x] `settle_performance_agreement`: **Full On-chain Settlement**
     - [x] Automatic Slacker Tax calculation (3% on loser pool)
