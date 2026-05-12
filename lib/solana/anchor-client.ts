@@ -75,11 +75,8 @@ export async function initPerformanceAgreement(
     .accounts({
       agreementAccount,
       creator:       signer.publicKey,
-      mint:          new PublicKey("So11111111111111111111111111111111111111112"), // WSOL (IDL compat)
-      vault:         signer.publicKey, // Fee-payer is the on-chain treasury/vault reference
+      vault:         signer.publicKey,
       systemProgram: SystemProgram.programId,
-      tokenProgram:  new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
-      rent:          new PublicKey("SysvarRent111111111111111111111111111111111"),
     })
     .rpc()
 
@@ -140,11 +137,11 @@ export async function settlePerformanceAgreement(
   const [agreementAccount] = deriveAgreementPDA(agreementId)
   const [vault]            = deriveVaultPDA(agreementAccount)
 
-  // Args order matches IDL: proof_hash first, winners_count second
+  // Args order matches Rust: winners_count first, proof_hash second
   const txSignature = await program.methods
     .settlePerformanceAgreement(
-      Array.from(proofHash),
       new BN(winnersCount.toString()),
+      Array.from(proofHash),
     )
     .accounts({
       agreementAccount,

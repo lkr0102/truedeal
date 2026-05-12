@@ -12,11 +12,8 @@
       "accounts": [
         { "name": "agreement_account", "writable": true, "signer": false },
         { "name": "creator", "writable": true, "signer": true },
-        { "name": "mint", "writable": false, "signer": false },
-        { "name": "vault", "writable": true, "signer": false },
-        { "name": "system_program", "writable": false, "signer": false },
-        { "name": "token_program", "writable": false, "signer": false },
-        { "name": "rent", "writable": false, "signer": false }
+        { "name": "vault", "writable": false, "signer": false },
+        { "name": "system_program", "writable": false, "signer": false }
       ],
       "args": [
         { "name": "agreement_id", "type": "string" },
@@ -41,15 +38,15 @@
       "discriminator": [86, 216, 11, 86, 70, 247, 27, 3],
       "accounts": [
         { "name": "agreement_account", "writable": true, "signer": false },
-        { "name": "oracle1", "writable": false, "signer": true },
-        { "name": "oracle2", "writable": false, "signer": true },
+        { "name": "oracle_1", "writable": false, "signer": true },
+        { "name": "oracle_2", "writable": false, "signer": true },
         { "name": "vault", "writable": true, "signer": false },
         { "name": "treasury_token_account", "writable": true, "signer": false },
         { "name": "token_program", "writable": false, "signer": false }
       ],
       "args": [
-        { "name": "proof_hash", "type": { "array": ["u8", 32] } },
-        { "name": "winners_count", "type": "u64" }
+        { "name": "winners_count", "type": "u64" },
+        { "name": "proof_hash", "type": { "array": ["u8", 32] } }
       ]
     }
   ],

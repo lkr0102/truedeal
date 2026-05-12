@@ -153,7 +153,7 @@ pub struct InitPerformanceAgreement<'info> {
     #[account(
         init,
         payer = creator,
-        space = 8 + 32 + 64 + 8 + 8 + 32 + 33 + 1,
+        space = 8 + 32 + 64 + 8 + 8 + 8 + 8 + 32 + 32 + 33 + 1,
         seeds = [b"agreement", agreement_id.as_bytes()],
         bump
     )]
