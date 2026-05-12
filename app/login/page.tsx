@@ -140,6 +140,10 @@ export default function LoginPage() {
 
   function handleDemoOverride() {
     setIsLoading(true)
+    // Auto-fill for visual feedback and fallback
+    setEmail("demo@truedeal.io")
+    setPassword("truedeal123")
+    
     // Injeta o cookie de sessão demo
     document.cookie = "truedeal-demo-session=true; path=/; max-age=3600"
     // Redireciona para a home que agora vai ler esse cookie via createClient() do server
