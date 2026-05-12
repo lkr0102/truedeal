@@ -491,7 +491,7 @@ export async function withdrawFromEscrow(dealId: string, proofHash: string) {
   try {
     // 1. Fetch winners and their wallet pubkeys
     const { data: winners, error: winErr } = await (supabase.from("deal_participants") as any)
-      .select("user_id, user_wallets(pubkey)")
+      .select("user_id, user_wallets(public_key)")
       .eq("deal_id", dealId)
       .eq("status", "winner")
 
@@ -510,8 +510,8 @@ export async function withdrawFromEscrow(dealId: string, proofHash: string) {
 
     // 3. Collect winner wallet pubkeys
     const winnerPubkeys = winners
-      .filter((w: any) => w.user_wallets?.pubkey)
-      .map((w: any) => new PublicKey(w.user_wallets.pubkey))
+      .filter((w: any) => w.user_wallets?.public_key)
+      .map((w: any) => new PublicKey(w.user_wallets.public_key))
 
     if (winnerPubkeys.length === 0) {
       return { error: "Carteiras dos vencedores não encontradas." }

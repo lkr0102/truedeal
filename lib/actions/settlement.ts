@@ -1,12 +1,12 @@
 "use server"
 
-import { PublicKey, Keypair } from "@solana/web3.js"
-import { getAssociatedTokenAddress } from "@solana/spl-token"
+import { PublicKey } from "@solana/web3.js"
+import { getOrCreateAssociatedTokenAccount } from "@solana/spl-token"
 import { auditDeal } from "../integrations/polling-service"
 import { generateEvidenceHash } from "../integrations/crypto-proof"
 import { createClient } from "../supabase/server"
 import { settlePerformanceAgreement } from "../solana/anchor-client"
-import { getFeePayer } from "../solana/fee-payer"
+import { getFeePayer, getOracle2, getConnection } from "../solana/fee-payer"
 import { USDC_MINT } from "../solana/constants"
 
 /**
@@ -45,7 +45,7 @@ export async function settleDealProtocol(
 
   // ── 4. Sovereign Payout (Solana Anchor) ─────────────────────────────────
   const isPlaceholderSupabase = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("seu-projeto")
-  const hasOracleKeys = !!(process.env.APP_FEE_PAYER_KEY && process.env.APP_ORACLE2_KEY)
+  const hasOracleKeys = !!(process.env.APP_FEE_PAYER_KEY && process.env.ORACLE_2_PRIVATE_KEY)
 
   // Use real on-chain execution only when both Supabase and oracle keys are configured
   const useRealChain = !isPlaceholderSupabase && hasOracleKeys
@@ -59,34 +59,34 @@ export async function settleDealProtocol(
     txSignature = `DEMO_TX_${Date.now()}_${dealId.slice(0, 8)}`
     console.log(`[Demo] Simulated on-chain settlement: ${txSignature}`)
   } else {
-    // Production: fee-payer is oracle1, APP_ORACLE2_KEY is the second DealGuard node
     const oracle1 = getFeePayer()
-    const oracle2 = Keypair.fromSecretKey(
-      new Uint8Array(Buffer.from(process.env.APP_ORACLE2_KEY!, "base64"))
-    )
+    const oracle2 = getOracle2()
+    const connection = getConnection()
 
-    // Fetch wallet addresses of winners from Supabase
+    // Fetch pubkeys of winners from user_wallets
     const winnerUserIds = audit.results
       .filter((r: any) => r.is_success === true)
       .map((r: any) => r.user_id)
 
-    const { data: winnerProfiles } = await (supabase.from("profiles") as any)
-      .select("wallet_address")
-      .in("id", winnerUserIds)
+    const { data: winnerWallets } = await (supabase.from("user_wallets") as any)
+      .select("public_key")
+      .in("user_id", winnerUserIds)
 
-    const winnerPubkeys: PublicKey[] = (winnerProfiles ?? [])
-      .filter((p: any) => p.wallet_address)
-      .map((p: any) => new PublicKey(p.wallet_address))
+    const winnerPubkeys: PublicKey[] = (winnerWallets ?? [])
+      .filter((w: any) => w.public_key)
+      .map((w: any) => new PublicKey(w.public_key))
 
-    // Oracle1's USDC ATA receives the 3% platform fee (Slacker Tax)
-    const treasuryUsdcATA = await getAssociatedTokenAddress(USDC_MINT, oracle1.publicKey)
+    // Ensure oracle1's USDC ATA exists; create it if needed (3% fee destination)
+    const treasuryATA = await getOrCreateAssociatedTokenAccount(
+      connection, oracle1, USDC_MINT, oracle1.publicKey,
+    )
 
     txSignature = await settlePerformanceAgreement(
       oracle1,
       oracle2,
       dealId,
       winnerPubkeys,
-      treasuryUsdcATA,
+      treasuryATA.address,
       proofHashBytes,
       BigInt(winnerPubkeys.length),
     )
