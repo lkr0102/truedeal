@@ -26,7 +26,6 @@ jobs:
         with:
           toolchain: "1.84.1"
 
-
       - name: Install Solana CLI
         run: |
           sh -c "$(curl -sSfL https://release.anza.xyz/v${SOLANA_VERSION}/install)"
@@ -35,8 +34,6 @@ jobs:
       - name: Install Linux Dependencies
         run: sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
 
-      # Anchor CLI is compiled with Rust 1.79.0 to avoid the `time v0.3.29`
-      # inference regression introduced in Rust 1.80.0.
       - name: Cache Anchor CLI binary
         id: cache-anchor
         uses: actions/cache@v4
@@ -80,6 +77,10 @@ jobs:
         run: |
           rm -f contracts/solana/.cargo/config.toml
           rm -f contracts/solana/Cargo.lock
+
+      - name: Pin blake3 to 1.5.0 (eliminates constant_time_eq 0.4.2 / edition2024 / lock file v4)
+        working-directory: contracts/solana
+        run: cargo generate-lockfile && cargo update -p blake3 --precise 1.5.0
 
       - name: Build Program
         run: |
