@@ -14,13 +14,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Install stable Rust (1.85+) as default — needed so `cargo metadata`
-      # can parse manifests that declare `edition = "2024"`.
-      - name: Install Rust stable (default) + 1.79.0 (for anchor-cli build)
-        run: |
-          rustup install stable
-          rustup default stable
-          rustup install 1.79.0
+      # 1.79.0 → instala o Anchor CLI (evita regressão do `time v0.3.29` no Rust 1.80+)
+      # 1.85.0 → toolchain padrão do host, necessário para `cargo metadata`
+      #           processar manifestos com `edition = "2024"`
+      - name: Install Rust 1.79.0 (for anchor-cli compilation)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.79.0
+
+      - name: Install Rust 1.85.0 (default — handles edition2024 in cargo metadata)
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.85.0"
+
 
       - name: Install Solana CLI
         run: |

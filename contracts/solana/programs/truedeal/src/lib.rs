@@ -87,20 +87,23 @@ pub mod truedeal {
         agreement.status        = AgreementStatus::Settled;
         agreement.proof_hash    = Some(proof_hash);
 
+        let total_guarantee   = agreement.total_guarantee;
+        let guarantee_amount  = agreement.guarantee_amount;
+        let participant_count = agreement.participant_count;
+        let agreement_id      = agreement.agreement_id.clone();
+        let bump              = ctx.bumps.agreement_account;
+        let seeds             = &[b"agreement".as_ref(), agreement_id.as_bytes(), &[bump]];
+        let signer            = &[&seeds[..]];
+
         if winners_count > 0 {
-            let losers_count      = agreement.participant_count.saturating_sub(winners_count);
-            let slacker_pool      = losers_count.saturating_mul(agreement.guarantee_amount);
+            let losers_count      = participant_count.saturating_sub(winners_count);
+            let slacker_pool      = losers_count.saturating_mul(guarantee_amount);
             let platform_fee      = slacker_pool.saturating_mul(3).checked_div(100).unwrap_or(0);
             let distributable     = slacker_pool.saturating_sub(platform_fee);
             let reward_per_winner = distributable.checked_div(winners_count).unwrap_or(0);
-            let total_payout      = agreement.guarantee_amount.saturating_add(reward_per_winner);
+            let total_payout      = guarantee_amount.saturating_add(reward_per_winner);
 
-            let agreement_id = agreement.agreement_id.clone();
-            let bump         = ctx.bumps.agreement_account;
-            let seeds        = &[b"agreement".as_ref(), agreement_id.as_bytes(), &[bump]];
-            let signer       = &[&seeds[..]];
-
-            // 1. Platform fee → treasury USDC ATA
+            // 1. Platform fee (3% of losers' pool) → treasury
             if platform_fee > 0 {
                 token::transfer(
                     CpiContext::new_with_signer(
@@ -131,6 +134,20 @@ pub mod truedeal {
                     total_payout,
                 )?;
             }
+        } else if total_guarantee > 0 {
+            // No winners: 100% of pot → treasury
+            token::transfer(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    Transfer {
+                        from:      ctx.accounts.vault.to_account_info(),
+                        to:        ctx.accounts.treasury_token_account.to_account_info(),
+                        authority: agreement.to_account_info(),
+                    },
+                    signer,
+                ),
+                total_guarantee,
+            )?;
         }
 
         msg!("Agreement Settled. Winners: {}. Platform fee collected.", winners_count);
