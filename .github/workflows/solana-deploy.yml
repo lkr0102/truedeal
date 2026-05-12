@@ -1,13 +1,7 @@
 name: Solana Contract Deploy
 
 on:
-  workflow_dispatch: # Permite disparo manual pela UI do GitHub
-  push:
-    branches:
-      - main
-    paths:
-      - 'contracts/solana/**'
-      - '.github/workflows/solana-deploy.yml'
+  workflow_dispatch: # Disparo manual pela UI do GitHub (contrato já deployado em devnet)
 
 jobs:
   deploy:
@@ -77,8 +71,7 @@ jobs:
       - name: Build Program
         run: |
           cd contracts/solana
-          # Use --offline to ensure we only use the vendored dependencies
-          anchor build -- --offline
+          anchor build
 
       - name: Deploy to Devnet
         run: |
