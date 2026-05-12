@@ -10,7 +10,7 @@ use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 // IP: Architecture incorporates DealGuard Engine & Risk Guardian (Symbeon Labs).
 // ============================================================================
 
-declare_id!("9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4");
+declare_id!("885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ");
 
 #[program]
 pub mod truedeal {

@@ -9,10 +9,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-truedeal = "9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4"
+truedeal = "885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ"
 
 [programs.devnet]
-truedeal = "9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4"
+truedeal = "885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ"
 
 [registry]
 url = "https://anchor.projectserum.com"

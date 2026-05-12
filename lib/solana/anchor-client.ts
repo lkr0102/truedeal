@@ -12,7 +12,7 @@ import idl from "./idl.json"
 // ── Constants ────────────────────────────────────────────────────────────────
 
 export const PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_TRUEDEAL_PROGRAM_ID ?? "9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4"
+  process.env.NEXT_PUBLIC_TRUEDEAL_PROGRAM_ID ?? "885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ"
 )
 
 // Devnet SOL conversion: 1 BRL = 1_000_000 lamports (0.001 SOL) for demo
