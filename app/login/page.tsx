@@ -66,6 +66,13 @@ export default function LoginPage() {
   const [showWallets,  setShowWallets]  = useState(false)
   const [walletError,  setWalletError]  = useState<string | null>(null)
 
+  // ── Demo / Placeholder check ──
+  const [isDemoMode, setIsDemoMode] = useState(false)
+  useEffect(() => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+    if (url?.includes("seu-projeto")) setIsDemoMode(true)
+  }, [])
+
   // ── Solana wallet adapter ──
   const { wallets, select, wallet, connected, publicKey, connecting } = useWallet()
 
@@ -129,6 +136,16 @@ export default function LoginPage() {
       options: { redirectTo: `${window.location.origin}/auth/callback` },
     })
     if (error) setAuthError(error.message)
+  }
+
+  function handleDemoOverride() {
+    setIsLoading(true)
+    // Injeta o cookie de sessão demo
+    document.cookie = "truedeal-demo-session=true; path=/; max-age=3600"
+    // Redireciona para a home que agora vai ler esse cookie via createClient() do server
+    setTimeout(() => {
+      router.push("/")
+    }, 800)
   }
 
   function handleWalletConnect(adapterName: string) {
@@ -280,6 +297,22 @@ export default function LoginPage() {
           </div>
           <span style={{ color: "#9945FF" }}>→</span>
         </button>
+
+        {/* ── Protocol Override (Apenas em modo Demo) ── */}
+        {isDemoMode && (
+          <div className="mt-4 p-4 rounded-xl border border-dashed border-[#00D26A]/30 bg-[#00D26A]/5">
+            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest text-center mb-2">
+              Sovereign Demo Mode Active
+            </p>
+            <button
+              onClick={handleDemoOverride}
+              className="w-full py-2 rounded-lg text-xs font-bold transition-all duration-300 hover:bg-[#00D26A]/10 active:scale-[0.98]"
+              style={{ color: "#00D26A", border: "1px solid #00D26A" }}
+            >
+              {isLoading ? "Bypassing Protocol..." : "PROTOCOL OVERRIDE (JUDGE ACCESS)"}
+            </button>
+          </div>
+        )}
 
         {/* Termos */}
         <div className="text-center mt-6">
