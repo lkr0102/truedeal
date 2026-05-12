@@ -1,7 +1,7 @@
 name: Solana Contract Deploy
 
 on:
-  workflow_dispatch: # Disparo manual pela UI do GitHub
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -51,11 +51,9 @@ jobs:
           SOLANA_PAYER_KEY: ${{ secrets.SOLANA_PAYER_KEY }}
         run: |
           mkdir -p ~/.config/solana
-          echo "$SOLANA_PAYER_KEY" > ~/.config/solana/deploy.json
-          chmod 600 ~/.config/solana/deploy.json
-          solana config set \
-            --keypair ~/.config/solana/deploy.json \
-            --url devnet
+          echo "$SOLANA_PAYER_KEY" > ~/.config/solana/id.json
+          chmod 600 ~/.config/solana/id.json
+          solana config set --keypair ~/.config/solana/id.json --url devnet
           solana balance
 
       - name: Setup Program Keypair
@@ -77,11 +75,11 @@ jobs:
       - name: Deploy to Devnet
         run: |
           cd contracts/solana
-          solana program deploy \
-            --keypair ~/.config/solana/deploy.json \
-            --url devnet \
-            --program-id target/deploy/truedeal-keypair.json \
-            target/deploy/truedeal.so
+          anchor deploy --provider.cluster devnet
           echo "✅ Deploy concluído!"
           echo "🔗 https://solscan.io/account/885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ?cluster=devnet"
           echo "🔗 https://explorer.solana.com/address/885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ?cluster=devnet"
+
+      - name: Verify Deployment
+        run: |
+          solana program show 885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ --url devnet
