@@ -15,7 +15,6 @@ jobs:
         uses: actions/checkout@v4
 
       # 1.79.0 → instala o Anchor CLI (evita regressão do `time v0.3.29` no Rust 1.80+)
-      # 1.84.1 → toolchain padrão do host, gera lockfile v3 (compatível com Solana SBF)
       - name: Install Rust 1.79.0 (for anchor-cli compilation)
         uses: dtolnay/rust-toolchain@master
         with:
