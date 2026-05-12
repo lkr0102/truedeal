@@ -73,14 +73,12 @@ jobs:
           echo "$TRUEDEAL_DEPLOY_KEY" > contracts/solana/target/deploy/truedeal-keypair.json
           chmod 600 contracts/solana/target/deploy/truedeal-keypair.json
 
-      - name: Remove vendor override and stale lock file
-        run: |
-          rm -f contracts/solana/.cargo/config.toml
-          rm -f contracts/solana/Cargo.lock
+      - name: Remove vendor override
+        run: rm -f contracts/solana/.cargo/config.toml
 
-      - name: Pin blake3 to 1.5.0 (eliminates constant_time_eq 0.4.2 / edition2024 / lock file v4)
+      - name: Pin blake3 to 1.5.0 (eliminates constant_time_eq 0.4.2 / edition2024)
         working-directory: contracts/solana
-        run: cargo generate-lockfile && cargo update -p blake3 --precise 1.5.0
+        run: cargo update -p blake3 --precise 1.5.0
 
       - name: Build Program
         run: |
