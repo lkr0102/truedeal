@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
-  ArrowLeft, Lock, Globe, ChevronLeft, ChevronRight,
-  Plus, Minus, Check, Info, X, AlertCircle,
+  ArrowLeft, Lock, Globe, ChevronLeft, ChevronRight, ChevronDown,
+  Plus, Minus, Check, Info, X, AlertCircle, ShieldCheck,
 } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
 import type { DealCategory, DealType } from "@/lib/supabase/types"
@@ -86,24 +86,148 @@ const PERIOD_PRESETS = [
   { id: "2m", label: "2 meses",  labelEn: "2 mo",  days: 60 },
 ]
 
-const RULE_SUBRULES: Record<string, { note: string; items: string[] }> = {
-  post: {
-    note: "Sub-regras de verificação",
-    items: [
-      "Conta deve ser pública no X",
-      "Post com mais de 100 caracteres",
-      "Conteúdo único — sem repetições dentro do período",
-    ],
-  },
-  comment_received: { note: "Ganho líquido por janela", items: ["Comentários recebidos em posts originais do período"] },
-  repost_received:  { note: "Ganho líquido por janela", items: ["Reposts recebidos em posts originais do período"] },
-  follower_gained:  { note: "Ganho líquido por janela", items: ["Novos seguidores líquidos na janela de frequência"] },
-  impressions:      { note: "Ganho por janela", items: ["Total de impressões nos posts da janela de frequência"] },
-  km_run:           { note: "Apenas atividades do tipo Corrida", items: ["Soma dos KMs de atividades Run registradas no Strava"] },
-  pace:             { note: "⏱ Quanto menor, mais rápido", items: ["Pace médio das corridas ≤ valor configurado", "Medido em min/km · Ex: 5 = 5 min/km, 5.5 = 5 min 30 seg/km"] },
-  workout_hours:    { note: "Total por janela", items: ["Soma das horas de todas as atividades registradas na janela"] },
-  checkin:          { note: "Por janela de frequência", items: ["Número de check-ins em academias ou locais parceiros"] },
-  different_venues: { note: "Por janela de frequência", items: ["Número de locais distintos visitados na janela"] },
+function getRuleSubrules(lang: Language): Record<string, { title: string; items: string[]; hint?: string }> {
+  return {
+    post: {
+      title: lang === "pt" ? "Regras do post verificado" : "Verified post rules",
+      items: lang === "pt" ? [
+        "Conta pública no X no momento da verificação",
+        "Mínimo de 100 caracteres por post",
+        "Conteúdo original — o DealGuard usa análise semântica para rejeitar repetições",
+        "Posts deletados antes da verificação não são contabilizados",
+      ] : [
+        "Public X account at the time of verification",
+        "Minimum 100 characters per post",
+        "Original content — DealGuard uses semantic analysis to reject duplicates",
+        "Posts deleted before verification are not counted",
+      ],
+      hint: lang === "pt" ? "🔍 Qualidade importa tanto quanto quantidade" : "🔍 Quality matters as much as quantity",
+    },
+    follower_gained: {
+      title: lang === "pt" ? "Regras — Seguidores recebidos" : "Rules — Followers gained",
+      items: lang === "pt" ? [
+        "Baseline registrada no início do deal (start_snapshot)",
+        "DealGuard calcula o ganho líquido em cada janela (novos − perdidos)",
+        "Requisito é sobre ganho líquido por janela, não total acumulado",
+        "Conta deve permanecer pública durante todo o período",
+      ] : [
+        "Baseline recorded at deal start (start_snapshot)",
+        "DealGuard calculates net gain per window (new − lost)",
+        "Requirement is net gain per window, not cumulative total",
+        "Account must remain public throughout the period",
+      ],
+    },
+    impressions: {
+      title: lang === "pt" ? "Regras — Impressões" : "Rules — Impressions",
+      items: lang === "pt" ? [
+        "Total de impressões das publicações feitas dentro da janela",
+        "Impressões de publicações anteriores ao deal não contam",
+        "Verificado via API da plataforma com access token do participante",
+      ] : [
+        "Total impressions from posts published within the frequency window",
+        "Impressions from pre-deal posts are not counted",
+        "Verified via platform API using the participant's access token",
+      ],
+    },
+    comment_received: {
+      title: lang === "pt" ? "Regras — Comentários recebidos" : "Rules — Comments received",
+      items: lang === "pt" ? [
+        "Total de comentários recebidos nas publicações da janela",
+        "O DealGuard filtra comentários spam ou automatizados",
+        "Conta deve permanecer pública durante todo o período",
+      ] : [
+        "Total comments received on posts published within the window",
+        "DealGuard filters spam or automated comments",
+        "Account must remain public throughout the period",
+      ],
+    },
+    repost_received: {
+      title: lang === "pt" ? "Regras — Reposts recebidos" : "Rules — Reposts received",
+      items: lang === "pt" ? [
+        "Total de reposts recebidos nas publicações da janela",
+        "Auto-reposts do próprio participante não contam",
+        "Verificado via API da plataforma com access token do participante",
+      ] : [
+        "Total reposts received on posts published within the window",
+        "Self-reposts by the participant do not count",
+        "Verified via platform API using the participant's access token",
+      ],
+    },
+    km_run: {
+      title: lang === "pt" ? "Regras — Kms percorridos" : "Rules — Kms run",
+      items: lang === "pt" ? [
+        "Apenas atividades com tipo Corrida (Run) são contabilizadas",
+        "Distâncias de todas as corridas da janela são somadas",
+        "DealGuard valida via API do Strava com o access token do participante",
+        "Atividades manuais sem GPS podem ser desconsideradas",
+      ] : [
+        "Only Run-type activities are counted",
+        "All run distances within the window are summed",
+        "DealGuard validates via Strava API using the participant's access token",
+        "Manual activities without GPS may be disregarded",
+      ],
+      hint: lang === "pt" ? "🏃 Registre suas corridas normalmente no Strava" : "🏃 Record your runs normally in Strava",
+    },
+    pace: {
+      title: lang === "pt" ? "Regras — Pace médio" : "Rules — Average pace",
+      items: lang === "pt" ? [
+        "DealGuard calcula o pace médio das corridas na janela (min/km)",
+        "Condição: pace_médio ≤ pace configurado pelo criador",
+        "Quanto menor o valor, mais rápido (ex: 5:30 é mais rápido que 6:00)",
+        "Exemplo: criador configura 6:00 → 5:45 cumpre; 6:10 não cumpre",
+      ] : [
+        "DealGuard calculates average pace of runs in the window (min/km)",
+        "Compliance: avg_pace ≤ pace configured by creator",
+        "Lower value means faster (5:30 is faster than 6:00)",
+        "Example: creator sets 6:00 → 5:45 passes; 6:10 fails",
+      ],
+      hint: lang === "pt" ? "⏱ Pace mais baixo = você correu mais rápido" : "⏱ Lower pace = you ran faster",
+    },
+    workout_hours: {
+      title: lang === "pt" ? "Regras — Horas de exercício" : "Rules — Workout hours",
+      items: lang === "pt" ? [
+        "Tempo total de atividades no Strava durante a janela",
+        "Todas as modalidades contam (não apenas corrida)",
+        "Medido em horas — ex: 1h30 = 1,5",
+        "DealGuard valida via API do Strava",
+      ] : [
+        "Total workout time recorded on Strava during the window",
+        "All activity types count (not just running)",
+        "Measured in hours — e.g., 1h30 = 1.5",
+        "DealGuard validates via Strava API",
+      ],
+    },
+    checkin: {
+      title: lang === "pt" ? "Como funciona — Check-in em Academia" : "How it works — Gym Check-in",
+      items: lang === "pt" ? [
+        "Check-in presencial em academia parceira Wellhub ou TotalPass",
+        "Verificação automática via API — sem ação manual necessária",
+        "Apenas academias credenciadas na rede parceira são aceitas",
+        "Prazo: até 23h59 (horário de Brasília) de cada janela",
+        "Máximo 1 check-in válido por dia — múltiplos não acumulam",
+      ] : [
+        "In-person check-in at a Wellhub or TotalPass partner gym",
+        "Automatic verification via API — no manual action required",
+        "Only credentialed partner network gyms are accepted",
+        "Deadline: by 11:59 PM (Brasília time) of each window",
+        "Max 1 valid check-in per day — multiple at same location don't stack",
+      ],
+      hint: lang === "pt" ? "📍 Basta fazer check-in pelo Wellhub ou TotalPass — sincronizamos automaticamente" : "📍 Just check in via Wellhub or TotalPass — we sync automatically",
+    },
+    different_venues: {
+      title: lang === "pt" ? "Regras — Ambientes diferentes" : "Rules — Different venues",
+      items: lang === "pt" ? [
+        "Número de academias ou espaços distintos visitados na janela",
+        "Mesmo local múltiplas vezes = 1 ambiente único",
+        "Apenas locais credenciados na rede Wellhub ou TotalPass",
+      ] : [
+        "Number of distinct gyms or venues visited within the window",
+        "Visiting the same location multiple times counts as 1 venue",
+        "Only credentialed Wellhub or TotalPass network locations",
+      ],
+      hint: lang === "pt" ? "🏋️ Varie as academias para acumular ambientes diferentes" : "🏋️ Switch gyms to stack different venues",
+    },
+  }
 }
 
 const MONTH_NAMES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
@@ -206,6 +330,9 @@ export default function CreateDealPage() {
   const [distribution, setDistribution] = useState("proportional")
 
   const [screen,          setScreen]          = useState<1 | 2>(1)
+  const [subrulesOpen,    setSubrulesOpen]    = useState(true)
+  const [dealguardOpen,   setDealguardOpen]   = useState(false)
+  const [complianceOpen,  setComplianceOpen]  = useState(false)
   const [showInfo,        setShowInfo]        = useState(false)
   const [showPrivacyInfo, setShowPrivacyInfo] = useState<"private" | "public" | null>(null)
   const [isSubmitting,  setIsSubmitting]  = useState(false)
@@ -318,16 +445,16 @@ export default function CreateDealPage() {
   }
 
   // ── Confirmation rows ──
+  const ruleWithFreqLabel = [
+    ruleLabel && quantity ? `${quantity} × ${ruleLabel}` : ruleLabel,
+    freqLabel,
+  ].filter(Boolean).join(" · ")
+
   const confirmRows = [
     {
       icon: "🛡️", iconBg: "rgba(22,163,74,0.1)",
-      key: "Regra",
-      val: channelLabel && ruleLabel ? `${channelLabel} · ${ruleLabel}` : "—",
-    },
-    {
-      icon: "📊", iconBg: "rgba(168,85,247,0.1)",
-      key: language === "pt" ? "Meta" : "Goal",
-      val: ruleLabel && freqLabel ? `${quantity}× ${ruleLabel} / ${freqLabel}` : "—",
+      key: language === "pt" ? "Regra" : "Rule",
+      val: channelLabel ? `${channelLabel} · ${ruleWithFreqLabel || "—"}` : ruleWithFreqLabel || "—",
     },
     {
       icon: "📅", iconBg: "rgba(239,68,68,0.08)",
@@ -339,12 +466,9 @@ export default function CreateDealPage() {
       key: language === "pt" ? "Financeiro" : "Financial",
       val: effectiveAmount > 0 ? `R$${effectiveAmount}/${language === "pt" ? "pessoa" : "person"} · ${DISTRIBUTION_TYPES.find(d => d.id === distribution)?.[language === "pt" ? "label" : "labelEn"]}` : "—",
     },
-    {
-      icon: "🔒", iconBg: "rgba(107,114,128,0.1)",
-      key: language === "pt" ? "Acesso" : "Access",
-      val: privacy === "private" ? t("priv_private", language) : t("priv_public", language),
-    },
   ]
+
+  const reviewSubrules = rule ? getRuleSubrules(language)[rule] ?? null : null
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -850,17 +974,22 @@ export default function CreateDealPage() {
                   </p>
                   <h2 className="text-xl font-bold leading-tight">{name || t("deal_no_name", language)}</h2>
                 </div>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
                   style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
-                  {privacy === "private" ? <Lock className="w-4 h-4 text-white" /> : <Globe className="w-4 h-4 text-white" />}
+                  {privacy === "private"
+                    ? <Lock className="w-3.5 h-3.5 text-white" />
+                    : <Globe className="w-3.5 h-3.5 text-white" />}
+                  <span className="text-white text-[10px] font-bold uppercase tracking-wide">
+                    {privacy === "private" ? t("priv_private", language) : t("priv_public", language)}
+                  </span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { label: t("stat_entry", language),    value: effectiveAmount > 0 ? `R$${effectiveAmount}` : "—" },
-                  { label: t("stat_pot", language), value: effectiveAmount > 0 ? `R$${effectiveAmount}` : "—" },
-                  { label: t("stat_duration", language),    value: t("date_days", language, { count: diffDays }) },
-                  { label: t("stat_prize", language),  value: DISTRIBUTION_TYPES.find(d => d.id === distribution)?.label ?? "—" },
+                  { label: language === "pt" ? "Regra" : "Rule", value: ruleWithFreqLabel || "—" },
+                  { label: t("stat_duration", language),  value: t("date_days", language, { count: diffDays }) },
+                  { label: t("stat_prize", language),     value: DISTRIBUTION_TYPES.find(d => d.id === distribution)?.label ?? "—" },
                 ].map(stat => (
                   <div key={stat.label} className="p-2.5 rounded-xl"
                     style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
@@ -872,25 +1001,164 @@ export default function CreateDealPage() {
             </div>
           </div>
 
-          <div className="space-y-2 mb-6">
-            {confirmRows.map(row => (
+          {/* Compact info rows */}
+          <div className="rounded-xl overflow-hidden mb-3"
+            style={{ background: "rgba(255,255,255,0.48)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+            {confirmRows.map((row, i, arr) => (
               <div key={row.key}
-                className="flex items-center gap-3 p-3.5 rounded-xl"
-                style={{
-                  background: "rgba(255,255,255,0.48)",
-                  backdropFilter: "blur(20px)",
-                  border: "1px solid rgba(255,255,255,0.6)",
-                }}>
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: row.iconBg }}>
-                  <span className="text-base">{row.icon}</span>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400">{row.key}</p>
-                  <p className="text-[13px] font-bold text-gray-800 mt-0.5 truncate">{row.val}</p>
-                </div>
+                className="flex items-center gap-3 px-3.5 py-2.5"
+                style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
+                <span className="text-sm flex-shrink-0">{row.icon}</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 w-16 flex-shrink-0">{row.key}</span>
+                <span className="text-[12px] font-semibold text-gray-800 flex-1 min-w-0 truncate">{row.val}</span>
               </div>
             ))}
+          </div>
+
+          {/* Subrules — collapsible, starts open */}
+          {reviewSubrules && (
+            <div className="mb-3 rounded-2xl overflow-hidden"
+              style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.18)" }}>
+              <button
+                onClick={() => setSubrulesOpen(o => !o)}
+                className="w-full flex items-center justify-between px-4 py-3"
+                style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+              >
+                <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
+                  {reviewSubrules.title}
+                </p>
+                {subrulesOpen
+                  ? <ChevronDown className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+                  : <ChevronRight className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />}
+              </button>
+              {subrulesOpen && (
+                <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(59,130,246,0.12)" }}>
+                  <ul className="space-y-2 pt-3">
+                    {reviewSubrules.items.map((item, i) => (
+                      <li key={i} className="flex items-start gap-2.5 text-[12px] text-gray-700 leading-relaxed">
+                        <span className="text-blue-400 mt-0.5 flex-shrink-0 font-bold">✓</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  {reviewSubrules.hint && (
+                    <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(59,130,246,0.15)" }}>
+                      <p className="text-[11px] text-amber-600 font-semibold leading-relaxed">{reviewSubrules.hint}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* DealGuard — collapsible, starts closed, green */}
+          <div className="mb-3 rounded-2xl overflow-hidden"
+            style={{ background: "rgba(22,163,74,0.05)", border: "1px solid rgba(22,163,74,0.22)" }}>
+            <button
+              onClick={() => setDealguardOpen(o => !o)}
+              className="w-full flex items-center justify-between px-4 py-3"
+              style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+            >
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+                <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest">
+                  {language === "pt" ? "Verificação dupla — DealGuard Engine" : "Double verification — DealGuard Engine"}
+                </p>
+              </div>
+              {dealguardOpen
+                ? <ChevronDown className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+                : <ChevronRight className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
+            </button>
+            {dealguardOpen && (
+              <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(22,163,74,0.15)" }}>
+                <div className="space-y-3 pt-3">
+                  {[
+                    {
+                      step: "1",
+                      label: language === "pt" ? "Coleta automática via API" : "Automatic API collection",
+                      desc: language === "pt"
+                        ? "O DealGuard conecta diretamente nas plataformas e extrai os dados brutos de cada participante ao final de cada janela."
+                        : "DealGuard connects directly to platforms and pulls raw data from each participant at the end of each window.",
+                    },
+                    {
+                      step: "2",
+                      label: language === "pt" ? "Análise Sentinel (IA)" : "Sentinel analysis (AI)",
+                      desc: language === "pt"
+                        ? "Uma camada de IA analisa as evidências em busca de padrões suspeitos. Resultados com risco alto são marcados e excluídos da premiação."
+                        : "An AI layer reviews the evidence for suspicious patterns. High-risk results are flagged and excluded from the prize pool.",
+                    },
+                  ].map(({ step, label, desc }) => (
+                    <div key={step} className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                        style={{ background: "rgba(22,163,74,0.12)", border: "1px solid rgba(22,163,74,0.25)" }}>
+                        <span style={{ fontSize: 10, fontWeight: 900, color: "#16A34A" }}>{step}</span>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-bold text-green-700 mb-0.5">{label}</p>
+                        <p className="text-[11px] text-gray-600 leading-relaxed">{desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-green-600 mt-3 font-semibold" style={{ borderTop: "1px solid rgba(22,163,74,0.15)", paddingTop: 10 }}>
+                  {language === "pt"
+                    ? "✓ Só após essa verificação dupla o resultado é finalizado e os fundos liberados."
+                    : "✓ Only after this double verification is the result finalized and funds released."}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Compliance — collapsible, starts closed */}
+          <div className="mb-6 rounded-2xl overflow-hidden"
+            style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.22)" }}>
+            <button
+              onClick={() => setComplianceOpen(o => !o)}
+              className="w-full flex items-center justify-between px-4 py-3"
+              style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+            >
+              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+                📋 {language === "pt" ? "Como funciona o cumprimento" : "How compliance works"}
+              </p>
+              {complianceOpen
+                ? <ChevronDown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+                : <ChevronRight className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
+            </button>
+            {complianceOpen && (
+              <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(245,158,11,0.15)" }}>
+                <p className="text-[12px] text-gray-700 leading-relaxed mb-3 pt-3">
+                  {language === "pt"
+                    ? "Seu desempenho é avaliado janela por janela — não apenas no final. Para ser vencedor, você precisa atingir a meta em cada janela do período."
+                    : "Performance is evaluated window by window — not just at the end. To win, you need to hit the goal in every window of the period."}
+                </p>
+                <div className="rounded-xl overflow-hidden mb-3" style={{ border: "1px solid rgba(245,158,11,0.2)" }}>
+                  <div className="px-3 py-2" style={{ background: "rgba(245,158,11,0.08)" }}>
+                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
+                      {language === "pt" ? "Exemplo: 5 posts/semana · 4 semanas" : "Example: 5 posts/week · 4 weeks"}
+                    </p>
+                  </div>
+                  {[
+                    { window: language === "pt" ? "Semana 1" : "Week 1", value: "5 posts", ok: true },
+                    { window: language === "pt" ? "Semana 2" : "Week 2", value: "5 posts", ok: true },
+                    { window: language === "pt" ? "Semana 3" : "Week 3", value: "5 posts", ok: true },
+                    { window: language === "pt" ? "Semana 4" : "Week 4", value: language === "pt" ? "4 posts — abaixo" : "4 posts — below", ok: false },
+                  ].map(({ window, value, ok }) => (
+                    <div key={window}
+                      className="flex items-center justify-between px-3 py-2"
+                      style={{ borderTop: "1px solid rgba(245,158,11,0.1)", background: ok ? "transparent" : "rgba(239,68,68,0.04)" }}>
+                      <span className="text-[11px] text-gray-500">{window}</span>
+                      <span className="text-[11px] font-semibold" style={{ color: ok ? "#6B7280" : "#EF4444" }}>{value}</span>
+                      <span className="text-[11px] font-bold" style={{ color: ok ? "#16A34A" : "#EF4444" }}>{ok ? "✓" : "✗"}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-gray-600 leading-relaxed">
+                  {language === "pt"
+                    ? "O bom desempenho das semanas anteriores não compensa uma janela abaixo da meta."
+                    : "Strong performance in previous windows does not make up for a window below the goal."}
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="p-4 rounded-xl mb-4"

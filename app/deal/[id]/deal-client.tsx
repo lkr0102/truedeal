@@ -466,7 +466,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
     {
       icon: "🛡️", iconBg: "rgba(22,163,74,0.1)",
       key: language === "pt" ? "Regra" : "Rule",
-      val: channelNames && ruleLabel ? `${channelNames} · ${ruleLabel}` : ruleLabel || "—",
+      val: channelNames ? `${channelNames} · ${ruleWithFreq}` : ruleWithFreq || "—",
     },
     {
       icon: "📅", iconBg: "rgba(239,68,68,0.08)",
