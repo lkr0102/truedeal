@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { DealWithParticipants, Profile } from "@/lib/supabase/types"
+import { useLanguageStore, t } from "@/lib/i18n"
 
 // ── UI types ───────────────────────────────────────────────────────────────────
 
@@ -96,9 +97,9 @@ function toDealUI(d: DealWithParticipants, userId: string | null): Deal {
 // ── Status helpers ─────────────────────────────────────────────────────────────
 
 const STATUS_STYLE: Record<DealStatusUI, { border: string; bg: string; badgeBg: string; badgeColor: string; badgeLabel: string }> = {
-  ativo:      { border: "#16A34A", bg: "rgba(22,163,74,0.05)",    badgeBg: "rgba(22,163,74,0.12)",    badgeColor: "#16A34A", badgeLabel: "Em Jogo" },
-  pendente:   { border: "#F59E0B", bg: "rgba(245,158,11,0.05)",   badgeBg: "rgba(245,158,11,0.12)",   badgeColor: "#D97706", badgeLabel: "Formação" },
-  finalizado: { border: "#9CA3AF", bg: "rgba(156,163,175,0.06)",  badgeBg: "rgba(156,163,175,0.14)",  badgeColor: "#6B7280", badgeLabel: "Encerrado" },
+  ativo:      { border: "#16A34A", bg: "rgba(22,163,74,0.05)",    badgeBg: "rgba(22,163,74,0.12)",    badgeColor: "#16A34A", badgeLabel: "status_active" },
+  pendente:   { border: "#F59E0B", bg: "rgba(245,158,11,0.05)",   badgeBg: "rgba(245,158,11,0.12)",   badgeColor: "#D97706", badgeLabel: "status_pending" },
+  finalizado: { border: "#9CA3AF", bg: "rgba(156,163,175,0.06)",  badgeBg: "rgba(156,163,175,0.14)",  badgeColor: "#6B7280", badgeLabel: "status_finalized" },
 }
 
 function StatusDot({ status }: { status: DealStatusUI }) {
@@ -114,11 +115,11 @@ function StatusDot({ status }: { status: DealStatusUI }) {
   )
 }
 
-function StatusBadge({ status }: { status: DealStatusUI }) {
+function StatusBadge({ status, lang }: { status: DealStatusUI; lang: Language }) {
   const { badgeBg, badgeColor, badgeLabel } = STATUS_STYLE[status]
   return (
     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-      style={{ backgroundColor: badgeBg, color: badgeColor }}>{badgeLabel}</span>
+      style={{ backgroundColor: badgeBg, color: badgeColor }}>{t(badgeLabel as any, lang)}</span>
   )
 }
 
@@ -152,21 +153,23 @@ const PRIZE_CONFIG: Record<PrizeType, { label: string; bg: string; color: string
   ranking:      { label: "Ranking",      bg: "rgba(59,130,246,0.12)", color: "#2563EB", Icon: Award   },
 }
 
-function PrizeBadge({ type }: { type: PrizeType }) {
+function PrizeBadge({ type, lang }: { type: PrizeType; lang: Language }) {
   const { label, bg, color, Icon } = PRIZE_CONFIG[type]
+  const localizedLabel = type === "primeiro" ? (lang === "pt" ? "1º Lugar" : "1st Place") : label
   return (
     <div className="flex items-center gap-1 px-2 py-0.5 rounded-full flex-shrink-0" style={{ backgroundColor: bg }}>
       <Icon className="w-3 h-3 flex-shrink-0" color={color} />
-      <span className="text-[10px] font-bold" style={{ color }}>{label}</span>
+      <span className="text-[10px] font-bold" style={{ color }}>{localizedLabel}</span>
     </div>
   )
 }
 
-function TypeBadge({ type }: { type: DealTypeUI }) {
+function TypeBadge({ type, lang }: { type: DealTypeUI; lang: Language }) {
+  const label = type === "oficial" ? (lang === "pt" ? "Oficial" : "Official") : t(type === "privado" ? "priv_private" : "priv_public", lang)
   return (
     <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full flex-shrink-0"
       style={{ backgroundColor: "rgba(0,0,0,0.05)", color: "#9CA3AF" }}>
-      {type}
+      {label}
     </span>
   )
 }
@@ -177,20 +180,20 @@ function getStartTarget(iso: string): Date {
   return new Date(`${iso}T03:00:00Z`)  // 00h GMT-3 = 03h UTC
 }
 
-function formatCountdown(ms: number): { label: string; urgency: "normal" | "warning" | "critical" } {
-  if (ms <= 0) return { label: "Iniciando...", urgency: "critical" }
+function formatCountdown(ms: number, lang: Language): { label: string; urgency: "normal" | "warning" | "critical" } {
+  if (ms <= 0) return { label: lang === "pt" ? "Iniciando..." : "Starting...", urgency: "critical" }
   const s   = Math.floor(ms / 1000)
   const d   = Math.floor(s / 86400)
   const h   = Math.floor((s % 86400) / 3600)
   const m   = Math.floor((s % 3600) / 60)
   const sec = s % 60
   const p   = (n: number) => String(n).padStart(2, "0")
-  if (d > 0) return { label: `${d}d ${p(h)}h`, urgency: "normal" }
-  if (h > 0) return { label: `${h}h ${p(m)}m`, urgency: "warning" }
+  if (d > 0) return { label: `${d}d ${p(h)}${lang === "pt" ? "h" : "h"}`, urgency: "normal" }
+  if (h > 0) return { label: `${h}h ${p(m)}${lang === "pt" ? "m" : "m"}`, urgency: "warning" }
   return { label: `${p(m)}m ${p(sec)}s`, urgency: "critical" }
 }
 
-function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
+function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; lang: Language }) {
   const daysLeft = deal.daysTotal - deal.daysGone
   const isWinning = deal.myRank != null && deal.myRank <= Math.ceil(deal.participants * 0.3)
   const ss = STATUS_STYLE[deal.status]
@@ -203,7 +206,7 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
   }, [deal.status, deal.startDateISO])
 
   const countdown = deal.status === "pendente" && deal.startDateISO
-    ? formatCountdown(getStartTarget(deal.startDateISO).getTime() - nowMs)
+    ? formatCountdown(getStartTarget(deal.startDateISO).getTime() - nowMs, lang)
     : null
 
   return (
@@ -222,20 +225,20 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
 
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <StatusDot status={deal.status} />
-        <StatusBadge status={deal.status} />
-        <PrizeBadge type={deal.prizeType} />
-        <TypeBadge type={deal.type} />
+        <StatusBadge status={deal.status} lang={lang} />
+        <PrizeBadge type={deal.prizeType} lang={lang} />
+        <TypeBadge type={deal.type} lang={lang} />
       </div>
 
       <h3 className="text-gray-800 font-bold text-base leading-snug mb-3">{deal.title}</h3>
 
       <div className="grid grid-cols-2 gap-1.5 mb-2.5">
         {[
-          { label: "Entrada",       value: `R$${deal.valuePerPerson}/pessoa` },
-          { label: "Pot total",     value: deal.pot > 0 ? `R$${deal.pot.toLocaleString("pt-BR")}` : "—", green: true },
-          { label: "Participantes", value: `${deal.participants} players` },
+          { label: t("create_entry_fee", lang),       value: `R$${deal.valuePerPerson}/${lang === "pt" ? "pessoa" : "person"}` },
+          { label: t("dash_total_pot", lang),     value: deal.pot > 0 ? `R$${deal.pot.toLocaleString(lang === "pt" ? "pt-BR" : "en-US")}` : "—", green: true },
+          { label: lang === "pt" ? "Participantes" : "Participants", value: `${deal.participants} players` },
           {
-            label: deal.status === "pendente" ? "Inicia em" : deal.status === "ativo" ? "Tempo restante" : "Duração",
+            label: deal.status === "pendente" ? (lang === "pt" ? "Inicia em" : "Starts in") : deal.status === "ativo" ? (lang === "pt" ? "Tempo restante" : "Time left") : (lang === "pt" ? "Duração" : "Duration"),
             value: deal.status === "pendente" ? `${deal.daysToStart ?? 0}d` : deal.status === "ativo" ? `${daysLeft}d` : `${deal.daysTotal}d`,
           },
         ].map((tile) => (
@@ -255,7 +258,7 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
 
       {deal.verifications.length > 0 && (
         <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-          <span style={{ fontSize: 10, color: "#9CA3AF" }}>Verificado via</span>
+          <span style={{ fontSize: 10, color: "#9CA3AF" }}>{lang === "pt" ? "Verificado via" : "Verified via"}</span>
           {deal.verifications.map((v) => <VerifBadge key={v} type={v} />)}
         </div>
       )}
@@ -267,12 +270,12 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
               style={{ width: `${deal.progress * 100}%`, background: "linear-gradient(90deg,#16A34A,#22C55E)" }} />
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-[10px] text-gray-400">{deal.daysGone}/{deal.daysTotal} dias</span>
+            <span className="text-[10px] text-gray-400">{deal.daysGone}/{deal.daysTotal} {lang === "pt" ? "dias" : "days"}</span>
             {deal.myRank != null && (
               <div className="flex items-center gap-1">
                 {isWinning && <Trophy className="w-3 h-3 text-yellow-500" />}
                 <span className={`text-[10px] font-bold ${isWinning ? "text-green-600" : "text-gray-400"}`}>
-                  {deal.myRank}º{isWinning ? ` · R$${deal.potentialWin?.toLocaleString("pt-BR")}` : " lugar"}
+                  {deal.myRank}º{isWinning ? ` · R$${deal.potentialWin?.toLocaleString(lang === "pt" ? "pt-BR" : "en-US")}` : (lang === "pt" ? " lugar" : " place")}
                 </span>
               </div>
             )}
@@ -293,27 +296,27 @@ function DealCard({ deal, onClick }: { deal: Deal; onClick: () => void }) {
                 style={{ color: countdown?.urgency === "critical" ? "#DC2626" : "#D97706" }}
               >
                 {countdown
-                  ? `Inicia em ${countdown.label}`
-                  : (deal.daysToStart === 0 ? "Inicia hoje" : `Inicia em ${deal.daysToStart}d`)}
+                  ? `${lang === "pt" ? "Inicia em" : "Starts in"} ${countdown.label}`
+                  : (deal.daysToStart === 0 ? (lang === "pt" ? "Inicia hoje" : "Starts today") : `${lang === "pt" ? "Inicia em" : "Starts in"} ${deal.daysToStart}d`)}
               </span>
             </div>
             {!deal.isParticipating && (
               <span className="text-[11px] font-bold px-2.5 py-1 rounded-full text-white"
                 style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}>
-                Entrar →
+                {t("action_join", lang)} →
               </span>
             )}
           </div>
           <p className="text-[9px] font-medium" style={{ color: "#9CA3AF" }}>
-            ⏰ 00h · Horário de Brasília (GMT-3)
+            ⏰ 00h · {lang === "pt" ? "Horário de Brasília (GMT-3)" : "Brasília Time (GMT-3)"}
           </p>
         </div>
       )}
 
       {deal.status === "finalizado" && (
         <div className="flex items-center gap-1.5 mt-2">
-          <span className="text-[11px] text-gray-500">Deal encerrado · {deal.daysTotal}d</span>
-          {deal.myRank === 1 && <span className="text-[11px] font-bold text-amber-600">🏆 Vencedor</span>}
+          <span className="text-[11px] text-gray-500">{lang === "pt" ? "Deal encerrado" : "Deal closed"} · {deal.daysTotal}d</span>
+          {deal.myRank === 1 && <span className="text-[11px] font-bold text-amber-600">🏆 {lang === "pt" ? "Vencedor" : "Winner"}</span>}
         </div>
       )}
     </button>
@@ -326,8 +329,11 @@ const FEATURED_DEALS = [
   {
     id: "strava-week",
     badge: "Oficial True Deal",
+    badgeEn: "Official True Deal",
     title: "Strava Week",
-    subtitle: "5 km/day · Verificado via Strava",
+    titleEn: "Strava Week",
+    desc: "5 km/dia · Verificado via Strava",
+    descEn: "5 km/day · Verified via Strava",
     pot: "R$ 5.000",
     entry: "R$ 50",
     players: 98,
@@ -340,8 +346,11 @@ const FEATURED_DEALS = [
   {
     id: "academia",
     badge: "Oficial True Deal",
+    badgeEn: "Official True Deal",
     title: "Academia 30 Dias",
-    subtitle: "Check-in diário · Verificado via Wellhub",
+    titleEn: "30-Day Gym",
+    desc: "Check-in diário · Verificado via Wellhub",
+    descEn: "Daily check-in · Verified via Wellhub",
     pot: "R$ 1.200",
     entry: "R$ 25",
     players: 48,
@@ -355,6 +364,7 @@ const FEATURED_DEALS = [
 
 function HeroBanner({ onJoin }: { onJoin: () => void }) {
   const [current, setCurrent] = useState(0)
+  const { language } = useLanguageStore()
   const deal = FEATURED_DEALS[current]
 
   return (
@@ -373,8 +383,12 @@ function HeroBanner({ onJoin }: { onJoin: () => void }) {
 
         <div className="flex items-start justify-between mb-2">
           <div>
-            <h2 className="text-white text-2xl font-black leading-tight">{deal.title}</h2>
-            <p className="text-white/70 text-xs mt-0.5">{deal.subtitle}</p>
+            <p className="text-white font-bold text-lg leading-tight mb-2">
+              {language === "pt" ? deal.title : deal.titleEn}
+            </p>
+            <p className="text-white/80 text-xs line-clamp-2">
+              {language === "pt" ? deal.desc : deal.descEn}
+            </p>
           </div>
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
             style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(10px)", border: "1px solid rgba(255,255,255,0.3)" }}>
@@ -388,10 +402,10 @@ function HeroBanner({ onJoin }: { onJoin: () => void }) {
 
         <div className="flex items-center gap-4 mb-4">
           {[
-            { label: "Pot total", value: deal.pot },
-            { label: "Entrada",   value: deal.entry },
-            { label: "Players",   value: String(deal.players) },
-            { label: "Restam",    value: `${deal.daysLeft}d` },
+            { label: t("dash_total_pot", lang), value: deal.pot },
+            { label: t("create_entry_fee", lang),   value: deal.entry },
+            { label: lang === "pt" ? "Players" : "Players",   value: String(deal.players) },
+            { label: lang === "pt" ? "Restam" : "Left",    value: `${deal.daysLeft}d` },
           ].map((s) => (
             <div key={s.label}>
               <p className="text-white/60 text-[10px]">{s.label}</p>
@@ -405,7 +419,7 @@ function HeroBanner({ onJoin }: { onJoin: () => void }) {
           className="w-full py-3 rounded-2xl font-bold text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
           style={{ background: "rgba(255,255,255,0.95)", color: deal.accent, boxShadow: "0 4px 16px rgba(0,0,0,0.2)" }}
         >
-          Participar →
+          {t("action_join", lang)} →
         </button>
       </div>
 
@@ -440,9 +454,16 @@ function HeroBanner({ onJoin }: { onJoin: () => void }) {
 // ── Notification Popover ──────────────────────────────────────────────────────
 
 function NotificationPopover({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+  const { language } = useLanguageStore()
   if (!isOpen) return null
   const notifications = [
-    { id: 1, icon: "🎉", title: "Bem-vindo ao True Deal!", message: "Crie ou entre em um deal para começar",  time: "agora" },
+    { 
+      id: 1, 
+      icon: "🎉", 
+      title: language === "pt" ? "Bem-vindo ao True Deal!" : "Welcome to True Deal!", 
+      message: language === "pt" ? "Crie ou entre em um deal para começar" : "Create or join a deal to get started",  
+      time: language === "pt" ? "agora" : "now" 
+    },
   ]
   return (
     <div className="fixed inset-0 z-30" onClick={onClose}>
@@ -450,7 +471,7 @@ function NotificationPopover({ isOpen, onClose }: { isOpen: boolean; onClose: ()
         style={{ background: "rgba(255,255,255,0.9)", backdropFilter: "blur(40px)", border: "1px solid rgba(255,255,255,0.6)" }}
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-bold text-gray-800">Notificações</h2>
+          <h2 className="font-bold text-gray-800">{language === "pt" ? "Notificações" : "Notifications"}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg">×</button>
         </div>
         <div className="space-y-2">
@@ -476,13 +497,11 @@ function ProfilePopover({
   isOpen, onClose, profile, userId,
 }: { isOpen: boolean; onClose: () => void; profile: Profile | null; userId: string | null }) {
   const router = useRouter()
-  const [language, setLanguage] = useState<"pt-br" | "en">("pt-br")
+  const { language, setLanguage } = useLanguageStore()
   const [darkMode, setDarkMode]  = useState(false)
   const [copied,   setCopied]    = useState(false)
 
   useEffect(() => {
-    const savedLang = localStorage.getItem("td-language") as "pt-br" | "en" | null
-    if (savedLang) setLanguage(savedLang)
     const savedDark = localStorage.getItem("td-dark-mode") === "true"
     setDarkMode(savedDark)
   }, [])
@@ -495,9 +514,7 @@ function ProfilePopover({
   }
 
   function toggleLanguage() {
-    const next: "pt-br" | "en" = language === "pt-br" ? "en" : "pt-br"
-    setLanguage(next)
-    localStorage.setItem("td-language", next)
+    setLanguage(language === "pt" ? "en" : "pt")
   }
 
   function handleCopyReferral() {
@@ -518,7 +535,7 @@ function ProfilePopover({
 
   if (!isOpen) return null
 
-  const displayName = profile?.display_name ?? "Usuário"
+  const displayName = profile?.display_name ?? (language === "pt" ? "Usuário" : "User")
   const initials    = displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2) || "?"
   const username    = profile?.username ? `@${profile.username}` : ""
   const shakes      = profile?.tdp_points ?? 0
@@ -569,7 +586,7 @@ function ProfilePopover({
               style={{ background: "rgba(22,163,74,0.1)" }}>
               <User className="w-4 h-4 text-[#16A34A]" />
             </div>
-            <span className="flex-1 text-sm font-semibold text-gray-800 text-left">Perfil</span>
+            <span className="flex-1 text-sm font-semibold text-gray-800 text-left">{t("nav_profile", language)}</span>
           </button>
 
           {/* Invite & Earn */}
@@ -585,10 +602,10 @@ function ProfilePopover({
               <span className="text-base">🎁</span>
             </div>
             <div className="flex-1 text-left">
-              <p className="text-sm font-semibold text-gray-800">Invite &amp; Earn Shakes</p>
+              <p className="text-sm font-semibold text-gray-800">{language === "pt" ? "Convide e ganhe Shakes" : "Invite & Earn Shakes"}</p>
               {copied
-                ? <p className="text-[10px] text-[#16A34A] font-bold">Link copiado! ✓</p>
-                : <p className="text-[10px] text-gray-400">Compartilhe seu link de referral</p>
+                ? <p className="text-[10px] text-[#16A34A] font-bold">{language === "pt" ? "Link copiado! ✓" : "Link copied! ✓"}</p>
+                : <p className="text-[10px] text-gray-400">{language === "pt" ? "Compartilhe seu link de referral" : "Share your referral link"}</p>
               }
             </div>
           </button>
@@ -607,17 +624,17 @@ function ProfilePopover({
               style={{ background: "rgba(59,130,246,0.1)" }}>
               <Globe className="w-4 h-4 text-blue-500" />
             </div>
-            <span className="flex-1 text-sm font-semibold text-gray-800 text-left">Idioma</span>
+            <span className="flex-1 text-sm font-semibold text-gray-800 text-left">{language === "pt" ? "Idioma" : "Language"}</span>
             <div className="flex items-center rounded-lg overflow-hidden flex-shrink-0"
               style={{ background: "rgba(0,0,0,0.06)" }}>
-              {(["pt-br", "en"] as const).map((lang) => (
+              {(["pt", "en"] as const).map((lang) => (
                 <span key={lang}
                   className="text-[11px] font-bold px-2 py-1 transition-all"
                   style={{
                     background: language === lang ? "#16A34A" : "transparent",
                     color:      language === lang ? "white"   : "#9CA3AF",
                   }}>
-                  {lang === "pt-br" ? "PT" : "EN"}
+                  {lang === "pt" ? "PT" : "EN"}
                 </span>
               ))}
             </div>
@@ -657,7 +674,7 @@ function ProfilePopover({
             onMouseEnter={e => (e.currentTarget.style.background = "rgba(239,68,68,0.06)")}
             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
           >
-            Sair
+            {t("nav_logout", language)}
           </button>
         </div>
       </div>
@@ -668,27 +685,27 @@ function ProfilePopover({
 // ── Nav ───────────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS = [
-  { icon: Home,    label: "Home",    href: "/" },
-  { icon: Compass, label: "Explorar", href: "/explore" },
-  { icon: Wallet,  label: "Wallet",   href: "/wallet" },
-  { icon: User,    label: "Perfil",   href: "/profile" },
+  { icon: Home,    label: "nav_home",    href: "/" },
+  { icon: Compass, label: "nav_explore", href: "/explore" },
+  { icon: Wallet,  label: "nav_wallet",   href: "/wallet" },
+  { icon: User,    label: "nav_profile",   href: "/profile" },
 ]
 
 const MAIN_TABS = [
-  { key: "todos" as const, label: "Todos os Deals", color: "#16A34A", tint: "rgba(22,163,74,0.06)"  },
-  { key: "meus"  as const, label: "Meus Deals",     color: "#3B82F6", tint: "rgba(59,130,246,0.06)" },
+  { key: "todos" as const, label: "dash_all_deals", color: "#16A34A", tint: "rgba(22,163,74,0.06)"  },
+  { key: "meus"  as const, label: "dash_my_deals",     color: "#3B82F6", tint: "rgba(59,130,246,0.06)" },
 ]
 
 const STATUS_FILTERS: { key: DealStatusUI; label: string; color: string }[] = [
-  { key: "pendente",   label: "Em preparação", color: "#D97706" },
-  { key: "ativo",      label: "Deal ativo",     color: "#16A34A" },
-  { key: "finalizado", label: "Encerrado",      color: "#6B7280" },
+  { key: "pendente",   label: "status_preparing", color: "#D97706" },
+  { key: "ativo",      label: "status_active",     color: "#16A34A" },
+  { key: "finalizado", label: "status_closed",      color: "#6B7280" },
 ]
 
 const TYPE_FILTERS: { key: DealTypeUI; label: string }[] = [
   { key: "oficial", label: "Oficial" },
-  { key: "privado", label: "Privado" },
-  { key: "público", label: "Público" },
+  { key: "privado", label: "priv_private" },
+  { key: "público", label: "priv_public" },
 ]
 
 // ── Home Client ───────────────────────────────────────────────────────────────
@@ -701,6 +718,7 @@ interface HomeClientProps {
 
 export default function HomeClient({ initialDeals, profile, userId }: HomeClientProps) {
   const router = useRouter()
+  const { language } = useLanguageStore()
 
   const deals: Deal[] = initialDeals.map((d) => toDealUI(d, userId))
 
@@ -709,7 +727,7 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
   const [activeStatus, setActiveStatus]     = useState<DealStatusUI | null>(null)
   const [searchQuery, setSearchQuery]       = useState("")
   const [showSearch, setShowSearch]         = useState(false)
-  const [activeNav, setActiveNav]           = useState("Home")
+  const [activeNav, setActiveNav]           = useState(t("nav_home", language))
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfile, setShowProfile]            = useState(false)
 
@@ -758,7 +776,7 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">True Deal</h1>
-            <p className="text-gray-500 text-sm">Olá, {firstName} 👋</p>
+            <p className="text-gray-500 text-sm">{t("dash_welcome", language)} {firstName} 👋</p>
           </div>
           <div className="flex items-center gap-3">
             <button onClick={() => setShowNotifications(!showNotifications)}
@@ -796,7 +814,7 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
                   color: isActive ? "white" : "#6B7280",
                   boxShadow: isActive ? `0 4px 14px ${tab.color}44` : "none",
                 }}>
-                {tab.label}
+                {t(tab.label as any, language)}
               </button>
             )
           })}
@@ -832,7 +850,7 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
                     border: isActive ? "1.5px solid rgba(22,163,74,0.4)" : "1px solid rgba(255,255,255,0.6)",
                     color: isActive ? "#16A34A" : "#6B7280",
                   }}>
-                  {tf.label}
+                  {t(tf.label as any, language)}
                   {cnt > 0 && (
                     <span className="text-[9px] font-bold px-1 py-0.5 rounded-full"
                       style={{ background: isActive ? "rgba(22,163,74,0.2)" : "rgba(0,0,0,0.07)" }}>
@@ -858,7 +876,7 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
                     border: isActive ? `1.5px solid ${sf.color}55` : "1px solid rgba(255,255,255,0.6)",
                     color: isActive ? sf.color : "#6B7280",
                   }}>
-                  {sf.label}
+                  {t(sf.label as any, language)}
                   {cnt > 0 && (
                     <span className="text-[9px] font-bold px-1 py-0.5 rounded-full"
                       style={{ background: isActive ? `${sf.color}25` : "rgba(0,0,0,0.07)", color: isActive ? sf.color : "#6B7280" }}>
@@ -877,7 +895,7 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar deal pelo nome..."
+                placeholder={t("dash_search_placeholder", language)}
                 autoFocus
                 className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm outline-none text-gray-800 placeholder-gray-400"
                 style={{
@@ -897,13 +915,13 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
               <div className="text-5xl mb-3">🏆</div>
               <p className="text-gray-600 font-semibold">
                 {viewingMyDeals && deals.filter((d) => d.isParticipating).length === 0
-                  ? "Você ainda não entrou em nenhum deal"
-                  : "Nenhum deal encontrado"}
+                  ? (language === "pt" ? "Você ainda não entrou em nenhum deal" : "You haven't joined any deals yet")
+                  : t("dash_no_deals", language)}
               </p>
               <p className="text-gray-400 text-sm mt-1">
                 {viewingMyDeals && deals.filter((d) => d.isParticipating).length === 0
-                  ? "Crie um deal ou entre em um existente"
-                  : searchQuery ? `Sem resultados para "${searchQuery}"` : "Crie um novo ou explore os públicos"}
+                  ? (language === "pt" ? "Crie um deal ou entre em um existente" : "Create a deal or join an existing one")
+                  : searchQuery ? `${language === "pt" ? "Sem resultados para" : "No results for"} "${searchQuery}"` : (language === "pt" ? "Crie um novo ou explore os públicos" : "Create a new one or explore public ones")}
               </p>
               {viewingMyDeals && deals.filter((d) => d.isParticipating).length === 0 && (
                 <button
@@ -911,32 +929,32 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
                   className="mt-4 px-6 py-2.5 rounded-full text-sm font-semibold text-white"
                   style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}
                 >
-                  Criar meu primeiro Deal
+                  {t("dash_create_first", language)}
                 </button>
               )}
             </div>
           ) : (
             <div className="space-y-3 pb-4">
               {filteredDeals.map((deal) => (
-                <DealCard key={deal.id} deal={deal} onClick={() => router.push(`/deal/${deal.id}`)} />
+                <DealCard key={deal.id} deal={deal} onClick={() => router.push(`/deal/${deal.id}`)} lang={language} />
               ))}
 
               {viewingMyDeals && myActiveDeals.length > 0 && (
                 <div className="mt-1 p-4 rounded-2xl"
                   style={{ background: "rgba(59,130,246,0.07)", backdropFilter: "blur(20px)", border: "1.5px solid rgba(59,130,246,0.18)" }}>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Resumo financeiro</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">{t("dash_financial_summary", language)}</p>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <p className="text-[10px] text-gray-500 mb-0.5">Total em jogo</p>
-                      <p className="text-xl font-bold text-gray-800">R${footerAtStake.toLocaleString("pt-BR")}</p>
-                      <p className="text-[10px] text-gray-400">{myActiveDeals.length} deal(s) ativo(s)</p>
+                      <p className="text-[10px] text-gray-500 mb-0.5">{t("dash_total_at_stake", language)}</p>
+                      <p className="text-xl font-bold text-gray-800">R${footerAtStake.toLocaleString(language === "pt" ? "pt-BR" : "en-US")}</p>
+                      <p className="text-[10px] text-gray-400">{myActiveDeals.length} deal(s) {t("status_active", language).toLowerCase()}</p>
                     </div>
                     <div>
-                      <p className="text-[10px] text-gray-500 mb-0.5">Potencial de ganho</p>
+                      <p className="text-[10px] text-gray-500 mb-0.5">{t("dash_potential_win", language)}</p>
                       <p className="text-xl font-bold" style={{ color: footerPotential > 0 ? "#3DBF6A" : "#9CA3AF" }}>
-                        R${footerPotential.toLocaleString("pt-BR")}
+                        R${footerPotential.toLocaleString(language === "pt" ? "pt-BR" : "en-US")}
                       </p>
-                      <p className="text-[10px] text-gray-400">na posição atual</p>
+                      <p className="text-[10px] text-gray-400">{t("dash_in_current_pos", language)}</p>
                     </div>
                   </div>
                 </div>
@@ -954,7 +972,7 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
           boxShadow: "0 8px 32px rgba(22,163,74,0.45), 0 16px 48px rgba(22,163,74,0.2)",
         }}>
         <Plus className="w-5 h-5 text-white" />
-        <span className="text-white font-semibold">Novo Deal</span>
+        <span className="text-white font-semibold">{t("dash_new_deal", language)}</span>
       </button>
 
       {/* Bottom Nav */}
@@ -973,7 +991,7 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
                   <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500"}`} />
                 </div>
                 <span className={`text-xs font-medium ${isActive ? "text-[#16A34A]" : "text-gray-500"}`}>
-                  {item.label}
+                  {t(item.label as any, language)}
                 </span>
               </button>
             )

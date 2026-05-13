@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { GlassCard } from "@/components/td-ui"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
+import { useLanguageStore, t } from "@/lib/i18n"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -128,7 +129,7 @@ function buildPotentialWin(distribution: Distribution, netPot: number, myRank: n
   return undefined
 }
 
-function mapDeal(d: DealWithParticipants, userId: string | null): DealView {
+function mapDeal(d: DealWithParticipants, userId: string | null, lang: "pt" | "en"): DealView {
   const now       = new Date()
   const startDate = new Date(d.start_date)
   const endDate   = new Date(d.end_date)
@@ -176,15 +177,16 @@ function mapDeal(d: DealWithParticipants, userId: string | null): DealView {
   const prizeSlices   = buildPrizeSlices(d.distribution, d.net_pot)
   const potentialWin  = myRank != null ? buildPotentialWin(d.distribution, d.net_pot, myRank) : undefined
 
-  const startDateStr  = format(startDate, "dd MMM yyyy", { locale: ptBR })
-  const endDateStr    = format(endDate,   "dd MMM yyyy", { locale: ptBR })
-  const todayStr      = format(now,       "dd MMM yyyy", { locale: ptBR })
+  const locale = lang === "pt" ? ptBR : undefined
+  const startDateStr  = format(startDate, "dd MMM yyyy", { locale })
+  const endDateStr    = format(endDate,   "dd MMM yyyy", { locale })
+  const todayStr      = format(now,       "dd MMM yyyy", { locale })
 
   const timeline: TimelineEvent[] = [
-    { date: startDateStr, label: "Início do deal", done: status !== "pendente" },
-    { date: todayStr,     label: "Hoje",            done: true, current: status === "ativo" },
-    { date: endDateStr,   label: "Fim do deal",     done: status === "finalizado" },
-    ...(status === "finalizado" ? [{ date: endDateStr, label: "Resultado final", done: true }] : []),
+    { date: startDateStr, label: lang === "pt" ? "Início do deal" : "Deal start", done: status !== "pendente" },
+    { date: todayStr,     label: lang === "pt" ? "Hoje" : "Today",            done: true, current: status === "ativo" },
+    { date: endDateStr,   label: lang === "pt" ? "Fim do deal" : "Deal end",     done: status === "finalizado" },
+    ...(status === "finalizado" ? [{ date: endDateStr, label: lang === "pt" ? "Resultado final" : "Final result", done: true }] : []),
   ]
 
   const borderMap: Record<DealStatus, string> = { ativo: "#16A34A", pendente: "#D97706", finalizado: "#9CA3AF" }
@@ -192,7 +194,9 @@ function mapDeal(d: DealWithParticipants, userId: string | null): DealView {
   return {
     id:             d.id,
     title:          d.title,
-    subtitle:       `${d.participant_count} participante${d.participant_count !== 1 ? "s" : ""}`,
+    subtitle:       lang === "pt" 
+      ? `${d.participant_count} participante${d.participant_count !== 1 ? "s" : ""}`
+      : `${d.participant_count} participant${d.participant_count !== 1 ? "s" : ""}`,
     status,
     prizeType,
     verifications,
@@ -236,10 +240,11 @@ function VerifChip({ type }: { type: VerifType }) {
 }
 
 function StatusPill({ status }: { status: DealStatus }) {
+  const { language } = useLanguageStore()
   const map = {
-    ativo:      { bg: "rgba(22,163,74,0.15)",   color: "#16A34A", label: "Em Jogo"   },
-    pendente:   { bg: "rgba(245,158,11,0.15)",  color: "#D97706", label: "Formação"  },
-    finalizado: { bg: "rgba(156,163,175,0.15)", color: "#6B7280", label: "Encerrado" },
+    ativo:      { bg: "rgba(22,163,74,0.15)",   color: "#16A34A", label: language === "pt" ? "Em Jogo" : "Live"      },
+    pendente:   { bg: "rgba(245,158,11,0.15)",  color: "#D97706", label: language === "pt" ? "Formação" : "Formation" },
+    finalizado: { bg: "rgba(156,163,175,0.15)", color: "#6B7280", label: language === "pt" ? "Encerrado" : "Ended"     },
   }
   const m = map[status]
   return (
@@ -256,60 +261,62 @@ const CHANNEL_LABELS: Record<string, string> = {
   discord: "Discord", youtube: "YouTube", strava: "Strava", wellhub: "Wellhub", totalpass: "TotalPass",
 }
 
-const RULE_LABELS: Record<string, string> = {
-  post: "Post publicado", comment_received: "Comentário recebido",
-  repost_received: "Repost recebido", follower_gained: "Seguidor recebido",
-  impressions: "Impressões", km_run: "Kms percorridos", pace: "Pace médio",
-  workout_hours: "Horas de treino", checkin: "Check-ins", different_venues: "Diferentes ambientes",
-}
+const getRuleLabels = (lang: "pt" | "en"): Record<string, string> => ({
+  post: lang === "pt" ? "Post publicado" : "Published post",
+  comment_received: lang === "pt" ? "Comentário recebido" : "Comment received",
+  repost_received: lang === "pt" ? "Repost recebido" : "Repost received",
+  follower_gained: lang === "pt" ? "Seguidor recebido" : "Follower gained",
+  impressions: lang === "pt" ? "Impressões" : "Impressions",
+  km_run: lang === "pt" ? "Kms percorridos" : "Kms run",
+  pace: lang === "pt" ? "Pace médio" : "Average pace",
+  workout_hours: lang === "pt" ? "Horas de treino" : "Workout hours",
+  checkin: lang === "pt" ? "Check-ins" : "Check-ins",
+  different_venues: lang === "pt" ? "Diferentes ambientes" : "Different venues",
+})
 
-const DIST_META: Record<string, { label: string; icon: string; desc: string }> = {
-  winner:       { label: "1º Lugar",      icon: "👑", desc: "Winner takes all" },
-  top3:         { label: "Ranking",        icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% do pote" },
-  proportional: { label: "Proporcional",   icon: "🤝", desc: "Pote final dividido entre todos que cumprirem o acordo." },
-}
+const getDistMeta = (lang: "pt" | "en"): Record<string, { label: string; icon: string; desc: string }> => ({
+  winner:       { label: lang === "pt" ? "1º Lugar" : "1st Place",      icon: "👑", desc: lang === "pt" ? "Vencedor leva tudo" : "Winner takes all" },
+  top3:         { label: lang === "pt" ? "Ranking" : "Ranking",        icon: "🏅", desc: lang === "pt" ? "1º 60% · 2º 30% · 3º 10% do pote" : "1st 60% · 2nd 30% · 3rd 10% of pot" },
+  proportional: { label: lang === "pt" ? "Proporcional" : "Proportional",   icon: "🤝", desc: lang === "pt" ? "Pote final dividido entre todos que cumprirem o acordo." : "Final pot split between everyone who meets the agreement." },
+})
 
-const VERIFICATION_SUBRULES: Record<string, { title: string; items: string[]; hint?: string }> = {
-  post:             { title: "Sub-regras — Post publicado", items: ["Conta pública no X", "Mais de 100 caracteres por post", "Conteúdo único — sem repetições dentro do período"] },
-  comment_received: { title: "Sub-regras — Comentário recebido", items: ["Ganho líquido de comentários por janela de frequência"] },
-  repost_received:  { title: "Sub-regras — Repost recebido", items: ["Ganho líquido de reposts por janela de frequência"] },
-  follower_gained:  { title: "Sub-regras — Seguidor recebido", items: ["Novos seguidores líquidos por janela de frequência"] },
-  impressions:      { title: "Sub-regras — Impressões", items: ["Total de impressões nos posts da janela de frequência"] },
-  km_run:           { title: "Sub-regras — Kms percorridos", items: ["Apenas atividades do tipo Corrida (Run)", "Soma dos KMs registrados na janela de frequência"] },
-  pace:             { title: "Pace médio — como é avaliado", items: ["Pace médio das corridas ≤ valor configurado pelo criador", "Medido em min/km · quanto menor, mais rápido", "Exemplo: pace 5 = 5 min 0 seg por km"], hint: "⏱ Pace mais baixo = você correu mais rápido" },
-  workout_hours:    { title: "Sub-regras — Horas de treino", items: ["Soma das horas de todas as atividades registradas na janela"] },
-  checkin:          { title: "Sub-regras — Check-ins", items: ["Número de check-ins em academias ou locais parceiros por janela"] },
-  different_venues: { title: "Sub-regras — Diferentes ambientes", items: ["Número de locais distintos visitados por janela"] },
-}
+const getVerificationSubrules = (lang: "pt" | "en"): Record<string, { title: string; items: string[]; hint?: string }> => ({
+  post:             { title: lang === "pt" ? "Sub-regras — Post publicado" : "Sub-rules — Published post", items: lang === "pt" ? ["Conta pública no X", "Mais de 100 caracteres por post", "Conteúdo único — sem repetições dentro do período"] : ["Public X account", "More than 100 characters per post", "Unique content — no repetitions within the period"] },
+  km_run:           { title: lang === "pt" ? "Sub-regras — Kms percorridos" : "Sub-rules — Kms run", items: lang === "pt" ? ["Apenas atividades do tipo Corrida (Run)", "Soma dos KMs registrados na janela de frequência"] : ["Only Run type activities", "Sum of KMs registered in the frequency window"] },
+  pace:             { title: lang === "pt" ? "Pace médio — como é avaliado" : "Average pace — how it is evaluated", items: lang === "pt" ? ["Pace médio das corridas ≤ valor configurado pelo criador", "Medido em min/km · quanto menor, mais rápido", "Exemplo: pace 5 = 5 min 0 seg por km"] : ["Average run pace ≤ value set by creator", "Measured in min/km · lower is faster", "Example: pace 5 = 5 min 0 sec per km"], hint: lang === "pt" ? "⏱ Pace mais baixo = você correu mais rápido" : "⏱ Lower pace = you ran faster" },
+})
+
 
 function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithParticipants }) {
+  const { language } = useLanguageStore()
   const diffDays   = deal.daysTotal
   const feeRate    = dealData.fee_pct ?? 3
-  const distMeta   = DIST_META[dealData.distribution] ?? DIST_META.winner
+  const distMeta   = getDistMeta(language)[dealData.distribution] ?? getDistMeta(language).winner
   const channelNames = (dealData.verification_channels ?? [])
     .map(c => CHANNEL_LABELS[c] ?? c).join(" + ")
-  const ruleLabel  = RULE_LABELS[dealData.verification_type] ?? dealData.verification_type
+  const ruleLabel  = getRuleLabels(language)[dealData.verification_type] ?? dealData.verification_type
+  const subrules   = getVerificationSubrules(language)[dealData.verification_type]
 
   const confirmRows = [
     {
       icon: "🛡️", iconBg: "rgba(22,163,74,0.1)",
-      key: "Regra",
+      key: language === "pt" ? "Regra" : "Rule",
       val: channelNames && ruleLabel ? `${channelNames} · ${ruleLabel}` : ruleLabel || "—",
     },
     {
       icon: "📅", iconBg: "rgba(239,68,68,0.08)",
-      key: "Período",
-      val: `${deal.startDate} → ${deal.endDate} (${diffDays}d)`,
+      key: language === "pt" ? "Período" : "Period",
+      val: `${deal.startDate} → ${deal.endDate} (${diffDays}${language === "pt" ? "d" : "d"})`,
     },
     {
       icon: "💰", iconBg: "rgba(22,163,74,0.1)",
-      key: "Financeiro",
-      val: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}/pessoa · ${distMeta.label}`,
+      key: language === "pt" ? "Financeiro" : "Financial",
+      val: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}/${language === "pt" ? "pessoa" : "person"} · ${distMeta.label}`,
     },
     {
       icon: "🔒", iconBg: "rgba(107,114,128,0.1)",
-      key: "Acesso",
-      val: dealData.type === "privado" ? "Privado" : "Público",
+      key: language === "pt" ? "Acesso" : "Access",
+      val: dealData.type === "privado" ? (language === "pt" ? "Privado" : "Private") : (language === "pt" ? "Público" : "Public"),
     },
   ]
 
@@ -338,10 +345,10 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
           </div>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: "Entrada",    value: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}` },
-              { label: "Pote atual", value: `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
-              { label: "Duração",    value: `${diffDays} dias` },
-              { label: "Premiação",  value: distMeta.label },
+              { label: language === "pt" ? "Entrada" : "Entry",    value: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}` },
+              { label: language === "pt" ? "Pote atual" : "Current pot", value: `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` },
+              { label: language === "pt" ? "Duração" : "Duration",    value: `${diffDays} ${language === "pt" ? "dias" : "days"}` },
+              { label: language === "pt" ? "Premiação" : "Prize",  value: distMeta.label },
             ].map(stat => (
               <div key={stat.label} className="p-2.5 rounded-xl"
                 style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
@@ -358,7 +365,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
         style={{ background: "rgba(255,255,255,0.48)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
         {[
           ...confirmRows,
-          { icon: distMeta.icon, iconBg: "rgba(168,85,247,0.1)", key: "Premiação", val: `${distMeta.label} · ${distMeta.desc}` },
+          { icon: distMeta.icon, iconBg: "rgba(168,85,247,0.1)", key: language === "pt" ? "Premiação" : "Prize", val: `${distMeta.label} · ${distMeta.desc}` },
         ].map((row, i, arr) => (
           <div key={row.key}
             className="flex items-center gap-3 px-3.5 py-2.5"
@@ -373,28 +380,28 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
       {deal.description && (
         <div className="mt-2 p-3.5 rounded-xl"
           style={{ background: "rgba(255,255,255,0.48)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Descrição</p>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{language === "pt" ? "Descrição" : "Description"}</p>
           <p className="text-sm text-gray-700 leading-relaxed">{deal.description}</p>
         </div>
       )}
 
-      {dealData.verification_type && VERIFICATION_SUBRULES[dealData.verification_type] && (
+      {subrules && (
         <div className="mt-2 p-3.5 rounded-xl"
           style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.15)" }}>
           <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wide mb-2">
-            {VERIFICATION_SUBRULES[dealData.verification_type].title}
+            {subrules.title}
           </p>
           <ul className="space-y-1.5">
-            {VERIFICATION_SUBRULES[dealData.verification_type].items.map((item, i) => (
+            {subrules.items.map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-[11px] text-gray-600">
                 <span className="text-blue-400 mt-0.5 flex-shrink-0">✓</span>
                 <span>{item}</span>
               </li>
             ))}
           </ul>
-          {VERIFICATION_SUBRULES[dealData.verification_type].hint && (
+          {subrules.hint && (
             <p className="text-[10px] text-amber-600 mt-2 font-semibold">
-              {VERIFICATION_SUBRULES[dealData.verification_type].hint}
+              {subrules.hint}
             </p>
           )}
         </div>
@@ -402,10 +409,11 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
 
       <div className="mt-2 p-3.5 rounded-xl"
         style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
-        <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-1">⚠️ Regra estrita</p>
-        <p className="text-[11px] text-red-800 leading-relaxed">
-          A meta deve ser cumprida em <strong>cada janela de frequência</strong> do período.
-          Uma janela perdida = <strong>eliminação permanente</strong>.
+        <p className="text-[10px] font-bold text-red-500 uppercase tracking-wide mb-1">⚠️ {language === "pt" ? "Regra estrita" : "Strict rule"}</p>
+        <p className="text-sm text-red-800 leading-relaxed">
+          {language === "pt" 
+            ? <>A meta deve ser cumprida em <strong>cada janela de frequência</strong> do período. Uma janela perdida = <strong>eliminação permanente</strong>.</>
+            : <>Goal must be met in <strong>each frequency window</strong> of the period. One missed window = <strong>permanent elimination</strong>.</>}
         </p>
       </div>
     </div>
@@ -437,7 +445,7 @@ function PlayerCard({
       >
         <div style={{ width: 24, textAlign: "center", flexShrink: 0 }}>
           <span style={{ fontWeight: 900, fontSize: 16, color: player.rank === 1 ? "#16A34A" : "#9CA3AF" }}>
-            #{player.rank}
+            {player.rank}{language === "pt" ? "º" : (player.rank === 1 ? "st" : player.rank === 2 ? "nd" : player.rank === 3 ? "rd" : "th")}
           </span>
         </div>
         <div style={{
@@ -460,7 +468,7 @@ function PlayerCard({
               <span style={{
                 fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 100,
                 background: "rgba(22,163,74,0.15)", color: "#16A34A",
-              }}>Você</span>
+              }}>{language === "pt" ? "Você" : "You"}</span>
             )}
           </div>
           <div style={{ fontSize: 11, color: "#9CA3AF" }}>
@@ -478,7 +486,7 @@ function PlayerCard({
               {player.currentValue.toLocaleString("pt-BR")}
             </div>
           ) : (
-            <div style={{ fontSize: 11, color: "#9CA3AF" }}>sem dados</div>
+            <div style={{ fontSize: 11, color: "#9CA3AF" }}>{language === "pt" ? "sem dados" : "no data"}</div>
           )}
         </div>
         {expanded
@@ -491,8 +499,8 @@ function PlayerCard({
           {player.hasData ? (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingTop: 10 }}>
               {[
-                { label: "Início", value: player.startValue.toLocaleString("pt-BR") },
-                { label: "Atual",  value: player.currentValue.toLocaleString("pt-BR") },
+                { label: language === "pt" ? "Início" : "Start", value: player.startValue.toLocaleString("pt-BR") },
+                { label: language === "pt" ? "Atual" : "Current",  value: player.currentValue.toLocaleString("pt-BR") },
               ].map(({ label, value }) => (
                 <div key={label} style={{
                   borderRadius: 10, padding: "8px 4px", textAlign: "center",
@@ -505,7 +513,7 @@ function PlayerCard({
             </div>
           ) : (
             <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", paddingTop: 10 }}>
-              Dados de tracking ainda não disponíveis
+              {language === "pt" ? "Dados de tracking ainda não disponíveis" : "Tracking data not yet available"}
             </p>
           )}
         </div>
@@ -526,7 +534,8 @@ export default function DealClient({
   userSocialConnections?: SocialConnection[]
 }) {
   const router  = useRouter()
-  const deal    = mapDeal(dealData, userId)
+  const { language } = useLanguageStore()
+  const deal    = mapDeal(dealData, userId, language)
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   const requiredChannel = deal.verificationChannels?.[0] ?? null
@@ -609,7 +618,7 @@ export default function DealClient({
           {deal.status === "ativo" && (
             <>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-white/70 text-xs">Progresso</span>
+                <span className="text-white/70 text-xs">{language === "pt" ? "Progresso" : "Progress"}</span>
                 <span className="text-white font-bold text-xs">{Math.round(deal.progress * 100)}%</span>
               </div>
               <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.2)" }}>
@@ -620,7 +629,7 @@ export default function DealClient({
           {deal.status === "pendente" && (
             <>
               <div className="flex justify-between items-center mb-1.5">
-                <span className="text-white/70 text-xs">Vagas preenchidas</span>
+                <span className="text-white/70 text-xs">{language === "pt" ? "Vagas preenchidas" : "Slots filled"}</span>
                 <span className="text-white font-bold text-xs">
                   {deal.participants}/{dealData.max_participants}
                 </span>
@@ -646,16 +655,16 @@ export default function DealClient({
                     <span className="text-blue-300 font-bold text-xs">{myInitials}</span>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-400">Minha posição</p>
+                    <p className="text-xs text-gray-400">{language === "pt" ? "Minha posição" : "My position"}</p>
                     <p className="text-gray-800 font-bold text-base">
-                      {deal.myRank}º lugar
-                      {isWinning && <span className="ml-2 text-[11px]" style={{ color: "#16A34A" }}>· Em zona de prêmio</span>}
+                      {deal.myRank}{language === "pt" ? "º" : (deal.myRank === 1 ? "st" : deal.myRank === 2 ? "nd" : deal.myRank === 3 ? "rd" : "th")} {language === "pt" ? "lugar" : "place"}
+                      {isWinning && <span className="ml-2 text-[11px]" style={{ color: "#16A34A" }}>· {language === "pt" ? "Em zona de prêmio" : "In prize zone"}</span>}
                     </p>
                   </div>
                 </div>
                 {deal.potentialWin != null && deal.potentialWin > 0 && (
                   <div className="text-right">
-                    <p className="text-[10px] text-gray-400">Ganho potencial</p>
+                    <p className="text-[10px] text-gray-400">{language === "pt" ? "Ganho potencial" : "Potential gain"}</p>
                     <p className="font-bold" style={{ color: "#16A34A" }}>R${deal.potentialWin.toLocaleString("pt-BR")}</p>
                   </div>
                 )}
@@ -668,17 +677,19 @@ export default function DealClient({
             <div className="rounded-xl p-4 mb-3"
               style={{ background: "rgba(254,243,199,0.9)", border: "1px solid rgba(245,158,11,0.3)" }}>
               <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-700 mb-2">
-                Atenção
+                {language === "pt" ? "Atenção" : "Attention"}
               </p>
               <p className="text-sm text-orange-900 leading-relaxed mb-3">
-                Você precisa vincular sua conta do canal de verificação utilizado no deal em questão ({requiredChannelLabel}) para participar.
+                {language === "pt" 
+                  ? `Você precisa vincular sua conta do canal de verificação utilizado no deal em questão (${requiredChannelLabel}) para participar.`
+                  : `You need to link your account for the verification channel used in this deal (${requiredChannelLabel}) to participate.`}
               </p>
               <a
                 href="/profile"
                 className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white"
                 style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}
               >
-                Ir para perfil
+                {language === "pt" ? "Ir para perfil" : "Go to profile"}
               </a>
             </div>
           )}
@@ -688,13 +699,13 @@ export default function DealClient({
           {/* Situação dos participantes */}
           <GlassCard style={{ padding: 16, marginTop: 12 }}>
             <p style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
-              Situação do desafio
+              {language === "pt" ? "Situação do desafio" : "Challenge status"}
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
               {[
-                { label: "Iniciaram",  value: totalCount,      color: "#374151", bg: "rgba(0,0,0,0.04)"         },
-                { label: "No jogo",    value: aliveCount,      color: "#16A34A", bg: "rgba(22,163,74,0.08)"     },
-                { label: "Eliminados", value: eliminatedCount, color: "#EF4444", bg: "rgba(239,68,68,0.08)"     },
+                { label: language === "pt" ? "Iniciaram" : "Started",  value: totalCount,      color: "#374151", bg: "rgba(0,0,0,0.04)"         },
+                { label: language === "pt" ? "No jogo" : "In game",    value: aliveCount,      color: "#16A34A", bg: "rgba(22,163,74,0.08)"     },
+                { label: language === "pt" ? "Eliminados" : "Out", value: eliminatedCount, color: "#EF4444", bg: "rgba(239,68,68,0.08)"     },
               ].map(({ label, value, color, bg }) => (
                 <div key={label} style={{
                   borderRadius: 12, padding: "10px 8px", textAlign: "center", background: bg,
@@ -723,11 +734,11 @@ export default function DealClient({
             {totalCount > 0 && (
               <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5 }}>
                 <span style={{ fontSize: 10, color: "#16A34A" }}>
-                  {Math.round((aliveCount / totalCount) * 100)}% ainda competindo
+                  {Math.round((aliveCount / totalCount) * 100)}% {language === "pt" ? "ainda competindo" : "still competing"}
                 </span>
                 {eliminatedCount > 0 && (
                   <span style={{ fontSize: 10, color: "#EF4444" }}>
-                    {Math.round((eliminatedCount / totalCount) * 100)}% eliminados
+                    {Math.round((eliminatedCount / totalCount) * 100)}% {language === "pt" ? "eliminados" : "eliminated"}
                   </span>
                 )}
               </div>
@@ -738,13 +749,13 @@ export default function DealClient({
           {deal.status !== "pendente" && (
             <GlassCard style={{ padding: 16, marginTop: 12 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
-                Pote atual por participante ativo
+                {language === "pt" ? "Pote atual por participante ativo" : "Current pot per active participant"}
               </p>
 
               {/* Breakdown */}
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 12, color: "#6B7280" }}>Entrada paga</span>
+                  <span style={{ fontSize: 12, color: "#6B7280" }}>{language === "pt" ? "Entrada paga" : "Entry paid"}</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
                     R${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
@@ -753,7 +764,7 @@ export default function DealClient({
                   <>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: 12, color: "#6B7280" }}>
-                        Pote dos eliminados ({eliminatedCount}× entrada)
+                        {language === "pt" ? `Pote dos eliminados (${eliminatedCount}× entrada)` : `Losers pool (${eliminatedCount}× entry)`}
                       </span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
                         R${loserPool.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -761,7 +772,7 @@ export default function DealClient({
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-                        Taxa da plataforma ({feePct}%)
+                        {language === "pt" ? `Taxa da plataforma (${feePct}%)` : `Platform fee (${feePct}%)`}
                       </span>
                       <span style={{ fontSize: 12, color: "#9CA3AF" }}>
                         −R${(loserPool * feePct / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -769,7 +780,7 @@ export default function DealClient({
                     </div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: 12, color: "#6B7280" }}>
-                        Distribuído entre {aliveCount} ativos
+                        {language === "pt" ? `Distribuído entre ${aliveCount} ativos` : `Distributed among ${aliveCount} active`}
                       </span>
                       <span style={{ fontSize: 12, fontWeight: 700, color: "#16A34A" }}>
                         +R${extraPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -779,7 +790,7 @@ export default function DealClient({
                   </>
                 )}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Total estimado por ativo</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{language === "pt" ? "Total estimado por ativo" : "Estimated total per active"}</span>
                   <span style={{ fontSize: 18, fontWeight: 900, color: "#16A34A" }}>
                     R${totalPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                   </span>
@@ -793,8 +804,9 @@ export default function DealClient({
                   background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)",
                 }}>
                   <p style={{ fontSize: 12, color: "#3B82F6", fontWeight: 600, lineHeight: 1.5 }}>
-                    🤝 Todos ainda no jogo! Ninguém foi eliminado — se isso se mantiver, cada participante recupera os{" "}
-                    <strong>R${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> integralmente.
+                    🤝 {language === "pt" 
+                      ? `Todos ainda no jogo! Ninguém foi eliminado — se isso se mantiver, cada participante recupera os R$${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} integralmente.`
+                      : `Everyone still in the game! No one has been eliminated — if this continues, each participant recovers their R$${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} in full.`}
                   </p>
                 </div>
               ) : isAlive ? (
@@ -804,9 +816,9 @@ export default function DealClient({
                   border: "1px solid rgba(22,163,74,0.25)",
                 }}>
                   <p style={{ fontSize: 12, color: "#16A34A", fontWeight: 700, lineHeight: 1.5 }}>
-                    ✅ Cumprir sua palavra está te fazendo ganhar{" "}
-                    <strong>R${extraPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong> a mais.{" "}
-                    Continue assim!
+                    ✅ {language === "pt"
+                      ? `Cumprir sua palavra está te fazendo ganhar R$${extraPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} a mais. Continue assim!`
+                      : `Keeping your word is earning you R$${extraPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} more. Keep it up!`}
                   </p>
                 </div>
               ) : (
@@ -815,7 +827,7 @@ export default function DealClient({
                   background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)",
                 }}>
                   <p style={{ fontSize: 12, color: "#EF4444", fontWeight: 600, lineHeight: 1.5 }}>
-                    ❌ Você foi eliminado deste deal. Acompanhe quem vai até o fim.
+                    ❌ {language === "pt" ? "Você foi eliminado deste deal. Acompanhe quem vai até o fim." : "You've been eliminated from this deal. Follow who goes until the end."}
                   </p>
                 </div>
               )}
@@ -825,12 +837,12 @@ export default function DealClient({
           {/* Live ranking */}
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, marginBottom: 4 }}>
             <BarChart2 size={15} color="#16A34A" />
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>Participantes</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{language === "pt" ? "Participantes" : "Participants"}</span>
             <div
               className="animate-pulse"
               style={{ width: 7, height: 7, borderRadius: "50%", background: "#16A34A", marginLeft: "auto" }}
             />
-            <span style={{ fontSize: 10, color: "#9CA3AF" }}>atualizado agora</span>
+            <span style={{ fontSize: 10, color: "#9CA3AF" }}>{language === "pt" ? "atualizado agora" : "updated now"}</span>
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>

@@ -8,16 +8,17 @@ import {
 } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
 import type { DealCategory, DealType } from "@/lib/supabase/types"
+import { useLanguageStore, t } from "@/lib/i18n"
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { id: "social",   label: "Social",   icon: "📣", available: true  },
-  { id: "fitness",  label: "Fitness",  icon: "🏃", available: true  },
-  { id: "gaming",   label: "Gaming",   icon: "🎮", available: false },
-  { id: "learning", label: "Learning", icon: "📚", available: false },
-  { id: "onchain",  label: "On-Chain", icon: "⛓", available: false },
-  { id: "free",     label: "Free",     icon: "✨", available: false },
+  { id: "social",   label: "cat_social",   icon: "📣", available: true  },
+  { id: "fitness",  label: "cat_fitness",  icon: "🏃", available: true  },
+  { id: "gaming",   label: "cat_gaming",   icon: "🎮", available: false },
+  { id: "learning", label: "cat_learning", icon: "📚", available: false },
+  { id: "onchain",  label: "cat_onchain",  icon: "⛓", available: false },
+  { id: "free",     label: "cat_free",     icon: "✨", available: false },
 ]
 
 const CHANNELS: Record<string, { id: string; label: string; available: boolean; color: string }[]> = {
@@ -41,52 +42,40 @@ const CHANNEL_ICONS: Record<string, string> = {
   discord: "D", youtube: "▶", strava: "S", wellhub: "W", totalpass: "T",
 }
 
-const RULES: Record<string, { id: string; label: string; icon: string }[]> = {
-  x: [
-    { id: "post",             label: "Post publicado",      icon: "📝" },
-    { id: "comment_received", label: "Comentário recebido", icon: "💬" },
-    { id: "repost_received",  label: "Repost recebido",     icon: "🔁" },
-    { id: "follower_gained",  label: "Seguidor recebido",   icon: "👥" },
-    { id: "impressions",      label: "Impressões",          icon: "👁️" },
+const RULES: Record<string, { id: string; label: string; desc: string; descEn: string; available: boolean }[]> = {
+  social_x: [
+    { id: "post", label: "Post diário", desc: "Postar qualquer conteúdo no X uma vez por dia", descEn: "Post any content on X once a day", available: true },
+    { id: "engagement", label: "Engagement", desc: "Atingir meta de curtidas/reposts", descEn: "Reach likes/reposts goal", available: false },
   ],
-  strava: [
-    { id: "km_run",        label: "Kms percorridos", icon: "🏃" },
-    { id: "pace",          label: "Pace médio",      icon: "⏱️" },
-    { id: "workout_hours", label: "Horas de treino", icon: "🕐" },
-    { id: "checkin",       label: "Check-ins",       icon: "✅" },
+  fitness_strava: [
+    { id: "dist", label: "Distância acumulada", desc: "Correr X km durante o período", descEn: "Run X km during the period", available: true },
+    { id: "activity", label: "Frequência", desc: "Registrar X activities na semana", descEn: "Register X activities per week", available: false },
   ],
-  wellhub: [
-    { id: "checkin",          label: "Check-ins",            icon: "✅" },
-    { id: "different_venues", label: "Diferentes ambientes", icon: "🏢" },
-    { id: "workout_hours",    label: "Horas de treino",      icon: "🕐" },
-  ],
-  totalpass: [
-    { id: "checkin",          label: "Check-ins",            icon: "✅" },
-    { id: "different_venues", label: "Diferentes ambientes", icon: "🏢" },
-    { id: "workout_hours",    label: "Horas de treino",      icon: "🕐" },
+  fitness_wellhub: [
+    { id: "checkin", label: "Check-in diário", desc: "Fazer check-in na academia via Wellhub", descEn: "Check-in at the gym via Wellhub", available: true },
   ],
 }
 
 const FREQUENCIES = [
-  { id: "daily",   label: "Dia"    },
-  { id: "weekly",  label: "Semana" },
-  { id: "monthly", label: "Mês"    },
-  { id: "yearly",  label: "Ano"    },
+  { id: "daily",   label: "Dia",    labelEn: "Day" },
+  { id: "weekly",  label: "Semana", labelEn: "Week" },
+  { id: "monthly", label: "Mês",    labelEn: "Month" },
+  { id: "yearly",  label: "Ano",    labelEn: "Year" },
 ]
 
 const AMOUNT_PRESETS = [25, 50, 100, 200, 500]
 
 const DISTRIBUTION_TYPES = [
-  { id: "proportional", label: "Proporcional", icon: "🤝", desc: "Pote final dividido entre todos que cumprirem o acordo.", available: true  },
-  { id: "top3",         label: "Ranking",       icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% do pote",                       available: false },
-  { id: "winner",       label: "1º Lugar",      icon: "👑", desc: "Winner takes all",                                        available: false },
+  { id: "proportional", label: "Proporcional", labelEn: "Proportional", icon: "🤝", desc: "Pote final dividido entre todos que cumprirem o acordo.", descEn: "Final pot divided among all who comply.", available: true  },
+  { id: "top3",         label: "Ranking",       labelEn: "Ranking",      icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% do pote",                       descEn: "1st 60% · 2nd 30% · 3rd 10% of pot", available: false },
+  { id: "winner",       label: "1º Lugar",      labelEn: "1st Place",    icon: "👑", desc: "Winner takes all",                                        descEn: "Winner takes all", available: false },
 ]
 
 const PERIOD_PRESETS = [
-  { id: "1w", label: "1 sem",    days: 7  },
-  { id: "2w", label: "2 sem",    days: 14 },
-  { id: "1m", label: "1 mês",    days: 30 },
-  { id: "2m", label: "2 meses",  days: 60 },
+  { id: "1w", label: "1 sem",    labelEn: "1 wk",  days: 7  },
+  { id: "2w", label: "2 sem",    labelEn: "2 wk",  days: 14 },
+  { id: "1m", label: "1 mês",    labelEn: "1 mo",  days: 30 },
+  { id: "2m", label: "2 meses",  labelEn: "2 mo",  days: 60 },
 ]
 
 const RULE_SUBRULES: Record<string, { note: string; items: string[] }> = {
@@ -139,7 +128,7 @@ function calendarCells(year: number, month: number): (Date | null)[] {
   while (cells.length % 7 !== 0) cells.push(null)
   return cells
 }
-function getSharedRules(ids: string[]): { id: string; label: string; icon: string }[] {
+function getSharedRules(ids: string[], lang: Language): { id: string; label: string; desc: string; descEn: string; available: boolean }[] {
   if (ids.length === 0) return []
   if (ids.length === 1) return RULES[ids[0]] ?? []
   const sets = ids.map(c => RULES[c] ?? [])
@@ -176,6 +165,7 @@ function SectionBlock({
 
 export default function CreateDealPage() {
   const router = useRouter()
+  const { language } = useLanguageStore()
 
   // ── State ──
   const [name,    setName]    = useState("")
@@ -208,7 +198,7 @@ export default function CreateDealPage() {
 
   // ── Derived ──
   const channels        = category ? (CHANNELS[category] ?? []) : []
-  const availableRules  = getSharedRules(selectedChannels)
+  const availableRules  = getSharedRules(selectedChannels, language)
   const effectiveAmount = isCustomAmt ? (parseFloat(customAmtStr) || 0) : amount
   const feeRate         = 3
   const diffDays        = Math.round((endDate.getTime() - startDate.getTime()) / 86400000)
@@ -220,7 +210,7 @@ export default function CreateDealPage() {
     : null
 
   const ruleLabel  = rule      ? (availableRules.find(r => r.id === rule)?.label ?? rule) : null
-  const freqLabel  = frequency ? (FREQUENCIES.find(f => f.id === frequency)?.label ?? frequency) : null
+  const freqLabel  = frequency ? (FREQUENCIES.find(f => f.id === frequency)?.[language === "pt" ? "label" : "labelEn"] ?? frequency) : null
 
   const isValid =
     name.trim().length >= 3 &&
@@ -310,23 +300,23 @@ export default function CreateDealPage() {
     },
     {
       icon: "📊", iconBg: "rgba(168,85,247,0.1)",
-      key: "Meta",
+      key: language === "pt" ? "Meta" : "Goal",
       val: ruleLabel && freqLabel ? `${quantity}× ${ruleLabel} / ${freqLabel}` : "—",
     },
     {
       icon: "📅", iconBg: "rgba(239,68,68,0.08)",
-      key: "Período",
-      val: `${fmtShort(startDate)} 00h GMT-3 → ${fmtShort(endDate)} (${diffDays}d)`,
+      key: language === "pt" ? "Período" : "Period",
+      val: `${fmtShort(startDate)} 00h GMT-3 → ${fmtShort(endDate)} (${t("date_days", language, { count: diffDays })})`,
     },
     {
       icon: "💰", iconBg: "rgba(22,163,74,0.1)",
-      key: "Financeiro",
-      val: effectiveAmount > 0 ? `R$${effectiveAmount}/pessoa · ${DISTRIBUTION_TYPES.find(d => d.id === distribution)?.label}` : "—",
+      key: language === "pt" ? "Financeiro" : "Financial",
+      val: effectiveAmount > 0 ? `R$${effectiveAmount}/${language === "pt" ? "pessoa" : "person"} · ${DISTRIBUTION_TYPES.find(d => d.id === distribution)?.[language === "pt" ? "label" : "labelEn"]}` : "—",
     },
     {
       icon: "🔒", iconBg: "rgba(107,114,128,0.1)",
-      key: "Acesso",
-      val: privacy === "private" ? "Privado" : "Público",
+      key: language === "pt" ? "Acesso" : "Access",
+      val: privacy === "private" ? t("priv_private", language) : t("priv_public", language),
     },
   ]
 
@@ -357,12 +347,12 @@ export default function CreateDealPage() {
         <header className="px-5 pt-12 pb-3 flex items-center justify-between flex-shrink-0">
           <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600">
             <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Voltar</span>
+            <span className="font-medium">{language === "pt" ? "Voltar" : "Back"}</span>
           </button>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
               style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
-              <span className="text-xs font-bold text-[#16A34A]">Taxa · 3%</span>
+              <span className="text-xs font-bold text-[#16A34A]">{language === "pt" ? "Taxa" : "Fee"} · 3%</span>
             </div>
             <button
               onClick={() => setShowInfo(true)}
@@ -376,15 +366,15 @@ export default function CreateDealPage() {
 
         {/* Content */}
         <div className="flex-1 px-5 pb-32">
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">Criar Deal</h1>
-          <p className="text-sm text-gray-500 mb-6">Configure tudo e inicie</p>
+          <h1 className="text-2xl font-bold text-gray-800 mb-1">{t("create_title", language)}</h1>
+          <p className="text-sm text-gray-500 mb-6">{t("create_subtitle", language)}</p>
 
           {/* ── 1. Nome ── */}
-          <SectionBlock icon={<span className="text-base">✏️</span>} iconBg="rgba(22,163,74,0.1)" title="Nome do Deal" sub="Mínimo 3 caracteres">
+          <SectionBlock icon={<span className="text-base">✏️</span>} iconBg="rgba(22,163,74,0.1)" title={t("create_name_label", language)} sub={language === "pt" ? "Mínimo 3 caracteres" : "Minimum 3 characters"}>
             <input
               type="text" value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Ex: Desafio Creators 30 dias"
+              placeholder={t("create_name_placeholder", language)}
               className="w-full p-4 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
               style={{
                 background: "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)",
@@ -394,12 +384,12 @@ export default function CreateDealPage() {
               }}
             />
             {name.length > 0 && name.length < 3 && (
-              <p className="text-xs text-red-400 mt-1 ml-1">Mínimo 3 caracteres</p>
+              <p className="text-xs text-red-400 mt-1 ml-1">{language === "pt" ? "Mínimo 3 caracteres" : "Minimum 3 characters"}</p>
             )}
           </SectionBlock>
 
           {/* ── 2. Categoria ── */}
-          <SectionBlock icon={<span className="text-base">🗂️</span>} iconBg="rgba(22,163,74,0.1)" title="Categoria" sub="Escolha o tipo de desafio">
+          <SectionBlock icon={<span className="text-base">🗂️</span>} iconBg="rgba(22,163,74,0.1)" title={t("create_category_title", language)} sub={t("create_category_sub", language)}>
             <div className="grid grid-cols-3 gap-2">
               {CATEGORIES.map(cat => (
                 <button key={cat.id}
@@ -416,12 +406,12 @@ export default function CreateDealPage() {
                     <span
                       className="absolute top-1 right-1.5 text-[7px] font-bold uppercase tracking-wide"
                       style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF", padding: "1px 4px", borderRadius: 4 }}>
-                      breve
+                      {t("badge_soon", language)}
                     </span>
                   )}
                   <div className="text-2xl mb-1">{cat.icon}</div>
                   <p className="text-[11px] font-semibold" style={{ color: category === cat.id ? "#16A34A" : "#374151" }}>
-                    {cat.label}
+                    {t(cat.label, language)}
                   </p>
                 </button>
               ))}
@@ -433,8 +423,8 @@ export default function CreateDealPage() {
             <SectionBlock
               icon={<span className="text-base">📡</span>}
               iconBg="rgba(22,163,74,0.1)"
-              title="Canal"
-              sub={category === "fitness" ? "Selecione um ou mais canais" : "Plataforma de verificação"}
+              title={t("create_channel_title", language)}
+              sub={category === "fitness" ? (language === "pt" ? "Selecione um ou mais canais" : "Select one or more channels") : (language === "pt" ? "Plataforma de verificação" : "Verification platform")}
             >
               <div className="space-y-2">
                 {channels.map((ch, idx) => {
@@ -460,7 +450,7 @@ export default function CreateDealPage() {
                                   color: fitnessConnector === opt ? "white" : "#9CA3AF",
                                   border: "none", cursor: "pointer",
                                 }}>
-                                {opt.toUpperCase()}
+                                {opt === "e" ? (language === "pt" ? "E" : "AND") : (language === "pt" ? "OU" : "OR")}
                               </button>
                             ))}
                           </div>
@@ -470,9 +460,9 @@ export default function CreateDealPage() {
                       <button
                         onClick={() => ch.available && toggleChannel(ch.id)}
                         disabled={!ch.available}
-                        className="w-full flex items-center gap-3 p-3 rounded-xl transition-all"
+                        className="w-full flex items-center gap-3 p-3.5 rounded-xl transition-all"
                         style={{
-                          background: isSelected ? "rgba(22,163,74,0.07)" : "rgba(255,255,255,0.5)",
+                          background: isSelected ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.5)",
                           border: isSelected ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
                           opacity: !ch.available ? 0.5 : 1,
                           cursor: !ch.available ? "default" : "pointer",
@@ -504,7 +494,7 @@ export default function CreateDealPage() {
 
           {/* ── 5. Regra ── */}
           {selectedChannels.length > 0 && availableRules.length > 0 && (
-            <SectionBlock icon={<span className="text-base">📋</span>} iconBg="rgba(168,85,247,0.1)" title="Regra" sub="O que será medido e verificado">
+            <SectionBlock icon={<span className="text-base">📋</span>} iconBg="rgba(168,85,247,0.1)" title={language === "pt" ? "Regra" : "Rule"} sub={language === "pt" ? "O que será medido e verificado" : "What will be measured and verified"}>
               <div className="space-y-1.5">
                 {availableRules.map(r => (
                   <button key={r.id}
@@ -514,36 +504,24 @@ export default function CreateDealPage() {
                       background: rule === r.id ? "rgba(22,163,74,0.07)" : "rgba(255,255,255,0.5)",
                       border: rule === r.id ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
                     }}>
-                    <span className="text-lg w-7 text-center flex-shrink-0">{r.icon}</span>
-                    <p className="flex-1 text-sm font-medium text-gray-800 text-left">{r.label}</p>
+                    <div className="flex-1 text-left">
+                      <p className="text-sm font-bold text-gray-800">{r.label}</p>
+                      <p className="text-[10px] text-gray-500 font-medium">{language === "pt" ? r.desc : r.descEn}</p>
+                    </div>
                     {rule === r.id && <Check className="w-4 h-4 text-[#16A34A] flex-shrink-0" />}
                   </button>
                 ))}
               </div>
-              {rule && RULE_SUBRULES[rule] && (
-                <div className="mt-2 p-3 rounded-xl"
-                  style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.15)" }}>
-                  <p className="text-[10px] font-bold text-blue-500 mb-1.5">{RULE_SUBRULES[rule].note}</p>
-                  <ul className="space-y-1">
-                    {RULE_SUBRULES[rule].items.map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-[11px] text-gray-600">
-                        <span className="text-blue-400 mt-0.5 flex-shrink-0">✓</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
             </SectionBlock>
           )}
 
           {/* ── 6. Meta (Qtd + Frequência) ── */}
           {rule && (
-            <SectionBlock icon={<span className="text-base">🎯</span>} iconBg="rgba(59,130,246,0.1)" title="Meta" sub="Quantidade e frequência do objetivo">
+            <SectionBlock icon={<span className="text-base">🎯</span>} iconBg="rgba(59,130,246,0.1)" title={t("create_meta_title", language)} sub={t("create_meta_sub", language)}>
               <div className="p-4 rounded-xl mb-3"
                 style={{ background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.7)" }}>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 text-center">
-                  {rule === "pace" ? "Pace máximo (min/km)" : "Quantidade"}
+                  {rule === "pace" ? t("meta_pace_label", language) : t("meta_qty_label", language)}
                 </p>
                 <div className="flex items-center justify-center gap-4">
                   <button
@@ -576,20 +554,20 @@ export default function CreateDealPage() {
                       border: frequency === f.id ? "1.5px solid rgba(22,163,74,0.4)" : "1.5px solid rgba(0,0,0,0.07)",
                       color: frequency === f.id ? "#16A34A" : "#6B7280",
                     }}>
-                    {f.label}
+                    {language === "pt" ? f.label : f.labelEn}
                   </button>
                 ))}
               </div>
               {rule === "pace" && (
                 <p className="text-[11px] text-amber-600 mt-2 text-center font-semibold">
-                  ⏱ Pace mais baixo = corrida mais rápida. Ex: 5 = 5 min/km.
+                  {t("meta_pace_help", language)}
                 </p>
               )}
               {frequency && (
                 <div className="mt-3 p-3 rounded-xl"
                   style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)" }}>
                   <p className="text-[11px] text-red-600 font-semibold leading-relaxed">
-                    ⚠️ A meta deve ser cumprida em <strong>cada janela</strong> de frequência. Uma janela perdida = eliminação permanente.
+                    ⚠️ {t("meta_warning", language)}
                   </p>
                 </div>
               )}
@@ -597,7 +575,7 @@ export default function CreateDealPage() {
           )}
 
           {/* ── 7. Período ── */}
-          <SectionBlock icon={<span className="text-base">📅</span>} iconBg="rgba(239,68,68,0.08)" title="Período" sub="Duração do desafio">
+          <SectionBlock icon={<span className="text-base">📅</span>} iconBg="rgba(239,68,68,0.08)" title={t("create_period_title", language)} sub={t("create_period_sub", language)}>
             <div className="flex gap-2 mb-3 flex-wrap">
               {PERIOD_PRESETS.map(p => (
                 <button key={p.id}
@@ -608,7 +586,7 @@ export default function CreateDealPage() {
                     border: periodPreset === p.id ? "1.5px solid rgba(22,163,74,0.4)" : "1.5px solid rgba(0,0,0,0.07)",
                     color: periodPreset === p.id ? "#16A34A" : "#6B7280",
                   }}>
-                  {p.label}
+                  {language === "pt" ? p.label : p.labelEn}
                 </button>
               ))}
             </div>
@@ -617,17 +595,17 @@ export default function CreateDealPage() {
                 onClick={() => { setShowCal("start"); setCalMonth(new Date(startDate.getFullYear(), startDate.getMonth(), 1)) }}
                 className="flex-1 p-3.5 rounded-xl text-left transition-all active:scale-95"
                 style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.8)" }}>
-                <p className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">Início</p>
+                <p className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">{t("date_start", language)}</p>
                 <p className="text-base font-bold text-gray-800 mt-0.5">{fmtShort(startDate)}</p>
               </button>
               <div className="flex items-center px-1">
-                <span className="text-sm font-bold text-gray-400">{diffDays}d</span>
+                <span className="text-sm font-bold text-gray-400">{t("date_days", language, { count: diffDays })}</span>
               </div>
               <button
                 onClick={() => { setShowCal("end"); setCalMonth(new Date(endDate.getFullYear(), endDate.getMonth(), 1)) }}
                 className="flex-1 p-3.5 rounded-xl text-right transition-all active:scale-95"
                 style={{ background: "rgba(22,163,74,0.08)", border: "1.5px solid rgba(22,163,74,0.25)" }}>
-                <p className="text-[9px] font-bold text-[#16A34A] tracking-wider uppercase">Fim</p>
+                <p className="text-[9px] font-bold text-[#16A34A] tracking-wider uppercase">{t("date_end", language)}</p>
                 <p className="text-base font-bold text-[#16A34A] mt-0.5">{fmtShort(endDate)}</p>
               </button>
             </div>
@@ -635,17 +613,16 @@ export default function CreateDealPage() {
               style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
               <span className="text-lg flex-shrink-0">⏰</span>
               <div>
-                <p className="text-[11px] font-bold text-[#16A34A]">Início automático às 00h</p>
+                <p className="text-[11px] font-bold text-[#16A34A]">{t("date_auto_start", language)}</p>
                 <p className="text-[10px] text-gray-500 mt-0.5">
-                  {fmtFull(startDate)} · Horário de Brasília (GMT-3)
+                  {fmtFull(startDate)} · {t("date_timezone", language)}
                 </p>
               </div>
             </div>
           </SectionBlock>
 
           {/* ── 8. Pagamento ── */}
-          <SectionBlock icon={<span className="text-base">💸</span>} iconBg="rgba(22,163,74,0.1)" title="Pagamento" sub="Valor de entrada e premiação">
-            {/* Value grid 3×2 */}
+          <SectionBlock icon={<span className="text-base">💸</span>} iconBg="rgba(22,163,74,0.1)" title={t("create_pay_title", language)} sub={t("create_pay_sub", language)}>
             <div className="grid grid-cols-3 gap-2 mb-4">
               {AMOUNT_PRESETS.map(v => (
                 <button key={v}
@@ -660,7 +637,7 @@ export default function CreateDealPage() {
                     style={{ color: !isCustomAmt && amount === v ? "#16A34A" : "#1f2937" }}>
                     R${v}
                   </p>
-                  <p className="text-[9px] text-gray-400">por pessoa</p>
+                  <p className="text-[9px] text-gray-400">{t("pay_per_person", language)}</p>
                 </button>
               ))}
               <button
@@ -670,8 +647,8 @@ export default function CreateDealPage() {
                   background: isCustomAmt ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.5)",
                   border: isCustomAmt ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.08)",
                 }}>
-                <p className="text-[18px] font-black" style={{ color: isCustomAmt ? "#16A34A" : "#1f2937" }}>Outro</p>
-                <p className="text-[9px] text-gray-400">valor livre</p>
+                <p className="text-[18px] font-black" style={{ color: isCustomAmt ? "#16A34A" : "#1f2937" }}>{t("pay_other", language)}</p>
+                <p className="text-[9px] text-gray-400">{t("pay_custom", language)}</p>
               </button>
             </div>
 
@@ -690,12 +667,11 @@ export default function CreateDealPage() {
                   }}
                 />
                 {customAmtStr && parseFloat(customAmtStr) < 10 && (
-                  <p className="text-xs text-red-400 mt-1 ml-1">Valor mínimo: R$10</p>
+                  <p className="text-xs text-red-400 mt-1 ml-1">{t("err_min_val", language)}</p>
                 )}
               </div>
             )}
 
-            {/* Pot estimate */}
             {effectiveAmount >= 10 && (
               <div className="mb-4 p-4 rounded-[14px] flex items-center gap-3"
                 style={{
@@ -707,7 +683,7 @@ export default function CreateDealPage() {
                   <span className="text-lg">💰</span>
                 </div>
                 <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Pot estimado (10 players)</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{t("pay_pot_estimate", language)}</p>
                   <p className="text-xl font-black text-[#16A34A]">
                     R${(effectiveAmount * 10).toLocaleString("pt-BR")}
                   </p>
@@ -715,8 +691,7 @@ export default function CreateDealPage() {
               </div>
             )}
 
-            {/* Prize type */}
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Premiação</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{t("pay_prize_title", language)}</p>
             <div className="space-y-2">
               {DISTRIBUTION_TYPES.map(d => (
                 <button key={d.id}
@@ -736,7 +711,7 @@ export default function CreateDealPage() {
                       {!d.available && (
                         <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
                           style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
-                          em breve
+                          {t("badge_soon", language)}
                         </span>
                       )}
                     </div>
@@ -749,28 +724,31 @@ export default function CreateDealPage() {
           </SectionBlock>
 
           {/* ── 9. Visibilidade ── */}
-          <SectionBlock icon={<span className="text-base">👁️</span>} iconBg="rgba(107,114,128,0.1)" title="Visibilidade" sub="Quem pode ver e participar deste deal">
-            <div className="flex gap-2.5">
-              {(["private", "public"] as const).map(type => (
-                <button
-                  key={type}
-                  onClick={() => setPrivacy(type)}
-                  className="flex-1 flex items-center gap-2 py-3.5 px-3 rounded-xl transition-all"
-                  style={{
-                    background: privacy === type ? "rgba(0,0,0,0.07)" : "rgba(255,255,255,0.5)",
-                    border: privacy === type ? "1.5px solid rgba(0,0,0,0.15)" : "1.5px solid rgba(0,0,0,0.07)",
-                    fontWeight: 700, fontSize: 13,
-                    color: privacy === type ? "#374151" : "#9CA3AF",
-                  }}>
-                  {type === "private" ? <Lock className="w-4 h-4 flex-shrink-0" /> : <Globe className="w-4 h-4 flex-shrink-0" />}
-                  <span className="flex-1">{type === "private" ? "Privado" : "Público"}</span>
-                  <Info
-                    className="w-3.5 h-3.5 flex-shrink-0"
-                    style={{ color: privacy === type ? "#6B7280" : "#D1D5DB" }}
-                    onClick={e => { e.stopPropagation(); setShowPrivacyInfo(type) }}
-                  />
-                </button>
-              ))}
+          <SectionBlock icon={<span className="text-base">👁️</span>} iconBg="rgba(107,114,128,0.1)" title={t("create_visibility_title", language)} sub={t("create_visibility_sub", language)}>
+            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">{t("create_visibility_label", language)}</span>
+            <div className="flex gap-2 p-1 rounded-2xl" style={{ background: "rgba(255,255,255,0.5)" }}>
+              <button
+                onClick={() => setPrivacy("private")}
+                className={`flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all ${privacy === "private" ? "text-white" : "text-gray-500"}`}
+                style={{ background: privacy === "private" ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}
+              >
+                <Lock className="w-4 h-4" />
+                <div className="text-left">
+                  <p className="text-xs font-bold">{t("priv_private", language)}</p>
+                  <p className="text-[9px] opacity-60 font-medium leading-none mt-0.5">{t("priv_private_desc", language)}</p>
+                </div>
+              </button>
+              <button
+                onClick={() => setPrivacy("public")}
+                className={`flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all ${privacy === "public" ? "text-white" : "text-gray-500"}`}
+                style={{ background: privacy === "public" ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}
+              >
+                <Globe className="w-4 h-4" />
+                <div className="text-left">
+                  <p className="text-xs font-bold">{t("priv_public", language)}</p>
+                  <p className="text-[9px] opacity-60 font-medium leading-none mt-0.5">{t("priv_public_desc", language)}</p>
+                </div>
+              </button>
             </div>
           </SectionBlock>
 
@@ -785,17 +763,11 @@ export default function CreateDealPage() {
                 letterSpacing: "0.04em",
               }}
             >
-              REVISAR DEAL →
+              {t("btn_review", language)}
             </button>
             {!isValid && (
               <p className="text-center text-xs text-gray-400 mt-2">
-                {name.trim().length < 3          ? "Defina um nome com pelo menos 3 caracteres"
-                  : !category                    ? "Escolha uma categoria"
-                  : selectedChannels.length === 0 ? "Escolha um canal"
-                  : !rule                        ? "Escolha uma regra"
-                  : !frequency                   ? "Escolha a frequência"
-                  : effectiveAmount < 10         ? "Valor mínimo por pessoa: R$10"
-                  : "Preencha todos os campos"}
+                {t("err_fields", language)}
               </p>
             )}
           </div>
@@ -813,18 +785,17 @@ export default function CreateDealPage() {
         }}
       >
         {/* Header */}
-        <header className="px-5 pt-12 pb-3 flex-shrink-0">
-          <button onClick={() => setScreen(1)} className="flex items-center gap-2 text-gray-600">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Editar</span>
+        <header className="px-5 pt-12 pb-3 flex-shrink-0 flex items-center justify-between">
+          <button onClick={() => setScreen(1)} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.5)" }}>
+            <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
+          <div className="flex-1 text-center pr-10">
+            <h1 className="text-xl font-bold text-gray-800">{t("create_title", language)}</h1>
+            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">{t("create_subtitle", language)}</p>
+          </div>
         </header>
 
         <div className="flex-1 px-5 pb-8">
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">Confirmar Deal</h1>
-          <p className="text-sm text-gray-500 mb-6">Revise os detalhes antes de confirmar</p>
-
-          {/* Preview Hero */}
           <div
             className="rounded-[22px] p-5 mb-6 relative overflow-hidden"
             style={{
@@ -838,9 +809,9 @@ export default function CreateDealPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest mb-1">
-                    Deal
+                    {t("deal_label", language)}
                   </p>
-                  <h2 className="text-xl font-bold leading-tight">{name || "Sem nome"}</h2>
+                  <h2 className="text-xl font-bold leading-tight">{name || t("deal_no_name", language)}</h2>
                 </div>
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
@@ -849,10 +820,10 @@ export default function CreateDealPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: "Entrada",    value: effectiveAmount > 0 ? `R$${effectiveAmount}` : "—" },
-                  { label: "Pot inicial", value: effectiveAmount > 0 ? `R$${effectiveAmount}` : "—" },
-                  { label: "Duração",    value: `${diffDays} dias` },
-                  { label: "Premiação",  value: DISTRIBUTION_TYPES.find(d => d.id === distribution)?.label ?? "—" },
+                  { label: t("stat_entry", language),    value: effectiveAmount > 0 ? `R$${effectiveAmount}` : "—" },
+                  { label: t("stat_pot", language), value: effectiveAmount > 0 ? `R$${effectiveAmount}` : "—" },
+                  { label: t("stat_duration", language),    value: t("date_days", language, { count: diffDays }) },
+                  { label: t("stat_prize", language),  value: DISTRIBUTION_TYPES.find(d => d.id === distribution)?.label ?? "—" },
                 ].map(stat => (
                   <div key={stat.label} className="p-2.5 rounded-xl"
                     style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
@@ -864,7 +835,6 @@ export default function CreateDealPage() {
             </div>
           </div>
 
-          {/* Confirmation list */}
           <div className="space-y-2 mb-6">
             {confirmRows.map(row => (
               <div key={row.key}
@@ -886,12 +856,10 @@ export default function CreateDealPage() {
             ))}
           </div>
 
-          {/* Fee info */}
           <div className="p-4 rounded-xl mb-4"
             style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
             <p className="text-xs text-gray-600 leading-relaxed">
-              Taxa de <strong className="text-[#16A34A]">{feeRate}%</strong> cobrada apenas se houver perdedor.
-              Se todos cumprirem, o valor integral é devolvido.
+              {t("fee_disclaimer", language, { rate: feeRate })}
             </p>
           </div>
 
@@ -908,7 +876,7 @@ export default function CreateDealPage() {
                 letterSpacing: "0.04em",
               }}
             >
-              {isSubmitting ? "PROCESSANDO…" : "PAGAR ENTRADA E INICIAR O DEAL"}
+              {isSubmitting ? t("btn_processing", language) : t("btn_pay_start", language)}
             </button>
           </div>
         </div>
@@ -923,21 +891,23 @@ export default function CreateDealPage() {
             style={{ background: "rgba(255,255,255,0.98)" }}
             onClick={e => e.stopPropagation()}>
             <p className="text-sm font-bold text-center text-gray-800 mb-4">
-              {showCal === "start" ? "Data de início" : "Data de fim"}
+              {showCal === "start" ? (language === "pt" ? "Data de início" : "Start date") : (language === "pt" ? "Data de fim" : "End date")}
             </p>
             <div className="flex items-center justify-between mb-4">
               <button onClick={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() - 1, 1))}
                 className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.05)" }}>
                 <ChevronLeft className="w-5 h-5 text-gray-600" />
               </button>
-              <p className="font-bold text-gray-800">{MONTH_NAMES[calMonth.getMonth()]} {calMonth.getFullYear()}</p>
+              <p className="font-bold text-gray-800">
+                {language === "pt" ? MONTH_NAMES[calMonth.getMonth()] : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][calMonth.getMonth()]} {calMonth.getFullYear()}
+              </p>
               <button onClick={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
                 className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.05)" }}>
                 <ChevronRight className="w-5 h-5 text-gray-600" />
               </button>
             </div>
             <div className="grid grid-cols-7 mb-2">
-              {["D","S","T","Q","Q","S","S"].map((d, i) => (
+              {(language === "pt" ? ["D","S","T","Q","Q","S","S"] : ["S","M","T","W","T","F","S"]).map((d, i) => (
                 <div key={i} className="text-center text-[11px] font-semibold text-gray-400">{d}</div>
               ))}
             </div>
@@ -963,14 +933,14 @@ export default function CreateDealPage() {
               <div className="mt-4 p-2.5 rounded-xl text-center"
                 style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.12)" }}>
                 <p className="text-[10px] text-[#16A34A] font-semibold">
-                  ⏰ O deal inicia automaticamente às 00h (Brasília, GMT-3) do dia selecionado
+                  ⏰ {language === "pt" ? "O deal inicia automaticamente às 00h (Brasília, GMT-3) do dia selecionado" : "The deal starts automatically at 00h (Brasília, GMT-3) on the selected day"}
                 </p>
               </div>
             )}
             <button onClick={() => setShowCal(null)}
               className="w-full mt-5 py-3 rounded-2xl font-semibold text-[#16A34A] text-sm"
               style={{ background: "rgba(22,163,74,0.07)", border: "1px solid rgba(22,163,74,0.15)" }}>
-              Fechar
+              {language === "pt" ? "Fechar" : "Close"}
             </button>
           </div>
         </div>
@@ -987,7 +957,7 @@ export default function CreateDealPage() {
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
                 <Info className="w-4 h-4 text-[#16A34A]" />
-                <h3 className="text-base font-bold text-gray-800">Como funciona</h3>
+                <h3 className="text-base font-bold text-gray-800">{language === "pt" ? "Como funciona" : "How it works"}</h3>
               </div>
               <button onClick={() => setShowInfo(false)}
                 className="w-8 h-8 rounded-full flex items-center justify-center"
@@ -998,25 +968,29 @@ export default function CreateDealPage() {
             <div className="space-y-3">
               <div className="p-4 rounded-2xl"
                 style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-                <p className="text-xs font-bold text-[#16A34A] mb-1.5">💸 Taxa de {feeRate}% — só se houver perdedor</p>
+                <p className="text-xs font-bold text-[#16A34A] mb-1.5">💸 {language === "pt" ? `Taxa de ${feeRate}% — só se houver perdedor` : `Fee of ${feeRate}% — only if there's a loser`}</p>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  A taxa é cobrada apenas se algum participante não cumprir o desafio.
-                  Se todos cumprirem, o valor integral é devolvido a cada um.
+                  {language === "pt" 
+                    ? "A taxa é cobrada apenas se algum participante não cumprir o desafio. Se todos cumprirem, o valor integral é devolvido a cada um."
+                    : "The fee is charged only if a participant does not meet the challenge. If everyone complies, the full amount is returned to each one."}
                 </p>
               </div>
               <div className="p-4 rounded-2xl"
                 style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.15)" }}>
-                <p className="text-xs font-bold text-blue-500 mb-1.5">👥 Mínimo de 2 participantes</p>
+                <p className="text-xs font-bold text-blue-500 mb-1.5">👥 {language === "pt" ? "Mínimo de 2 participantes" : "Minimum of 2 participants"}</p>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  Para o deal entrar em vigor, pelo menos 2 participantes precisam confirmar antes do prazo.
+                  {language === "pt"
+                    ? "Para o deal entrar em vigor, pelo menos 2 participantes precisam confirmar antes do prazo."
+                    : "For the deal to take effect, at least 2 participants must confirm before the deadline."}
                 </p>
               </div>
               <div className="p-4 rounded-2xl"
                 style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                <p className="text-xs font-bold text-red-500 mb-1.5">⚠️ Regra estrita por janela de frequência</p>
+                <p className="text-xs font-bold text-red-500 mb-1.5">⚠️ {language === "pt" ? "Regra estrita por janela de frequência" : "Strict rule per frequency window"}</p>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  O participante precisa cumprir a meta em <strong>cada janela</strong> do período configurado.
-                  Uma janela perdida = <strong>eliminação permanente</strong>, mesmo que tenha cumprido todas as outras.
+                  {language === "pt"
+                    ? "O participante precisa cumprir a meta em cada janela do período configurado. Uma janela perdida = eliminação permanente, mesmo que tenha cumprido todas as outras."
+                    : "The participant must meet the goal in each window of the configured period. A missed window = permanent elimination, even if they met all others."}
                 </p>
               </div>
             </div>
@@ -1038,7 +1012,9 @@ export default function CreateDealPage() {
                   ? <Lock className="w-4 h-4 text-gray-700" />
                   : <Globe className="w-4 h-4 text-[#16A34A]" />}
                 <h3 className="text-base font-bold text-gray-800">
-                  {showPrivacyInfo === "private" ? "Deal Privado" : "Deal Público"}
+                  {showPrivacyInfo === "private" 
+                    ? (language === "pt" ? "Deal Privado" : "Private Deal") 
+                    : (language === "pt" ? "Deal Público" : "Public Deal")}
                 </h3>
               </div>
               <button onClick={() => setShowPrivacyInfo(null)}
@@ -1052,16 +1028,20 @@ export default function CreateDealPage() {
               <div className="space-y-3">
                 <div className="p-4 rounded-2xl"
                   style={{ background: "rgba(107,114,128,0.06)", border: "1px solid rgba(107,114,128,0.15)" }}>
-                  <p className="text-xs font-bold text-gray-700 mb-1.5">🔒 Acesso por aprovação do criador</p>
+                  <p className="text-xs font-bold text-gray-700 mb-1.5">🔒 {language === "pt" ? "Acesso por aprovação do criador" : "Access by creator approval"}</p>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    Qualquer usuário pode ver o deal e solicitar participação — mas só o criador pode aceitar ou recusar cada entrada.
+                    {language === "pt"
+                      ? "Qualquer usuário pode ver o deal e solicitar participação — mas só o criador pode aceitar ou recusar cada entrada."
+                      : "Any user can see the deal and request participation — but only the creator can accept or reject each entry."}
                   </p>
                 </div>
                 <div className="p-4 rounded-2xl"
                   style={{ background: "rgba(107,114,128,0.06)", border: "1px solid rgba(107,114,128,0.15)" }}>
-                  <p className="text-xs font-bold text-gray-700 mb-1.5">🔗 Link de compartilhamento</p>
+                  <p className="text-xs font-bold text-gray-700 mb-1.5">🔗 {language === "pt" ? "Link de compartilhamento" : "Sharing link"}</p>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    O link permite que qualquer pessoa encontre e solicite entrar no deal, mas a participação só é confirmada após a aprovação do criador.
+                    {language === "pt"
+                      ? "O link permite que qualquer pessoa encontre e solicite entrar no deal, mas a participação só é confirmada após a aprovação do criador."
+                      : "The link allows anyone to find and request to enter the deal, but participation is only confirmed after the creator's approval."}
                   </p>
                 </div>
               </div>
@@ -1069,16 +1049,20 @@ export default function CreateDealPage() {
               <div className="space-y-3">
                 <div className="p-4 rounded-2xl"
                   style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-                  <p className="text-xs font-bold text-[#16A34A] mb-1.5">🌐 Acesso livre</p>
+                  <p className="text-xs font-bold text-[#16A34A] mb-1.5">🌐 {language === "pt" ? "Acesso livre" : "Free access"}</p>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    Qualquer usuário pode entrar no deal diretamente, sem precisar de aprovação. O deal aparece na listagem pública do app.
+                    {language === "pt"
+                      ? "Qualquer usuário pode entrar no deal diretamente, sem precisar de aprovação. O deal aparece na listagem pública do app."
+                      : "Any user can enter the deal directly, without needing approval. The deal appears in the app's public listing."}
                   </p>
                 </div>
                 <div className="p-4 rounded-2xl"
                   style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-                  <p className="text-xs font-bold text-[#16A34A] mb-1.5">🔗 Link de compartilhamento</p>
+                  <p className="text-xs font-bold text-[#16A34A] mb-1.5">🔗 {language === "pt" ? "Link de compartilhamento" : "Sharing link"}</p>
                   <p className="text-sm text-gray-600 leading-relaxed">
-                    Quem acessar o link entra diretamente no deal, sem etapas de aprovação.
+                    {language === "pt"
+                      ? "Quem acessar o link entra diretamente no deal, sem etapas de aprovação."
+                      : "Anyone who accesses the link enters the deal directly, without approval steps."}
                   </p>
                 </div>
               </div>
