@@ -39,6 +39,9 @@ interface Deal {
   potentialWin?: number
   daysToStart?: number
   startDateISO?: string
+  ruleTarget: number | null
+  ruleFrequency: string | null
+  verificationType: string | null
 }
 
 // ── Mapping from DB → UI ──────────────────────────────────────────────────────
@@ -89,8 +92,11 @@ function toDealUI(d: DealWithParticipants, userId: string | null): Deal {
     isParticipating,
     myRank:        isParticipating ? (myP?.rank ?? undefined) : undefined,
     potentialWin:  isParticipating ? Math.round(d.net_pot * 0.9) : undefined,
-    daysToStart:   uiStatus === "pendente" ? daysToStart : undefined,
-    startDateISO:  d.start_date,
+    daysToStart:     uiStatus === "pendente" ? daysToStart : undefined,
+    startDateISO:    d.start_date,
+    ruleTarget:      d.rule_target,
+    ruleFrequency:   d.rule_frequency,
+    verificationType: d.verification_type,
   }
 }
 
@@ -174,6 +180,36 @@ function TypeBadge({ type, lang }: { type: DealTypeUI; lang: Language }) {
   )
 }
 
+// ── Rule helpers ──────────────────────────────────────────────────────────────
+
+const RULE_LABELS: Record<string, { pt: string; en: string }> = {
+  post:             { pt: "Post",          en: "Post"          },
+  follower_gained:  { pt: "Seguidores",    en: "Followers"     },
+  impressions:      { pt: "Impressões",    en: "Impressions"   },
+  comment_received: { pt: "Comentários",   en: "Comments"      },
+  repost_received:  { pt: "Reposts",       en: "Reposts"       },
+  km_run:           { pt: "km corridos",   en: "km run"        },
+  pace:             { pt: "Pace",          en: "Pace"          },
+  workout_hours:    { pt: "Horas treino",  en: "Workout hrs"   },
+  checkin:          { pt: "Check-in",      en: "Check-in"      },
+  different_venues: { pt: "Locais únicos", en: "Unique venues" },
+}
+
+const FREQ_LABELS: Record<string, { pt: string; en: string }> = {
+  daily:   { pt: "Diário",  en: "Daily"   },
+  weekly:  { pt: "Semanal", en: "Weekly"  },
+  monthly: { pt: "Mensal",  en: "Monthly" },
+  yearly:  { pt: "Anual",   en: "Yearly"  },
+}
+
+function buildRuleDisplay(deal: Deal, lang: Language): string {
+  const ruleLabel  = deal.verificationType ? (RULE_LABELS[deal.verificationType]?.[lang] ?? deal.verificationType) : null
+  const freqLabel  = deal.ruleFrequency    ? (FREQ_LABELS[deal.ruleFrequency]?.[lang] ?? deal.ruleFrequency)       : null
+  const prefix     = deal.ruleTarget != null ? `${deal.ruleTarget} × ` : ""
+  const combined   = ruleLabel ? (prefix + ruleLabel).trim() : null
+  return [combined, freqLabel].filter(Boolean).join(" · ") || "—"
+}
+
 // ── Deal Card ─────────────────────────────────────────────────────────────────
 
 function getStartTarget(iso: string): Date {
@@ -194,9 +230,10 @@ function formatCountdown(ms: number, lang: Language): { label: string; urgency: 
 }
 
 function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; lang: Language }) {
-  const daysLeft = deal.daysTotal - deal.daysGone
-  const isWinning = deal.myRank != null && deal.myRank <= Math.ceil(deal.participants * 0.3)
-  const ss = STATUS_STYLE[deal.status]
+  const daysLeft    = deal.daysTotal - deal.daysGone
+  const isWinning   = deal.myRank != null && deal.myRank <= Math.ceil(deal.participants * 0.3)
+  const ss          = STATUS_STYLE[deal.status]
+  const ruleDisplay = buildRuleDisplay(deal, lang)
 
   const [nowMs, setNowMs] = useState(() => Date.now())
   useEffect(() => {
@@ -234,8 +271,8 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
 
       <div className="grid grid-cols-2 gap-1.5 mb-2.5">
         {[
-          { label: t("create_entry_fee", lang),       value: `R$${deal.valuePerPerson}/${lang === "pt" ? "pessoa" : "person"}` },
-          { label: t("dash_total_pot", lang),     value: deal.pot > 0 ? `R$${deal.pot.toLocaleString(lang === "pt" ? "pt-BR" : "en-US")}` : "—", green: true },
+          { label: t("create_entry_fee", lang), value: `R$${deal.valuePerPerson}/${lang === "pt" ? "pessoa" : "person"}` },
+          { label: lang === "pt" ? "Regra" : "Rule", value: ruleDisplay, green: true },
           { label: lang === "pt" ? "Participantes" : "Participants", value: `${deal.participants} players` },
           {
             label: deal.status === "pendente" ? (lang === "pt" ? "Inicia em" : "Starts in") : deal.status === "ativo" ? (lang === "pt" ? "Tempo restante" : "Time left") : (lang === "pt" ? "Duração" : "Duration"),
