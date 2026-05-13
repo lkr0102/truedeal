@@ -83,6 +83,10 @@ jobs:
           cargo update -p toml@0.8.20 --precise 0.8.19 || true
           cargo update -p toml_edit@0.22.24 --precise 0.22.22 || true
           cargo update -p winnow@0.6.26 --precise 0.6.18 || true
+          cargo update -p indexmap@2.14.0 --precise 2.7.1 || true
+          cargo update -p serde@1.0.228 --precise 1.0.210 || true
+          cargo update -p serde_json@1.0.149 --precise 1.0.128 || true
+          cargo update -p proc-macro2@1.0.106 --precise 1.0.86 || true
           cargo update -p blake3 --precise 1.5.0
           sed -i 's/version = 4/version = 3/' Cargo.lock
 
