@@ -110,6 +110,87 @@ export async function createDeal(input: CreateDealInput) {
   return { deal }
 }
 
+// ── Mock Data for Demo Mode ───────────────────────────────────────────────────
+
+const LUKAS_ID = "demo-lukas-admin-uuid"
+
+const MOCK_DEALS: DealWithParticipants[] = [
+  {
+    id: "mock-deal-1",
+    title: "100k Steps Challenge",
+    description: "Caminhada institucional de 100 mil passos em 7 dias. Verificação via Strava.",
+    creator_id: LUKAS_ID,
+    type: "oficial",
+    mode: "regular",
+    status: "ativo",
+    category: "fitness",
+    verification_type: "fitness_steps",
+    verification_channels: ["strava"],
+    entry_amount: 50,
+    fee_pct: 3,
+    distribution: "winner",
+    payment_method: "cripto",
+    max_participants: 10,
+    allow_requests: true,
+    start_date: new Date(Date.now() - 3 * 86400000).toISOString(),
+    end_date: new Date(Date.now() + 4 * 86400000).toISOString(),
+    winner_id: null,
+    created_at: new Date().toISOString(),
+    participant_count: 3,
+    pot_total: 150,
+    net_pot: 145.5,
+    participants: [
+      {
+        id: "p1", deal_id: "mock-deal-1", user_id: LUKAS_ID, joined_at: new Date().toISOString(), status: "active",
+        start_snapshot: { steps: 1000 }, current_snapshot: { steps: 45000 }, rank: 1,
+        profile: { id: LUKAS_ID, username: "lukas_admin", display_name: "Lukas Admin", avatar_url: "/images/avatars/lukas.png" }
+      },
+      {
+        id: "p2", deal_id: "mock-deal-1", user_id: "u2", joined_at: new Date().toISOString(), status: "active",
+        start_snapshot: { steps: 500 }, current_snapshot: { steps: 32000 }, rank: 2,
+        profile: { id: "u2", username: "joao_dev", display_name: "João Dev", avatar_url: null }
+      },
+      {
+        id: "p3", deal_id: "mock-deal-1", user_id: "u3", joined_at: new Date().toISOString(), status: "eliminated",
+        start_snapshot: { steps: 200 }, current_snapshot: { steps: 5000 }, rank: 3,
+        profile: { id: "u3", username: "slacker", display_name: "The Slacker", avatar_url: null }
+      }
+    ]
+  },
+  {
+    id: "mock-deal-2",
+    title: "Twitter Engagement Battle",
+    description: "Quem conseguir mais likes em um post oficial da True Deal.",
+    creator_id: "other-user",
+    type: "publico",
+    mode: "regular",
+    status: "finalizado",
+    category: "social",
+    verification_type: "social_likes",
+    verification_channels: ["x"],
+    entry_amount: 100,
+    fee_pct: 3,
+    distribution: "top3",
+    payment_method: "cripto",
+    max_participants: 20,
+    allow_requests: false,
+    start_date: new Date(Date.now() - 10 * 86400000).toISOString(),
+    end_date: new Date(Date.now() - 3 * 86400000).toISOString(),
+    winner_id: LUKAS_ID,
+    created_at: new Date().toISOString(),
+    participant_count: 5,
+    pot_total: 500,
+    net_pot: 485,
+    participants: [
+      {
+        id: "p4", deal_id: "mock-deal-2", user_id: LUKAS_ID, joined_at: new Date().toISOString(), status: "winner",
+        start_snapshot: { likes: 0 }, current_snapshot: { likes: 1250 }, rank: 1,
+        profile: { id: LUKAS_ID, username: "lukas_admin", display_name: "Lukas Admin", avatar_url: "/images/avatars/lukas.png" }
+      }
+    ]
+  }
+]
+
 // ── Fetch list ────────────────────────────────────────────────────────────────
 
 export async function fetchDeals(filters?: {
@@ -119,6 +200,17 @@ export async function fetchDeals(filters?: {
   creatorId?: string
 }) {
   const supabase = await createClient()
+  const isPlaceholder = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("seu-projeto")
+
+  if (isPlaceholder) {
+    let deals = [...MOCK_DEALS]
+    if (filters?.userId) {
+      deals = deals.filter(d => d.participants.some(p => p.user_id === filters.userId))
+    }
+    if (filters?.status) deals = deals.filter(d => d.status === filters.status)
+    if (filters?.type)   deals = deals.filter(d => d.type === filters.type)
+    return { deals }
+  }
 
   let query = (supabase.from("deals") as any)
     .select(`
@@ -165,6 +257,12 @@ export async function fetchDeals(filters?: {
 
 export async function fetchDeal(id: string) {
   const supabase = await createClient()
+  const isPlaceholder = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("seu-projeto")
+
+  if (isPlaceholder) {
+    const deal = MOCK_DEALS.find(d => d.id === id)
+    return deal ? { deal } : { error: "Acordo não encontrado (Mock)" }
+  }
 
   const { data, error } = await (supabase.from("deals") as any)
     .select(`

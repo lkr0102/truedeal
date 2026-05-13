@@ -8,9 +8,29 @@ import type { Profile, TdpTransaction } from "@/lib/supabase/types"
 
 export async function getMyProfile(): Promise<{ profile: Profile | null; error?: string }> {
   const supabase = await createClient()
+  const isPlaceholder = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("seu-projeto")
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { profile: null, error: "Não autenticado" }
+
+  if (isPlaceholder && user.id === "demo-lukas-admin-uuid") {
+    return {
+      profile: {
+        id: user.id,
+        username: "lukas_admin",
+        display_name: "Lukas Admin",
+        avatar_url: "/images/avatars/lukas.png",
+        tdp_points: 2500,
+        streak_days: 12,
+        last_checkin: new Date().toISOString(),
+        super_deal_used: true,
+        referral_code: "LUKAS-DEMO",
+        referred_by: null,
+        referral_count: 5,
+        created_at: new Date().toISOString(),
+      }
+    }
+  }
 
   const { data, error } = await (supabase.from("profiles") as any)
     .select("*")

@@ -28,9 +28,13 @@ export async function createClient() {
     const hasDemoCookie = cookieStore.get("truedeal-demo-session")?.value === "true"
     if (hasDemoCookie) {
       const mockUser = {
-        id: "demo-judge-uuid",
-        email: "demo@truedeal.io",
-        user_metadata: { display_name: "Judge Performance", username: "judge_demo" }
+        id: "demo-lukas-admin-uuid",
+        email: "lukas@truedeal.io",
+        user_metadata: { 
+          display_name: "Lukas Admin", 
+          username: "lukas_admin",
+          avatar_url: "/images/avatars/lukas.png"
+        }
       }
       // Sobrescrevemos o getUser apenas para o bypass
       const originalAuth = client.auth
