@@ -425,6 +425,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
 function PlayerCard({
   player, expanded, onToggle,
 }: { player: Participant; expanded: boolean; onToggle: () => void }) {
+  const { language } = useLanguageStore()
   const delta    = player.currentValue - player.startValue
   const deltaStr = player.hasData
     ? (delta >= 0 ? `+${delta.toLocaleString("pt-BR")}` : delta.toLocaleString("pt-BR"))

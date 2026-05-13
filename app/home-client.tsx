@@ -12,7 +12,7 @@ import {
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { DealWithParticipants, Profile } from "@/lib/supabase/types"
-import { useLanguageStore, t } from "@/lib/i18n"
+import { useLanguageStore, t, type Language } from "@/lib/i18n"
 
 // ── UI types ───────────────────────────────────────────────────────────────────
 
@@ -365,6 +365,7 @@ const FEATURED_DEALS = [
 function HeroBanner({ onJoin }: { onJoin: () => void }) {
   const [current, setCurrent] = useState(0)
   const { language } = useLanguageStore()
+  const lang = language
   const deal = FEATURED_DEALS[current]
 
   return (

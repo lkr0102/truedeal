@@ -111,6 +111,46 @@ export const translations = {
     explore_how_to_earn: 'How to earn Shakes',
     explore_claim_soon: 'Claim soon',
     explore_top_ranking: 'Monthly ranking and prizes',
+
+    // Create — extended
+    create_category_title: 'Choose Category',
+    create_category_sub: 'Select the type of deal',
+    create_channel_title: 'Choose Channel',
+    create_meta_title: 'Goal',
+    create_meta_sub: 'Set your target',
+    meta_pace_label: 'Pace per day',
+    meta_qty_label: 'Target quantity',
+    meta_pace_help: 'Distribute your goal across the days of the deal',
+    meta_warning: 'Everyone must reach the goal or loses their stake',
+    create_period_title: 'Period',
+    create_period_sub: 'Set start and end date',
+    date_start: 'Start',
+    date_end: 'End',
+    date_auto_start: 'Deal starts automatically at 00h GMT-3',
+    date_timezone: 'GMT-3 (Brasília)',
+    date_days: '{count} days',
+    create_pay_title: 'Payment',
+    create_pay_sub: 'Entry value per person',
+    pay_per_person: 'per person',
+    pay_other: 'Other',
+    pay_custom: 'custom',
+    err_min_val: 'Minimum value is R$10',
+    pay_pot_estimate: 'Estimated pot (10 players)',
+    pay_prize_title: 'Prize distribution',
+    create_visibility_title: 'Visibility',
+    create_visibility_sub: 'Who can join this deal?',
+    btn_review: 'REVIEW DEAL',
+    err_fields: 'Fill in all required fields',
+    deal_label: 'Deal',
+    deal_no_name: 'Untitled',
+    stat_entry: 'Entry',
+    stat_pot: 'Pot',
+    stat_duration: 'Duration',
+    stat_prize: 'Distribution',
+    btn_processing: 'Processing...',
+    btn_pay_start: 'PAY ENTRY AND START DEAL',
+    fee_disclaimer: '{rate}% fee charged only if there is a loser. If everyone complies, the full amount is returned.',
+    badge_soon: 'Soon',
   },
   pt: {
     // Nav
@@ -202,9 +242,58 @@ export const translations = {
     explore_how_to_earn: 'Como ganhar Shakes',
     explore_claim_soon: 'Claim em breve',
     explore_top_ranking: 'Ranking e prêmios',
+
+    // Create — extended
+    create_category_title: 'Escolha a Categoria',
+    create_category_sub: 'Selecione o tipo de acordo',
+    create_channel_title: 'Escolha o Canal',
+    create_meta_title: 'Meta',
+    create_meta_sub: 'Defina seu objetivo',
+    meta_pace_label: 'Pace por dia',
+    meta_qty_label: 'Quantidade alvo',
+    meta_pace_help: 'Distribua sua meta pelos dias do deal',
+    meta_warning: 'Todos devem atingir a meta ou perdem o valor apostado',
+    create_period_title: 'Período',
+    create_period_sub: 'Defina data de início e fim',
+    date_start: 'Início',
+    date_end: 'Fim',
+    date_auto_start: 'Deal inicia automaticamente às 00h GMT-3',
+    date_timezone: 'GMT-3 (Brasília)',
+    date_days: '{count} dias',
+    create_pay_title: 'Pagamento',
+    create_pay_sub: 'Valor de entrada por pessoa',
+    pay_per_person: 'por pessoa',
+    pay_other: 'Outro',
+    pay_custom: 'personalizado',
+    err_min_val: 'Valor mínimo é R$10',
+    pay_pot_estimate: 'Pot estimado (10 jogadores)',
+    pay_prize_title: 'Distribuição do prêmio',
+    create_visibility_title: 'Visibilidade',
+    create_visibility_sub: 'Quem pode entrar neste deal?',
+    btn_review: 'REVISAR DEAL',
+    err_fields: 'Preencha todos os campos obrigatórios',
+    deal_label: 'Deal',
+    deal_no_name: 'Sem título',
+    stat_entry: 'Entrada',
+    stat_pot: 'Pot',
+    stat_duration: 'Duração',
+    stat_prize: 'Premiação',
+    btn_processing: 'Processando...',
+    btn_pay_start: 'PAGAR ENTRADA E INICIAR O DEAL',
+    fee_disclaimer: 'Taxa de {rate}% cobrada apenas se houver perdedor. Se todos cumprirem, o valor integral é devolvido.',
+    badge_soon: 'Em breve',
   }
 }
 
-export function t(key: keyof typeof translations.en, lang: Language) {
-  return translations[lang][key] || translations['en'][key] || key
+export function t(key: string, lang: Language, vars?: Record<string, unknown>): string {
+  let str: string =
+    (translations[lang] as Record<string, string>)[key] ||
+    (translations.en as Record<string, string>)[key] ||
+    key
+  if (vars) {
+    Object.entries(vars).forEach(([k, v]) => {
+      str = str.replace(new RegExp(`\\{${k}\\}`, 'g'), String(v))
+    })
+  }
+  return str
 }

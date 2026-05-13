@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
 import type { DealCategory, DealType } from "@/lib/supabase/types"
-import { useLanguageStore, t } from "@/lib/i18n"
+import { useLanguageStore, t, type Language } from "@/lib/i18n"
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
