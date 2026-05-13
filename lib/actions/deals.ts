@@ -47,6 +47,26 @@ export async function createDeal(input: CreateDealInput) {
   const { data: { user }, error: authErr } = await supabase.auth.getUser()
   if (authErr || !user) return { error: "Não autenticado" }
 
+  // Guard: creator must have the required social channels connected
+  if (input.verification_channels.length > 0) {
+    const emailOnlyPlatforms = new Set(["wellhub", "totalpass"])
+    const { data: conns } = await (supabase.from("social_connections") as any)
+      .select("platform, status, username, member_email, external_id")
+      .eq("user_id", user.id)
+      .in("platform", input.verification_channels)
+
+    const connected = new Set(
+      ((conns ?? []) as any[])
+        .filter(c => {
+          if (!c.username && !c.member_email && !c.external_id) return false
+          return emailOnlyPlatforms.has(c.platform) || c.status !== "pending"
+        })
+        .map(c => c.platform)
+    )
+    const missing = input.verification_channels.filter(ch => !connected.has(ch))
+    if (missing.length > 0) return { error: `MISSING_SOCIAL:${missing.join(",")}` }
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const dealPayload: any = {
     title:                 input.title,
@@ -138,6 +158,13 @@ const MOCK_DEALS: DealWithParticipants[] = [
     allow_requests: true,
     start_date: new Date(Date.now() - 3 * 86400000).toISOString(),
     end_date: new Date(Date.now() + 4 * 86400000).toISOString(),
+    rule_target: null,
+    rule_frequency: null,
+    pda_address: null,
+    solana_tx_signature: null,
+    proof_hash: null,
+    final_proof_hash: null,
+    audit_logs: null,
     winner_id: null,
     created_at: new Date().toISOString(),
     participant_count: 3,
@@ -180,6 +207,13 @@ const MOCK_DEALS: DealWithParticipants[] = [
     allow_requests: false,
     start_date: new Date(Date.now() - 10 * 86400000).toISOString(),
     end_date: new Date(Date.now() - 3 * 86400000).toISOString(),
+    rule_target: null,
+    rule_frequency: null,
+    pda_address: null,
+    solana_tx_signature: null,
+    proof_hash: null,
+    final_proof_hash: null,
+    audit_logs: null,
     winner_id: LUKAS_ID,
     created_at: new Date().toISOString(),
     participant_count: 5,

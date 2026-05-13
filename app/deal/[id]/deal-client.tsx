@@ -7,10 +7,12 @@ import { ptBR } from "date-fns/locale"
 import {
   ArrowLeft, Share2, Activity,
   Trophy, Lock, ExternalLink, BarChart2, ChevronRight, ChevronDown,
+  AlertCircle, X, Loader2,
 } from "lucide-react"
 import { GlassCard } from "@/components/td-ui"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
 import { useLanguageStore, t } from "@/lib/i18n"
+import { joinDeal } from "@/lib/actions/deals"
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -537,20 +539,49 @@ export default function DealClient({
   const router  = useRouter()
   const { language } = useLanguageStore()
   const deal    = mapDeal(dealData, userId, language)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [expandedId,       setExpandedId]       = useState<string | null>(null)
+  const [joinLoading,      setJoinLoading]      = useState(false)
+  const [joinError,        setJoinError]        = useState<string | null>(null)
+  const [showSocialPopup,  setShowSocialPopup]  = useState<string[] | null>(null)
 
   const requiredChannel = deal.verificationChannels?.[0] ?? null
   const requiredChannelLabel = requiredChannel ? CHANNEL_LABELS[requiredChannel] ?? requiredChannel : null
+  const emailOnlyPlatforms = new Set(["wellhub", "totalpass"])
   const hasRequiredConnection = requiredChannel
-    ? !!userSocialConnections?.some(c =>
-        c.platform === requiredChannel && c.status !== "pending" &&
-        (c.username || c.member_email || c.external_id)
-      )
+    ? !!userSocialConnections?.some(c => {
+        if (c.platform !== requiredChannel) return false
+        if (!c.username && !c.member_email && !c.external_id) return false
+        return emailOnlyPlatforms.has(c.platform) || c.status !== "pending"
+      })
     : true
 
-  const showMissingConnectionWarning = Boolean(
-    userId && requiredChannel && !hasRequiredConnection
-  )
+  const isParticipant = userId ? dealData.participants.some(p => p.user_id === userId) : false
+
+  async function handleJoin() {
+    if (!userId) { router.push("/login"); return }
+    if (!hasRequiredConnection && requiredChannel) {
+      setShowSocialPopup(deal.verificationChannels.filter(ch => !userSocialConnections?.some(c => {
+        if (c.platform !== ch) return false
+        if (!c.username && !c.member_email && !c.external_id) return false
+        return emailOnlyPlatforms.has(c.platform) || c.status !== "pending"
+      })))
+      return
+    }
+    setJoinLoading(true)
+    setJoinError(null)
+    const result = await joinDeal(dealData.id)
+    setJoinLoading(false)
+    if (result.error) {
+      if (result.error.startsWith("MISSING_SOCIAL:")) {
+        const channels = result.error.replace("MISSING_SOCIAL:", "").split(",").filter(Boolean)
+        setShowSocialPopup(channels)
+        return
+      }
+      setJoinError(result.error)
+      return
+    }
+    router.refresh()
+  }
 
   const isWinning = deal.myRank != null && deal.myRank <= Math.ceil(deal.participants * 0.3)
 
@@ -674,24 +705,26 @@ export default function DealClient({
             </GlassCard>
           )}
 
-          {showMissingConnectionWarning && requiredChannelLabel && (
-            <div className="rounded-xl p-4 mb-3"
-              style={{ background: "rgba(254,243,199,0.9)", border: "1px solid rgba(245,158,11,0.3)" }}>
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-orange-700 mb-2">
-                {language === "pt" ? "Atenção" : "Attention"}
-              </p>
-              <p className="text-sm text-orange-900 leading-relaxed mb-3">
-                {language === "pt" 
-                  ? `Você precisa vincular sua conta do canal de verificação utilizado no deal em questão (${requiredChannelLabel}) para participar.`
-                  : `You need to link your account for the verification channel used in this deal (${requiredChannelLabel}) to participate.`}
-              </p>
-              <a
-                href="/profile"
-                className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white"
-                style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}
+          {/* Join button — only for non-participants during formation */}
+          {deal.status === "pendente" && !isParticipant && userId && (
+            <div className="mt-3 mb-1">
+              {joinError && (
+                <p className="text-xs text-red-500 mb-2 text-center">{joinError}</p>
+              )}
+              <button
+                onClick={handleJoin}
+                disabled={joinLoading}
+                className="w-full py-4 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                style={{
+                  background: "linear-gradient(135deg,#16A34A,#22C55E)",
+                  boxShadow: "0 8px 32px rgba(22,163,74,0.38)",
+                  opacity: joinLoading ? 0.7 : 1,
+                }}
               >
-                {language === "pt" ? "Ir para perfil" : "Go to profile"}
-              </a>
+                {joinLoading
+                  ? <Loader2 className="w-4 h-4 animate-spin" />
+                  : (language === "pt" ? "Participar do Deal" : "Join Deal")}
+              </button>
             </div>
           )}
 
@@ -861,6 +894,82 @@ export default function DealClient({
 
         </div>
       </div>
+
+      {/* ── Missing social popup ───────────────────────────────────────────────── */}
+      {showSocialPopup && (
+        <div
+          className="fixed inset-0 z-50 flex items-end"
+          style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+          onClick={() => setShowSocialPopup(null)}
+        >
+          <div
+            className="w-full rounded-t-3xl px-5 pt-5 pb-10"
+            style={{ background: "rgba(255,255,255,0.98)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.1)" }}>
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                </div>
+                <h3 className="text-base font-bold text-gray-800">
+                  {language === "pt" ? "Conta não vinculada" : "Account not linked"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowSocialPopup(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.06)" }}
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}>
+              <p className="text-sm text-red-700 font-semibold mb-1">
+                {language === "pt"
+                  ? `Para participar deste deal, você precisa vincular sua conta do ${showSocialPopup.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ")}.`
+                  : `To join this deal, you need to link your ${showSocialPopup.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ")} account.`}
+              </p>
+              <p className="text-xs text-red-500 leading-relaxed">
+                {language === "pt"
+                  ? "O app usa sua conta para verificar automaticamente se você cumpriu o desafio."
+                  : "The app uses your account to automatically verify if you met the challenge."}
+              </p>
+            </div>
+
+            <div className="space-y-2 mb-5">
+              {showSocialPopup.map(ch => (
+                <div key={ch} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white"
+                    style={{ background: ch === "x" ? "#000" : ch === "strava" ? "#FC4C02" : ch === "wellhub" ? "#00A651" : ch === "totalpass" ? "#0047AB" : "#6B7280" }}>
+                    {ch === "x" ? "𝕏" : ch === "strava" ? "S" : ch === "wellhub" ? "W" : ch === "totalpass" ? "TP" : ch[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{CHANNEL_LABELS[ch] ?? ch}</p>
+                    <p className="text-xs text-gray-400">{language === "pt" ? "Não vinculado" : "Not linked"}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => router.push("/onboarding/profile")}
+              className="w-full py-4 rounded-2xl font-bold text-white text-sm"
+              style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)", boxShadow: "0 8px 32px rgba(22,163,74,0.35)" }}
+            >
+              {language === "pt" ? "Vincular conta agora" : "Link account now"}
+            </button>
+            <button
+              onClick={() => setShowSocialPopup(null)}
+              className="w-full mt-2.5 py-3 rounded-2xl font-semibold text-gray-500 text-sm"
+              style={{ background: "rgba(0,0,0,0.04)" }}
+            >
+              {language === "pt" ? "Cancelar" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

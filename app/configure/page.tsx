@@ -82,6 +82,8 @@ export default function ConfigureDealPage() {
       category,
       verification_type:     rule,
       verification_channels: [channel],
+      rule_target:           quantity,
+      rule_frequency:        frequency || "daily",
       entry_amount:          effectiveAmount,
       distribution:          distribution as "winner" | "top3" | "proportional",
       payment_method:        "pix",

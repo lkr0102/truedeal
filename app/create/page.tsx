@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowLeft, Lock, Globe, ChevronLeft, ChevronRight,
-  Plus, Minus, Check, Info, X,
+  Plus, Minus, Check, Info, X, AlertCircle,
 } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
 import type { DealCategory, DealType } from "@/lib/supabase/types"
@@ -67,6 +67,11 @@ const FREQUENCIES = [
 ]
 
 const AMOUNT_PRESETS = [25, 50, 100, 200, 500]
+
+const CHANNEL_LABELS: Record<string, string> = {
+  x: "X (Twitter)", instagram: "Instagram", tiktok: "TikTok", linkedin: "LinkedIn",
+  discord: "Discord", youtube: "YouTube", strava: "Strava", wellhub: "Wellhub", totalpass: "TotalPass",
+}
 
 const DISTRIBUTION_TYPES = [
   { id: "proportional", label: "Proporcional", labelEn: "Proportional", icon: "🤝", desc: "Pote final dividido entre todos que cumprirem o acordo.", descEn: "Final pot divided among all who comply.", available: true  },
@@ -205,6 +210,7 @@ export default function CreateDealPage() {
   const [showPrivacyInfo, setShowPrivacyInfo] = useState<"private" | "public" | null>(null)
   const [isSubmitting,  setIsSubmitting]  = useState(false)
   const [submitError,   setSubmitError]   = useState<string | null>(null)
+  const [missingSocial, setMissingSocial] = useState<string[] | null>(null)
 
   // ── Derived ──
   const channels        = category ? (CHANNELS[category] ?? []) : []
@@ -298,7 +304,15 @@ export default function CreateDealPage() {
       end_date:              endDate.toISOString().split("T")[0],
     })
     setIsSubmitting(false)
-    if (result.error) { setSubmitError(result.error); return }
+    if (result.error) {
+      if (result.error.startsWith("MISSING_SOCIAL:")) {
+        const channels = result.error.replace("MISSING_SOCIAL:", "").split(",").filter(Boolean)
+        setMissingSocial(channels)
+        return
+      }
+      setSubmitError(result.error)
+      return
+    }
     setScreen(1)
     router.push("/")
   }
@@ -1017,6 +1031,82 @@ export default function CreateDealPage() {
                 </p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Missing social account popup ──────────────────────────────────────── */}
+      {missingSocial && (
+        <div
+          className="fixed inset-0 z-50 flex items-end"
+          style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+          onClick={() => setMissingSocial(null)}
+        >
+          <div
+            className="w-full rounded-t-3xl px-5 pt-5 pb-10"
+            style={{ background: "rgba(255,255,255,0.98)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.1)" }}>
+                  <AlertCircle className="w-5 h-5 text-red-500" />
+                </div>
+                <h3 className="text-base font-bold text-gray-800">
+                  {language === "pt" ? "Conta não vinculada" : "Account not linked"}
+                </h3>
+              </div>
+              <button
+                onClick={() => setMissingSocial(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center"
+                style={{ background: "rgba(0,0,0,0.06)" }}
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}>
+              <p className="text-sm text-red-700 font-semibold mb-1">
+                {language === "pt"
+                  ? `Para criar um deal com ${missingSocial.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ")}, você precisa vincular sua conta primeiro.`
+                  : `To create a deal with ${missingSocial.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ")}, you need to link your account first.`}
+              </p>
+              <p className="text-xs text-red-500 leading-relaxed">
+                {language === "pt"
+                  ? "O app usa sua conta para verificar automaticamente se você cumpriu o desafio."
+                  : "The app uses your account to automatically verify if you met the challenge."}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              {missingSocial.map(ch => (
+                <div key={ch} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)" }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white"
+                    style={{ background: ch === "x" ? "#000" : ch === "strava" ? "#FC4C02" : ch === "wellhub" ? "#00A651" : ch === "totalpass" ? "#0047AB" : "#6B7280" }}>
+                    {ch === "x" ? "𝕏" : ch === "strava" ? "S" : ch === "wellhub" ? "W" : ch === "totalpass" ? "TP" : ch[0].toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{CHANNEL_LABELS[ch] ?? ch}</p>
+                    <p className="text-xs text-gray-400">{language === "pt" ? "Não vinculado" : "Not linked"}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => router.push("/onboarding/profile")}
+              className="w-full mt-5 py-4 rounded-2xl font-bold text-white text-sm"
+              style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)", boxShadow: "0 8px 32px rgba(22,163,74,0.35)" }}
+            >
+              {language === "pt" ? "Conectar conta agora" : "Connect account now"}
+            </button>
+            <button
+              onClick={() => setMissingSocial(null)}
+              className="w-full mt-2.5 py-3 rounded-2xl font-semibold text-gray-500 text-sm"
+              style={{ background: "rgba(0,0,0,0.04)" }}
+            >
+              {language === "pt" ? "Cancelar" : "Cancel"}
+            </button>
           </div>
         </div>
       )}
