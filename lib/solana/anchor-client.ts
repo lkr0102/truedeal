@@ -137,7 +137,7 @@ export async function settlePerformanceAgreement(
   const provider = getProvider(oracle1)
   const program  = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
-  const [vault] = deriveVaultPDA(agreementAccount.toBase58())
+  const [vault] = deriveVaultPDA(agreementId)
 
   const txSignature = await program.methods
     .settlePerformanceAgreement(
@@ -150,8 +150,8 @@ export async function settlePerformanceAgreement(
       oracle2: oracle2.publicKey,
       vault,
       treasuryTokenAccount,
-      usdcMint: new PublicKey("So11111111111111111111111111111111111111112"), // Mock WSOL for test
-      tokenProgram: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+      usdcMint: USDC_MINT,
+      tokenProgram: TOKEN_PROGRAM_ID,
     })
     .remainingAccounts(
       winnerPubkeys.map(pubkey => ({
