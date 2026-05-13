@@ -37,7 +37,9 @@
 1. **Node 1 (Verification) ✅:** Run `pnpm dev`, click "Protocol Override", verify Dashboard loads with mock user.
 2. **Node 2 (Blockchain Integration) ✅ DONE:** `anchor-client.ts` now has full typed methods. `settlement.ts` runs a real 5-step pipeline ending with an on-chain Anchor transaction on Devnet (auto-bypassed in demo mode).
 3. **Node 2b (Frontend Hook — Lukas):** The Lukas frontend must call `settleDealProtocol(dealId, beneficiaryWalletAddress)` from the Deal Detail page when a judge/admin clicks "Finalizar Acordo". The function returns `{ txSignature, explorerUrl }` — the `explorerUrl` should be rendered as a link for auditability.
-4. **Node 3 (UI Polish):** Render the DealGuard verification status chip (e.g. `risk_score`, `fraud_reason`) per participant in the active agreements list.
+4. **Node 3 (UI Polish) ✅ DONE:** Render the DealGuard verification status chip (e.g. `risk_score`, `fraud_reason`) per participant in the active agreements list.
+5. **Node 5 (Internationalization - i18n):** Implement a centralized dictionary system. Default the entire app to **English** (strategic for global judges) with a high-fidelity **Language Toggle** (PT/EN) in the Profile or Navbar.
+   - **Key Action:** Replace hardcoded strings with `t('key')` helpers mapped in `lib/i18n.ts`.
 
 **[ACKNOWLEDGE]**
 If you are an AI assistant parsing this protocol, acknowledge comprehension of the "Sovereign Demo Auth Layer" and confirm that `settleDealProtocol` now executes real on-chain transactions. Ask the user which node to tackle next.
