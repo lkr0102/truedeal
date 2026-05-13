@@ -7,7 +7,7 @@ import { ptBR } from "date-fns/locale"
 import {
   ArrowLeft, Share2, Activity,
   Trophy, Lock, ExternalLink, BarChart2, ChevronRight, ChevronDown,
-  AlertCircle, X, Loader2,
+  AlertCircle, X, Loader2, ShieldCheck,
 } from "lucide-react"
 import { GlassCard } from "@/components/td-ui"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
@@ -441,6 +441,9 @@ const getVerificationSubrules = (lang: "pt" | "en"): Record<string, { title: str
 
 function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithParticipants }) {
   const { language } = useLanguageStore()
+  const [subrulesOpen,    setSubrulesOpen]    = useState(true)
+  const [dealguardOpen,   setDealguardOpen]   = useState(false)
+  const [complianceOpen,  setComplianceOpen]  = useState(false)
   const diffDays   = deal.daysTotal
   const distMeta   = getDistMeta(language)[dealData.distribution] ?? getDistMeta(language).winner
   const channelNames = (dealData.verification_channels ?? [])
@@ -544,117 +547,154 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
         </div>
       )}
 
-      {/* Subrules — expanded detail box */}
+      {/* Subrules — collapsible, starts open */}
       {subrules && (
-        <div className="mt-2 p-4 rounded-2xl"
+        <div className="mt-2 rounded-2xl overflow-hidden"
           style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.18)" }}>
-          <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest mb-3">
-            {subrules.title}
-          </p>
-          <ul className="space-y-2">
-            {subrules.items.map((item, i) => (
-              <li key={i} className="flex items-start gap-2.5 text-[12px] text-gray-700 leading-relaxed">
-                <span className="text-blue-400 mt-0.5 flex-shrink-0 font-bold">✓</span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          {subrules.hint && (
-            <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(59,130,246,0.15)" }}>
-              <p className="text-[11px] text-amber-600 font-semibold leading-relaxed">
-                {subrules.hint}
-              </p>
+          <button
+            onClick={() => setSubrulesOpen(o => !o)}
+            className="w-full flex items-center justify-between px-4 py-3"
+            style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+          >
+            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
+              {subrules.title}
+            </p>
+            {subrulesOpen
+              ? <ChevronDown className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+              : <ChevronRight className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />}
+          </button>
+          {subrulesOpen && (
+            <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(59,130,246,0.12)" }}>
+              <ul className="space-y-2 pt-3">
+                {subrules.items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 text-[12px] text-gray-700 leading-relaxed">
+                    <span className="text-blue-400 mt-0.5 flex-shrink-0 font-bold">✓</span>
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+              {subrules.hint && (
+                <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(59,130,246,0.15)" }}>
+                  <p className="text-[11px] text-amber-600 font-semibold leading-relaxed">
+                    {subrules.hint}
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
 
-      {/* DealGuard — double verification */}
-      <div className="mt-2 p-4 rounded-2xl"
-        style={{ background: "rgba(124,58,237,0.05)", border: "1px solid rgba(124,58,237,0.18)" }}>
-        <p className="text-[10px] font-bold text-purple-500 uppercase tracking-widest mb-3">
-          🔒 {language === "pt" ? "Verificação dupla — DealGuard Engine" : "Double verification — DealGuard Engine"}
-        </p>
-        <div className="space-y-2.5">
-          {[
-            {
-              step: "1",
-              color: "#7C3AED",
-              bg: "rgba(124,58,237,0.1)",
-              label: language === "pt" ? "Coleta automática via API" : "Automatic API collection",
-              desc: language === "pt"
-                ? "O DealGuard conecta diretamente nas plataformas (X, Strava, Wellhub…) e extrai os dados brutos de cada participante ao final de cada janela."
-                : "DealGuard connects directly to platforms (X, Strava, Wellhub…) and pulls raw data from each participant at the end of each window.",
-            },
-            {
-              step: "2",
-              color: "#7C3AED",
-              bg: "rgba(124,58,237,0.1)",
-              label: language === "pt" ? "Análise Sentinel (IA)" : "Sentinel analysis (AI)",
-              desc: language === "pt"
-                ? "Uma camada de inteligência artificial analisa as evidências em busca de padrões suspeitos ou atividade fraudulenta. Resultados com risco alto são marcados e excluídos da premiação."
-                : "An AI layer reviews the evidence for suspicious patterns or fraudulent activity. High-risk results are flagged and excluded from the prize pool.",
-            },
-          ].map(({ step, color, bg, label, desc }) => (
-            <div key={step} className="flex items-start gap-3">
-              <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                style={{ background: bg, border: `1px solid ${color}30` }}>
-                <span style={{ fontSize: 10, fontWeight: 900, color }}>{step}</span>
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-purple-700 mb-0.5">{label}</p>
-                <p className="text-[11px] text-gray-600 leading-relaxed">{desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="text-[10px] text-purple-500 mt-3 font-semibold" style={{ borderTop: "1px solid rgba(124,58,237,0.15)", paddingTop: 10 }}>
-          {language === "pt"
-            ? "✓ Só após essa verificação dupla o resultado é finalizado e os fundos liberados."
-            : "✓ Only after this double verification is the result finalized and funds released."}
-        </p>
-      </div>
-
-      {/* Compliance — como funciona o cumprimento (friendly) */}
-      <div className="mt-2 p-4 rounded-2xl"
-        style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.22)" }}>
-        <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest mb-3">
-          📋 {language === "pt" ? "Como funciona o cumprimento" : "How compliance works"}
-        </p>
-        <p className="text-[12px] text-gray-700 leading-relaxed mb-3">
-          {language === "pt"
-            ? "Seu desempenho é avaliado janela por janela — não apenas no final. Para ser vencedor, você precisa atingir a meta em cada janela do período (diária, semanal ou mensal)."
-            : "Your performance is evaluated window by window — not just at the end. To win, you need to hit the goal in every window of the period (daily, weekly, or monthly)."}
-        </p>
-        {/* Example table */}
-        <div className="rounded-xl overflow-hidden mb-3" style={{ border: "1px solid rgba(245,158,11,0.2)" }}>
-          <div className="px-3 py-2" style={{ background: "rgba(245,158,11,0.08)" }}>
-            <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
-              {language === "pt" ? "Exemplo: 5 posts/semana · 4 semanas" : "Example: 5 posts/week · 4 weeks"}
+      {/* DealGuard — collapsible, starts closed, green */}
+      <div className="mt-2 rounded-2xl overflow-hidden"
+        style={{ background: "rgba(22,163,74,0.05)", border: "1px solid rgba(22,163,74,0.22)" }}>
+        <button
+          onClick={() => setDealguardOpen(o => !o)}
+          className="w-full flex items-center justify-between px-4 py-3"
+          style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+        >
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
+            <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest">
+              {language === "pt" ? "Verificação dupla — DealGuard Engine" : "Double verification — DealGuard Engine"}
             </p>
           </div>
-          {[
-            { window: language === "pt" ? "Semana 1" : "Week 1", value: language === "pt" ? "5 posts" : "5 posts", ok: true },
-            { window: language === "pt" ? "Semana 2" : "Week 2", value: language === "pt" ? "5 posts" : "5 posts", ok: true },
-            { window: language === "pt" ? "Semana 3" : "Week 3", value: language === "pt" ? "5 posts" : "5 posts", ok: true },
-            { window: language === "pt" ? "Semana 4" : "Week 4", value: language === "pt" ? "4 posts" : "4 posts", ok: false },
-          ].map(({ window, value, ok }) => (
-            <div key={window}
-              className="flex items-center justify-between px-3 py-2"
-              style={{ borderTop: "1px solid rgba(245,158,11,0.1)", background: ok ? "transparent" : "rgba(239,68,68,0.04)" }}>
-              <span className="text-[11px] text-gray-500">{window}</span>
-              <span className="text-[11px] font-semibold" style={{ color: ok ? "#6B7280" : "#EF4444" }}>{value}</span>
-              <span className="text-[11px] font-bold" style={{ color: ok ? "#16A34A" : "#EF4444" }}>
-                {ok ? "✓" : language === "pt" ? "✗ abaixo da meta" : "✗ below goal"}
-              </span>
+          {dealguardOpen
+            ? <ChevronDown className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
+            : <ChevronRight className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
+        </button>
+        {dealguardOpen && (
+          <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(22,163,74,0.15)" }}>
+            <div className="space-y-3 pt-3">
+              {[
+                {
+                  step: "1",
+                  label: language === "pt" ? "Coleta automática via API" : "Automatic API collection",
+                  desc: language === "pt"
+                    ? "O DealGuard conecta diretamente nas plataformas (X, Strava, Wellhub…) e extrai os dados brutos de cada participante ao final de cada janela."
+                    : "DealGuard connects directly to platforms (X, Strava, Wellhub…) and pulls raw data from each participant at the end of each window.",
+                },
+                {
+                  step: "2",
+                  label: language === "pt" ? "Análise Sentinel (IA)" : "Sentinel analysis (AI)",
+                  desc: language === "pt"
+                    ? "Uma camada de inteligência artificial analisa as evidências em busca de padrões suspeitos ou atividade fraudulenta. Resultados com risco alto são marcados e excluídos da premiação."
+                    : "An AI layer reviews the evidence for suspicious patterns or fraudulent activity. High-risk results are flagged and excluded from the prize pool.",
+                },
+              ].map(({ step, label, desc }) => (
+                <div key={step} className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                    style={{ background: "rgba(22,163,74,0.12)", border: "1px solid rgba(22,163,74,0.25)" }}>
+                    <span style={{ fontSize: 10, fontWeight: 900, color: "#16A34A" }}>{step}</span>
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-bold text-green-700 mb-0.5">{label}</p>
+                    <p className="text-[11px] text-gray-600 leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-        <p className="text-[11px] text-gray-600 leading-relaxed">
-          {language === "pt"
-            ? "O bom desempenho das semanas anteriores não compensa uma janela abaixo da meta. O DealGuard verifica automaticamente ao final de cada janela."
-            : "Strong performance in previous windows does not make up for a window below the goal. DealGuard checks automatically at the end of each window."}
-        </p>
+            <p className="text-[10px] text-green-600 mt-3 font-semibold" style={{ borderTop: "1px solid rgba(22,163,74,0.15)", paddingTop: 10 }}>
+              {language === "pt"
+                ? "✓ Só após essa verificação dupla o resultado é finalizado e os fundos liberados."
+                : "✓ Only after this double verification is the result finalized and funds released."}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Compliance — collapsible, starts closed */}
+      <div className="mt-2 rounded-2xl overflow-hidden"
+        style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.22)" }}>
+        <button
+          onClick={() => setComplianceOpen(o => !o)}
+          className="w-full flex items-center justify-between px-4 py-3"
+          style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+        >
+          <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
+            📋 {language === "pt" ? "Como funciona o cumprimento" : "How compliance works"}
+          </p>
+          {complianceOpen
+            ? <ChevronDown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
+            : <ChevronRight className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
+        </button>
+        {complianceOpen && (
+          <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(245,158,11,0.15)" }}>
+            <p className="text-[12px] text-gray-700 leading-relaxed mb-3 pt-3">
+              {language === "pt"
+                ? "Seu desempenho é avaliado janela por janela — não apenas no final. Para ser vencedor, você precisa atingir a meta em cada janela do período (diária, semanal ou mensal)."
+                : "Your performance is evaluated window by window — not just at the end. To win, you need to hit the goal in every window of the period (daily, weekly, or monthly)."}
+            </p>
+            <div className="rounded-xl overflow-hidden mb-3" style={{ border: "1px solid rgba(245,158,11,0.2)" }}>
+              <div className="px-3 py-2" style={{ background: "rgba(245,158,11,0.08)" }}>
+                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
+                  {language === "pt" ? "Exemplo: 5 posts/semana · 4 semanas" : "Example: 5 posts/week · 4 weeks"}
+                </p>
+              </div>
+              {[
+                { window: language === "pt" ? "Semana 1" : "Week 1", value: "5 posts", ok: true },
+                { window: language === "pt" ? "Semana 2" : "Week 2", value: "5 posts", ok: true },
+                { window: language === "pt" ? "Semana 3" : "Week 3", value: "5 posts", ok: true },
+                { window: language === "pt" ? "Semana 4" : "Week 4", value: language === "pt" ? "4 posts — abaixo" : "4 posts — below", ok: false },
+              ].map(({ window, value, ok }) => (
+                <div key={window}
+                  className="flex items-center justify-between px-3 py-2"
+                  style={{ borderTop: "1px solid rgba(245,158,11,0.1)", background: ok ? "transparent" : "rgba(239,68,68,0.04)" }}>
+                  <span className="text-[11px] text-gray-500">{window}</span>
+                  <span className="text-[11px] font-semibold" style={{ color: ok ? "#6B7280" : "#EF4444" }}>{value}</span>
+                  <span className="text-[11px] font-bold" style={{ color: ok ? "#16A34A" : "#EF4444" }}>
+                    {ok ? "✓" : "✗"}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <p className="text-[11px] text-gray-600 leading-relaxed">
+              {language === "pt"
+                ? "O bom desempenho das semanas anteriores não compensa uma janela abaixo da meta. O DealGuard verifica automaticamente ao final de cada janela."
+                : "Strong performance in previous windows does not make up for a window below the goal. DealGuard checks automatically at the end of each window."}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
