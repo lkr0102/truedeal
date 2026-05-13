@@ -80,7 +80,7 @@ jobs:
         run: |
           rm -f Cargo.lock
           cargo generate-lockfile
-          cargo update -p toml_datetime --precise 0.6.3
+          cargo update -p toml_datetime@0.6.5 --precise 0.6.3
           cargo update -p blake3 --precise 1.5.0
           sed -i 's/version = 4/version = 3/' Cargo.lock
 
