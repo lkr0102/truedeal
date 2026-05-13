@@ -37,7 +37,7 @@ export async function settleDealProtocol(
   const supabase = await createClient()
   await (supabase.from("deals") as any)
     .update({
-      status: "liquidando",
+      status:     "liquidando",   // enum value added in migration 010
       proof_hash: proofHashHex,
       audit_logs: audit.results,
     })
@@ -95,7 +95,7 @@ export async function settleDealProtocol(
   // ── 5. Supabase Post-settlement Update ──────────────────────────────────
   await (supabase.from("deals") as any)
     .update({
-      status: "encerrado",
+      status:              "encerrado",   // enum value added in migration 010
       solana_tx_signature: txSignature,
     })
     .eq("id", dealId)

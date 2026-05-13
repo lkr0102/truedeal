@@ -48,7 +48,7 @@ const RULES: Record<string, { id: string; label: string; desc: string; descEn: s
     { id: "engagement", label: "Engagement",   desc: "Atingir meta de curtidas/reposts",              descEn: "Reach likes/reposts goal",            available: false },
   ],
   strava: [
-    { id: "dist",     label: "Distância acumulada", desc: "Correr X km durante o período",               descEn: "Run X km during the period",               available: true  },
+    { id: "km_run",   label: "Distância acumulada", desc: "Correr X km durante o período",               descEn: "Run X km during the period",               available: true  },
     { id: "activity", label: "Frequência",           desc: "Registrar X atividades na semana",             descEn: "Register X activities per week",            available: false },
   ],
   wellhub: [
@@ -287,6 +287,8 @@ export default function CreateDealPage() {
       category:              category as DealCategory,
       verification_type:     rule ?? "",
       verification_channels: selectedChannels,
+      rule_target:           quantity,
+      rule_frequency:        frequency ?? "daily",
       entry_amount:          effectiveAmount,
       distribution:          distribution as "winner" | "top3" | "proportional",
       payment_method:        "pix",

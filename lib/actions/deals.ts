@@ -30,6 +30,8 @@ export interface CreateDealInput {
   category:              DealCategory
   verification_type:     string
   verification_channels: string[]
+  rule_target:           number        // numeric goal (e.g. 10 for "10 km" or "10 posts")
+  rule_frequency:        string        // 'daily' | 'weekly' | 'monthly' | 'yearly'
   entry_amount:          number
   distribution:          "winner" | "top3" | "proportional"
   payment_method:        "pix" | "cripto" | "cartao"
@@ -55,6 +57,8 @@ export async function createDeal(input: CreateDealInput) {
     category:              input.category,
     verification_type:     input.verification_type,
     verification_channels: input.verification_channels,
+    rule_target:           input.rule_target,
+    rule_frequency:        input.rule_frequency,
     entry_amount:          input.entry_amount,
     fee_pct:               3,
     distribution:          input.distribution,
@@ -90,7 +94,7 @@ export async function createDeal(input: CreateDealInput) {
 
     const feePayer      = getFeePayer()
     const ruleHash      = createHash("sha256")
-      .update(`${input.verification_type}:${input.verification_channels.join(",")}`)
+      .update(`${input.verification_type}:${input.verification_channels.join(",")}:${input.rule_target}:${input.rule_frequency}`)
       .digest()
     const guaranteeUSDC = toUSDCUnits(input.entry_amount)   // entry_amount treated as USD
 
@@ -638,8 +642,8 @@ export async function withdrawFromEscrow(dealId: string, proofHash: string) {
     // 7. Persist final settlement state
     await (supabase.from("deals") as any)
       .update({
-        status:              "settled",
-        final_proof_hash:    proofHash,
+        status:              "encerrado",   // enum value added in migration 010
+        final_proof_hash:    proofHash,     // column added in migration 009
         solana_tx_signature: txSignature,
       })
       .eq("id", dealId)

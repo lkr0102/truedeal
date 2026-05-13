@@ -3,7 +3,7 @@
 
 export type DealType       = "oficial" | "privado" | "publico"
 export type DealMode       = "regular" | "super"
-export type DealStatus     = "formacao" | "ativo" | "finalizado"
+export type DealStatus     = "formacao" | "ativo" | "finalizado" | "liquidando" | "encerrado"
 export type DealCategory   = "social" | "fitness" | "checkin" | "free"
 export type Distribution   = "winner" | "top3" | "proportional"
 export type PaymentMethod  = "pix" | "cripto" | "cartao"
@@ -81,8 +81,10 @@ export interface Deal {
   mode:                 DealMode
   status:               DealStatus
   category:             DealCategory
-  verification_type:    string       // 'social_followers', 'fitness_steps', etc.
-  verification_channels: string[]    // ['x', 'strava', 'manual']
+  verification_type:    string       // e.g. 'km_run', 'post', 'checkin'
+  verification_channels: string[]    // e.g. ['strava'], ['x'], ['wellhub','totalpass']
+  rule_target:          number | null  // numeric goal (e.g. 10 for "10 km")
+  rule_frequency:       string | null  // 'daily' | 'weekly' | 'monthly' | 'yearly'
   entry_amount:         number       // BRL
   fee_pct:              number       // 3 (fixo sobre o pote dos perdedores)
   distribution:         Distribution
@@ -92,6 +94,12 @@ export interface Deal {
   start_date:           string       // ISO date
   end_date:             string       // ISO date
   winner_id:            string | null
+  // Solana on-chain fields (migration 009)
+  pda_address:          string | null
+  solana_tx_signature:  string | null
+  proof_hash:           string | null
+  final_proof_hash:     string | null
+  audit_logs:           Record<string, unknown>[] | null
   created_at:           string
 }
 
