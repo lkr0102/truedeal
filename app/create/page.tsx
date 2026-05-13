@@ -1094,7 +1094,7 @@ export default function CreateDealPage() {
             </div>
 
             <button
-              onClick={() => router.push("/onboarding/profile")}
+              onClick={() => router.push("/profile")}
               className="w-full mt-5 py-4 rounded-2xl font-bold text-white text-sm"
               style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)", boxShadow: "0 8px 32px rgba(22,163,74,0.35)" }}
             >
