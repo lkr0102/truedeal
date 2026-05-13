@@ -134,8 +134,15 @@ function calendarCells(year: number, month: number): (Date | null)[] {
 function getSharedRules(ids: string[], lang: Language): { id: string; label: string; desc: string; descEn: string; available: boolean }[] {
   if (ids.length === 0) return []
   if (ids.length === 1) return RULES[ids[0]] ?? []
-  const sets = ids.map(c => RULES[c] ?? [])
-  return sets.reduce((a, b) => a.filter(r => b.some(x => x.id === r.id)))
+  // Multiple channels: union of all rules (no duplicate ids)
+  const seen = new Set<string>()
+  const result: { id: string; label: string; desc: string; descEn: string; available: boolean }[] = []
+  for (const id of ids) {
+    for (const r of RULES[id] ?? []) {
+      if (!seen.has(r.id)) { seen.add(r.id); result.push(r) }
+    }
+  }
+  return result
 }
 
 // ── Section block ─────────────────────────────────────────────────────────────
@@ -501,17 +508,28 @@ export default function CreateDealPage() {
               <div className="space-y-1.5">
                 {availableRules.map(r => (
                   <button key={r.id}
-                    onClick={() => setRule(r.id)}
+                    onClick={() => r.available && setRule(r.id)}
+                    disabled={!r.available}
                     className="w-full flex items-center gap-3 p-3 rounded-xl transition-all"
                     style={{
                       background: rule === r.id ? "rgba(22,163,74,0.07)" : "rgba(255,255,255,0.5)",
                       border: rule === r.id ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
+                      opacity: !r.available ? 0.55 : 1,
+                      cursor: !r.available ? "default" : "pointer",
                     }}>
                     <div className="flex-1 text-left">
-                      <p className="text-sm font-bold text-gray-800">{r.label}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-gray-800">{r.label}</p>
+                        {!r.available && (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                            style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
+                            {t("badge_soon", language)}
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-gray-500 font-medium">{language === "pt" ? r.desc : r.descEn}</p>
                     </div>
-                    {rule === r.id && <Check className="w-4 h-4 text-[#16A34A] flex-shrink-0" />}
+                    {r.available && rule === r.id && <Check className="w-4 h-4 text-[#16A34A] flex-shrink-0" />}
                   </button>
                 ))}
               </div>
