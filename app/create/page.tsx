@@ -43,16 +43,19 @@ const CHANNEL_ICONS: Record<string, string> = {
 }
 
 const RULES: Record<string, { id: string; label: string; desc: string; descEn: string; available: boolean }[]> = {
-  social_x: [
-    { id: "post", label: "Post diário", desc: "Postar qualquer conteúdo no X uma vez por dia", descEn: "Post any content on X once a day", available: true },
-    { id: "engagement", label: "Engagement", desc: "Atingir meta de curtidas/reposts", descEn: "Reach likes/reposts goal", available: false },
+  x: [
+    { id: "post",       label: "Post diário",  desc: "Postar qualquer conteúdo no X uma vez por dia", descEn: "Post any content on X once a day",   available: true  },
+    { id: "engagement", label: "Engagement",   desc: "Atingir meta de curtidas/reposts",              descEn: "Reach likes/reposts goal",            available: false },
   ],
-  fitness_strava: [
-    { id: "dist", label: "Distância acumulada", desc: "Correr X km durante o período", descEn: "Run X km during the period", available: true },
-    { id: "activity", label: "Frequência", desc: "Registrar X activities na semana", descEn: "Register X activities per week", available: false },
+  strava: [
+    { id: "dist",     label: "Distância acumulada", desc: "Correr X km durante o período",               descEn: "Run X km during the period",               available: true  },
+    { id: "activity", label: "Frequência",           desc: "Registrar X atividades na semana",             descEn: "Register X activities per week",            available: false },
   ],
-  fitness_wellhub: [
-    { id: "checkin", label: "Check-in diário", desc: "Fazer check-in na academia via Wellhub", descEn: "Check-in at the gym via Wellhub", available: true },
+  wellhub: [
+    { id: "checkin", label: "Check-in diário", desc: "Fazer check-in na academia via Wellhub",   descEn: "Check-in at the gym via Wellhub",   available: true },
+  ],
+  totalpass: [
+    { id: "checkin", label: "Check-in diário", desc: "Fazer check-in na academia via TotalPass", descEn: "Check-in at the gym via TotalPass", available: true },
   ],
 }
 
