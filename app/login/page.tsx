@@ -331,7 +331,7 @@ export default function LoginPage() {
               className="w-full py-2 rounded-lg text-xs font-bold transition-all duration-300 hover:bg-[#00D26A]/10 active:scale-[0.98]"
               style={{ color: "#00D26A", border: "1px solid #00D26A" }}
             >
-              {isLoading ? "Bypassing Protocol..." : "PROTOCOL OVERRIDE (LUKAS ADMIN ACCESS)"}
+              {isLoading ? "Bypassing Protocol..." : "PROTOCOL OVERRIDE (DEMO ACCESS)"}
             </button>
           </div>
         )}
