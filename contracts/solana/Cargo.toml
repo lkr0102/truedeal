@@ -20,10 +20,10 @@ hashbrown = { path = "vendor/hashbrown" }
 block-buffer = { path = "vendor/block-buffer-0.10.4" }
 syn = { path = "vendor/syn" }
 toml = { git = "https://github.com/toml-rs/toml", tag = "toml-v0.8.19" }
-toml_edit = { git = "https://github.com/toml-rs/toml", tag = "toml_edit-v0.22.22" }
+toml_edit = { git = "https://github.com/toml-rs/toml", tag = "v0.22.22" }
 toml_datetime = { git = "https://github.com/toml-rs/toml", tag = "toml_datetime-v0.6.3" }
 winnow = { git = "https://github.com/winnow-rs/winnow", tag = "v0.6.18" }
-indexmap = { git = "https://github.com/indexmap-rs/indexmap.git", tag = "v2.7.1" }
+indexmap = { git = "https://github.com/indexmap-rs/indexmap.git", tag = "2.7.1" }
 serde = { git = "https://github.com/serde-rs/serde.git", tag = "v1.0.210" }
 serde_json = { git = "https://github.com/serde-rs/json.git", tag = "v1.0.128" }
 proc-macro2 = { git = "https://github.com/dtolnay/proc-macro2.git", tag = "1.0.86" }
