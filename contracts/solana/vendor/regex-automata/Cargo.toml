@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.65"
 name = "regex-automata"
 version = "0.4.14"
 authors = [
@@ -213,5 +213,3 @@ version = "0.1.0"
 level = "allow"
 priority = 0
 check-cfg = ["cfg(docsrs_regex)"]
-
-

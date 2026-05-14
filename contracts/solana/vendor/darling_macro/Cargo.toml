@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.56"
 name = "darling_macro"
 version = "0.20.11"
 authors = ["Ted Driggs <ted.driggs@outlook.com>"]
@@ -42,4 +42,3 @@ version = "1.0.18"
 
 [dependencies.syn]
 version = "2.0.15"
-

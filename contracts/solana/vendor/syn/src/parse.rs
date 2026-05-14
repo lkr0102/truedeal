@@ -103,7 +103,7 @@
 //! use syn::Type;
 //!
 //! # fn run_parser() -> syn::Result<()> {
-//! let t: Type = syn::parse_str("alloc::collections::HashMap<String, Value>")?;
+//! let t: Type = syn::parse_str("std::collections::HashMap<String, Value>")?;
 //! #     Ok(())
 //! # }
 //! #
@@ -187,20 +187,19 @@ use crate::error;
 use crate::lookahead;
 use crate::punctuated::Punctuated;
 use crate::token::Token;
-use alloc::boxed::Box;
-use alloc::rc::Rc;
-use core::cell::Cell;
-use core::fmt::{self, Debug, Display};
-#[cfg(feature = "extra-traits")]
-use core::hash::{Hash, Hasher};
-use core::marker::PhantomData;
-use core::mem;
-use core::ops::Deref;
-use core::panic::{RefUnwindSafe, UnwindSafe};
-use core::str::FromStr;
 use proc_macro2::{Delimiter, Group, Literal, Punct, Span, TokenStream, TokenTree};
 #[cfg(feature = "printing")]
 use quote::ToTokens;
+use std::cell::Cell;
+use std::fmt::{self, Debug, Display};
+#[cfg(feature = "extra-traits")]
+use std::hash::{Hash, Hasher};
+use std::marker::PhantomData;
+use std::mem;
+use std::ops::Deref;
+use std::panic::{RefUnwindSafe, UnwindSafe};
+use std::rc::Rc;
+use std::str::FromStr;
 
 pub use crate::error::{Error, Result};
 pub use crate::lookahead::{End, Lookahead1, Peek};
@@ -503,7 +502,7 @@ impl<'a> ParseBuffer<'a> {
     ///     }
     /// }
     /// ```
-    pub fn call<T>(&'a self, function: fn(ParseStream<'a>) -> Result<T>) -> Result<T> {
+    pub fn call<T>(&self, function: fn(ParseStream) -> Result<T>) -> Result<T> {
         function(self)
     }
 
@@ -733,8 +732,8 @@ impl<'a> ParseBuffer<'a> {
     /// }
     /// ```
     pub fn parse_terminated<T, P>(
-        &'a self,
-        parser: fn(ParseStream<'a>) -> Result<T>,
+        &self,
+        parser: fn(ParseStream) -> Result<T>,
         separator: P,
     ) -> Result<Punctuated<T, P::Token>>
     where
@@ -1128,7 +1127,7 @@ impl<'a> ParseBuffer<'a> {
     ///     let mut tokens = TokenStream::new();
     ///     while cursor < end {
     ///         let (token, next) = cursor.token_tree().unwrap();
-    ///         tokens.extend(core::iter::once(token));
+    ///         tokens.extend(std::iter::once(token));
     ///         cursor = next;
     ///     }
     ///     tokens

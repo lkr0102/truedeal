@@ -66,8 +66,8 @@ pub mod truedeal {
     /// Sovereign Payout: settles via DualGuard Consensus.
     /// Slacker Tax: 3% of losers' pool to treasury; remainder split among winners.
     /// Winners are passed as remaining_accounts (their USDC ATAs).
-    pub fn settle_performance_agreement(
-        ctx: Context<SettlePerformanceAgreement>,
+    pub fn settle_performance_agreement<'info>(
+        ctx: Context<'_, '_, '_, 'info, SettlePerformanceAgreement<'info>>,
         winners_count: u64,
         proof_hash: [u8; 32],
     ) -> Result<()> {
@@ -126,8 +126,8 @@ pub mod truedeal {
                         ctx.accounts.token_program.to_account_info(),
                         Transfer {
                             from:      ctx.accounts.vault.to_account_info(),
-                            to:        winner_ata.clone(),
-                            authority: agreement.to_account_info(),
+                            to:        winner_ata.to_account_info(),
+                            authority: ctx.accounts.agreement_account.to_account_info(),
                         },
                         signer,
                     ),

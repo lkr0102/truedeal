@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.60"
+rust-version = "1.36"
 name = "unicode-normalization"
 version = "0.1.25"
 authors = [
@@ -65,4 +65,3 @@ path = "benches/bench.rs"
 [dependencies.tinyvec]
 version = "1"
 features = ["alloc"]
-

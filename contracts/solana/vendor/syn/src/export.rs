@@ -1,33 +1,33 @@
 #[doc(hidden)]
-pub use core::clone::Clone;
+pub use std::clone::Clone;
 #[doc(hidden)]
-pub use core::cmp::{Eq, PartialEq};
+pub use std::cmp::{Eq, PartialEq};
 #[doc(hidden)]
-pub use core::concat;
+pub use std::concat;
 #[doc(hidden)]
-pub use core::default::Default;
+pub use std::default::Default;
 #[doc(hidden)]
-pub use core::fmt::Debug;
+pub use std::fmt::Debug;
 #[doc(hidden)]
-pub use core::hash::{Hash, Hasher};
+pub use std::hash::{Hash, Hasher};
 #[doc(hidden)]
-pub use core::marker::Copy;
+pub use std::marker::Copy;
 #[doc(hidden)]
-pub use core::option::Option::{None, Some};
+pub use std::option::Option::{None, Some};
 #[doc(hidden)]
-pub use core::result::Result::{Err, Ok};
+pub use std::result::Result::{Err, Ok};
 #[doc(hidden)]
-pub use core::stringify;
+pub use std::stringify;
 
 #[doc(hidden)]
-pub type Formatter<'a> = core::fmt::Formatter<'a>;
+pub type Formatter<'a> = std::fmt::Formatter<'a>;
 #[doc(hidden)]
-pub type FmtResult = core::fmt::Result;
+pub type FmtResult = std::fmt::Result;
 
 #[doc(hidden)]
-pub type bool = core::primitive::bool;
+pub type bool = std::primitive::bool;
 #[doc(hidden)]
-pub type str = core::primitive::str;
+pub type str = std::primitive::str;
 
 #[cfg(feature = "printing")]
 #[doc(hidden)]

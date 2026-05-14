@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.56"
 name = "ed25519"
 version = "1.5.3"
 authors = ["RustCrypto Developers"]
@@ -89,4 +89,3 @@ serde_bytes = [
     "std",
 ]
 std = ["signature/std"]
-

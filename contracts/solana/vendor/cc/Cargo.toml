@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.60"
+rust-version = "1.63"
 name = "cc"
 version = "1.2.62"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
@@ -77,5 +77,3 @@ check-cfg = ["cfg(disable_clang_cl_tests)"]
 [profile.release]
 opt-level = 3
 lto = true
-
-

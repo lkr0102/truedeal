@@ -1,0 +1,12 @@
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\digest-4233c766609ffc95.d: C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\lib.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\ct_variable.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\rt_variable.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\wrapper.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\xof_reader.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\digest.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\mac.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libdigest-4233c766609ffc95.rmeta: C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\lib.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\ct_variable.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\rt_variable.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\wrapper.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\xof_reader.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\digest.rs C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\mac.rs
+
+C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\lib.rs:
+C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api.rs:
+C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\ct_variable.rs:
+C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\rt_variable.rs:
+C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\wrapper.rs:
+C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\core_api\xof_reader.rs:
+C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\digest.rs:
+C:\Users\João\.cargo\git\checkouts\traits-897a5f44fa539ef9\3443894\digest\src\mac.rs:

@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.65"
 name = "once_cell"
 version = "1.21.4"
 authors = ["Aleksey Kladov <aleksey.kladov@gmail.com>"]
@@ -117,5 +117,3 @@ features = ["std"]
 
 [dev-dependencies.regex]
 version = "1.10.6"
-
-

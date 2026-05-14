@@ -1,0 +1,13 @@
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\semver-916a15b4720e667e.d: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\display.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\error.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\eval.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\identifier.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\impls.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\parse.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libsemver-916a15b4720e667e.rlib: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\display.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\error.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\eval.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\identifier.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\impls.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\parse.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libsemver-916a15b4720e667e.rmeta: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\display.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\error.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\eval.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\identifier.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\impls.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\parse.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\lib.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\display.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\error.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\eval.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\identifier.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\impls.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\semver\src\parse.rs:

@@ -1,24 +1,15 @@
 use crate::detection::inside_proc_macro;
-use crate::fallback::{self, FromStr2 as _};
 #[cfg(span_locations)]
 use crate::location::LineColumn;
-#[cfg(proc_macro_span)]
-use crate::probe::proc_macro_span;
-#[cfg(all(span_locations, proc_macro_span_file))]
-use crate::probe::proc_macro_span_file;
-#[cfg(all(span_locations, proc_macro_span_location))]
-use crate::probe::proc_macro_span_location;
-use crate::{Delimiter, Punct, Spacing, TokenTree};
-#[cfg(all(span_locations, not(proc_macro_span_file)))]
-use alloc::borrow::ToOwned as _;
-use alloc::string::{String, ToString as _};
-use alloc::vec::Vec;
-use core::ffi::CStr;
+use crate::{fallback, Delimiter, Punct, Spacing, TokenTree};
 use core::fmt::{self, Debug, Display};
 #[cfg(span_locations)]
 use core::ops::Range;
 use core::ops::RangeBounds;
-#[cfg(span_locations)]
+use core::str::FromStr;
+use std::ffi::CStr;
+use std::panic;
+#[cfg(super_unstable)]
 use std::path::PathBuf;
 
 #[derive(Clone)]
@@ -51,11 +42,11 @@ fn mismatch(line: u32) -> ! {
     #[cfg(procmacro2_backtrace)]
     {
         let backtrace = std::backtrace::Backtrace::force_capture();
-        panic!("compiler/fallback mismatch L{}\n\n{}", line, backtrace)
+        panic!("compiler/fallback mismatch #{}\n\n{}", line, backtrace)
     }
     #[cfg(not(procmacro2_backtrace))]
     {
-        panic!("compiler/fallback mismatch L{}", line)
+        panic!("compiler/fallback mismatch #{}", line)
     }
 }
 
@@ -87,7 +78,7 @@ impl DeferredTokenStream {
 }
 
 impl TokenStream {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         if inside_proc_macro() {
             TokenStream::Compiler(DeferredTokenStream::new(proc_macro::TokenStream::new()))
         } else {
@@ -95,19 +86,7 @@ impl TokenStream {
         }
     }
 
-    pub(crate) fn from_str_checked(src: &str) -> Result<Self, LexError> {
-        if inside_proc_macro() {
-            Ok(TokenStream::Compiler(DeferredTokenStream::new(
-                proc_macro::TokenStream::from_str_checked(src)?,
-            )))
-        } else {
-            Ok(TokenStream::Fallback(
-                fallback::TokenStream::from_str_checked(src)?,
-            ))
-        }
-    }
-
-    pub(crate) fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         match self {
             TokenStream::Compiler(tts) => tts.is_empty(),
             TokenStream::Fallback(tts) => tts.is_empty(),
@@ -129,6 +108,26 @@ impl TokenStream {
     }
 }
 
+impl FromStr for TokenStream {
+    type Err = LexError;
+
+    fn from_str(src: &str) -> Result<TokenStream, LexError> {
+        if inside_proc_macro() {
+            Ok(TokenStream::Compiler(DeferredTokenStream::new(
+                proc_macro_parse(src)?,
+            )))
+        } else {
+            Ok(TokenStream::Fallback(src.parse()?))
+        }
+    }
+}
+
+// Work around https://github.com/rust-lang/rust/issues/58736.
+fn proc_macro_parse(src: &str) -> Result<proc_macro::TokenStream, LexError> {
+    let result = panic::catch_unwind(|| src.parse().map_err(LexError::Compiler));
+    result.unwrap_or_else(|_| Err(LexError::CompilerPanic))
+}
+
 impl Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -148,9 +147,7 @@ impl From<TokenStream> for proc_macro::TokenStream {
     fn from(inner: TokenStream) -> Self {
         match inner {
             TokenStream::Compiler(inner) => inner.into_token_stream(),
-            TokenStream::Fallback(inner) => {
-                proc_macro::TokenStream::from_str_unchecked(&inner.to_string())
-            }
+            TokenStream::Fallback(inner) => inner.to_string().parse().unwrap(),
         }
     }
 }
@@ -164,7 +161,7 @@ impl From<fallback::TokenStream> for TokenStream {
 // Assumes inside_proc_macro().
 fn into_compiler_token(token: TokenTree) -> proc_macro::TokenTree {
     match token {
-        TokenTree::Group(tt) => proc_macro::TokenTree::Group(tt.inner.unwrap_nightly()),
+        TokenTree::Group(tt) => tt.inner.unwrap_nightly().into(),
         TokenTree::Punct(tt) => {
             let spacing = match tt.spacing() {
                 Spacing::Joint => proc_macro::Spacing::Joint,
@@ -172,33 +169,31 @@ fn into_compiler_token(token: TokenTree) -> proc_macro::TokenTree {
             };
             let mut punct = proc_macro::Punct::new(tt.as_char(), spacing);
             punct.set_span(tt.span().inner.unwrap_nightly());
-            proc_macro::TokenTree::Punct(punct)
+            punct.into()
         }
-        TokenTree::Ident(tt) => proc_macro::TokenTree::Ident(tt.inner.unwrap_nightly()),
-        TokenTree::Literal(tt) => proc_macro::TokenTree::Literal(tt.inner.unwrap_nightly()),
+        TokenTree::Ident(tt) => tt.inner.unwrap_nightly().into(),
+        TokenTree::Literal(tt) => tt.inner.unwrap_nightly().into(),
     }
 }
 
 impl From<TokenTree> for TokenStream {
     fn from(token: TokenTree) -> Self {
         if inside_proc_macro() {
-            TokenStream::Compiler(DeferredTokenStream::new(proc_macro::TokenStream::from(
-                into_compiler_token(token),
-            )))
+            TokenStream::Compiler(DeferredTokenStream::new(into_compiler_token(token).into()))
         } else {
-            TokenStream::Fallback(fallback::TokenStream::from(token))
+            TokenStream::Fallback(token.into())
         }
     }
 }
 
 impl FromIterator<TokenTree> for TokenStream {
-    fn from_iter<I: IntoIterator<Item = TokenTree>>(tokens: I) -> Self {
+    fn from_iter<I: IntoIterator<Item = TokenTree>>(trees: I) -> Self {
         if inside_proc_macro() {
             TokenStream::Compiler(DeferredTokenStream::new(
-                tokens.into_iter().map(into_compiler_token).collect(),
+                trees.into_iter().map(into_compiler_token).collect(),
             ))
         } else {
-            TokenStream::Fallback(tokens.into_iter().collect())
+            TokenStream::Fallback(trees.into_iter().collect())
         }
     }
 }
@@ -228,15 +223,15 @@ impl FromIterator<TokenStream> for TokenStream {
 }
 
 impl Extend<TokenTree> for TokenStream {
-    fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, tokens: I) {
+    fn extend<I: IntoIterator<Item = TokenTree>>(&mut self, stream: I) {
         match self {
             TokenStream::Compiler(tts) => {
                 // Here is the reason for DeferredTokenStream.
-                for token in tokens {
+                for token in stream {
                     tts.extra.push(into_compiler_token(token));
                 }
             }
-            TokenStream::Fallback(tts) => tts.extend(tokens),
+            TokenStream::Fallback(tts) => tts.extend(stream),
         }
     }
 }
@@ -341,9 +336,7 @@ impl Iterator for TokenTreeIter {
             TokenTreeIter::Fallback(iter) => return iter.next(),
         };
         Some(match token {
-            proc_macro::TokenTree::Group(tt) => {
-                TokenTree::Group(crate::Group::_new(Group::Compiler(tt)))
-            }
+            proc_macro::TokenTree::Group(tt) => crate::Group::_new(Group::Compiler(tt)).into(),
             proc_macro::TokenTree::Punct(tt) => {
                 let spacing = match tt.spacing() {
                     proc_macro::Spacing::Joint => Spacing::Joint,
@@ -351,14 +344,10 @@ impl Iterator for TokenTreeIter {
                 };
                 let mut o = Punct::new(tt.as_char(), spacing);
                 o.set_span(crate::Span::_new(Span::Compiler(tt.span())));
-                TokenTree::Punct(o)
+                o.into()
             }
-            proc_macro::TokenTree::Ident(s) => {
-                TokenTree::Ident(crate::Ident::_new(Ident::Compiler(s)))
-            }
-            proc_macro::TokenTree::Literal(l) => {
-                TokenTree::Literal(crate::Literal::_new(Literal::Compiler(l)))
-            }
+            proc_macro::TokenTree::Ident(s) => crate::Ident::_new(Ident::Compiler(s)).into(),
+            proc_macro::TokenTree::Literal(l) => crate::Literal::_new(Literal::Compiler(l)).into(),
         })
     }
 
@@ -370,6 +359,45 @@ impl Iterator for TokenTreeIter {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
+#[cfg(super_unstable)]
+pub(crate) enum SourceFile {
+    Compiler(proc_macro::SourceFile),
+    Fallback(fallback::SourceFile),
+}
+
+#[cfg(super_unstable)]
+impl SourceFile {
+    fn nightly(sf: proc_macro::SourceFile) -> Self {
+        SourceFile::Compiler(sf)
+    }
+
+    /// Get the path to this source file as a string.
+    pub fn path(&self) -> PathBuf {
+        match self {
+            SourceFile::Compiler(a) => a.path(),
+            SourceFile::Fallback(a) => a.path(),
+        }
+    }
+
+    pub fn is_real(&self) -> bool {
+        match self {
+            SourceFile::Compiler(a) => a.is_real(),
+            SourceFile::Fallback(a) => a.is_real(),
+        }
+    }
+}
+
+#[cfg(super_unstable)]
+impl Debug for SourceFile {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            SourceFile::Compiler(a) => Debug::fmt(a, f),
+            SourceFile::Fallback(a) => Debug::fmt(a, f),
+        }
+    }
+}
+
 #[derive(Copy, Clone)]
 pub(crate) enum Span {
     Compiler(proc_macro::Span),
@@ -377,7 +405,7 @@ pub(crate) enum Span {
 }
 
 impl Span {
-    pub(crate) fn call_site() -> Self {
+    pub fn call_site() -> Self {
         if inside_proc_macro() {
             Span::Compiler(proc_macro::Span::call_site())
         } else {
@@ -385,7 +413,7 @@ impl Span {
         }
     }
 
-    pub(crate) fn mixed_site() -> Self {
+    pub fn mixed_site() -> Self {
         if inside_proc_macro() {
             Span::Compiler(proc_macro::Span::mixed_site())
         } else {
@@ -394,7 +422,7 @@ impl Span {
     }
 
     #[cfg(super_unstable)]
-    pub(crate) fn def_site() -> Self {
+    pub fn def_site() -> Self {
         if inside_proc_macro() {
             Span::Compiler(proc_macro::Span::def_site())
         } else {
@@ -402,7 +430,7 @@ impl Span {
         }
     }
 
-    pub(crate) fn resolved_at(&self, other: Span) -> Span {
+    pub fn resolved_at(&self, other: Span) -> Span {
         match (self, other) {
             (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.resolved_at(b)),
             (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.resolved_at(b)),
@@ -411,7 +439,7 @@ impl Span {
         }
     }
 
-    pub(crate) fn located_at(&self, other: Span) -> Span {
+    pub fn located_at(&self, other: Span) -> Span {
         match (self, other) {
             (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.located_at(b)),
             (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.located_at(b)),
@@ -420,18 +448,26 @@ impl Span {
         }
     }
 
-    pub(crate) fn unwrap(self) -> proc_macro::Span {
+    pub fn unwrap(self) -> proc_macro::Span {
         match self {
             Span::Compiler(s) => s,
             Span::Fallback(_) => panic!("proc_macro::Span is only available in procedural macros"),
         }
     }
 
+    #[cfg(super_unstable)]
+    pub fn source_file(&self) -> SourceFile {
+        match self {
+            Span::Compiler(s) => SourceFile::nightly(s.source_file()),
+            Span::Fallback(s) => SourceFile::Fallback(s.source_file()),
+        }
+    }
+
     #[cfg(span_locations)]
-    pub(crate) fn byte_range(&self) -> Range<usize> {
+    pub fn byte_range(&self) -> Range<usize> {
         match self {
             #[cfg(proc_macro_span)]
-            Span::Compiler(s) => proc_macro_span::byte_range(s),
+            Span::Compiler(s) => s.byte_range(),
             #[cfg(not(proc_macro_span))]
             Span::Compiler(_) => 0..0,
             Span::Fallback(s) => s.byte_range(),
@@ -439,62 +475,25 @@ impl Span {
     }
 
     #[cfg(span_locations)]
-    pub(crate) fn start(&self) -> LineColumn {
+    pub fn start(&self) -> LineColumn {
         match self {
-            #[cfg(proc_macro_span_location)]
-            Span::Compiler(s) => LineColumn {
-                line: proc_macro_span_location::line(s),
-                column: proc_macro_span_location::column(s).saturating_sub(1),
-            },
-            #[cfg(not(proc_macro_span_location))]
             Span::Compiler(_) => LineColumn { line: 0, column: 0 },
             Span::Fallback(s) => s.start(),
         }
     }
 
     #[cfg(span_locations)]
-    pub(crate) fn end(&self) -> LineColumn {
+    pub fn end(&self) -> LineColumn {
         match self {
-            #[cfg(proc_macro_span_location)]
-            Span::Compiler(s) => {
-                let end = proc_macro_span_location::end(s);
-                LineColumn {
-                    line: proc_macro_span_location::line(&end),
-                    column: proc_macro_span_location::column(&end).saturating_sub(1),
-                }
-            }
-            #[cfg(not(proc_macro_span_location))]
             Span::Compiler(_) => LineColumn { line: 0, column: 0 },
             Span::Fallback(s) => s.end(),
         }
     }
 
-    #[cfg(span_locations)]
-    pub(crate) fn file(&self) -> String {
-        match self {
-            #[cfg(proc_macro_span_file)]
-            Span::Compiler(s) => proc_macro_span_file::file(s),
-            #[cfg(not(proc_macro_span_file))]
-            Span::Compiler(_) => "<token stream>".to_owned(),
-            Span::Fallback(s) => s.file(),
-        }
-    }
-
-    #[cfg(span_locations)]
-    pub(crate) fn local_file(&self) -> Option<PathBuf> {
-        match self {
-            #[cfg(proc_macro_span_file)]
-            Span::Compiler(s) => proc_macro_span_file::local_file(s),
-            #[cfg(not(proc_macro_span_file))]
-            Span::Compiler(_) => None,
-            Span::Fallback(s) => s.local_file(),
-        }
-    }
-
-    pub(crate) fn join(&self, other: Span) -> Option<Span> {
+    pub fn join(&self, other: Span) -> Option<Span> {
         let ret = match (self, other) {
             #[cfg(proc_macro_span)]
-            (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(proc_macro_span::join(a, b)?),
+            (Span::Compiler(a), Span::Compiler(b)) => Span::Compiler(a.join(b)?),
             (Span::Fallback(a), Span::Fallback(b)) => Span::Fallback(a.join(b)?),
             _ => return None,
         };
@@ -502,7 +501,7 @@ impl Span {
     }
 
     #[cfg(super_unstable)]
-    pub(crate) fn eq(&self, other: &Span) -> bool {
+    pub fn eq(&self, other: &Span) -> bool {
         match (self, other) {
             (Span::Compiler(a), Span::Compiler(b)) => a.eq(b),
             (Span::Fallback(a), Span::Fallback(b)) => a.eq(b),
@@ -510,7 +509,7 @@ impl Span {
         }
     }
 
-    pub(crate) fn source_text(&self) -> Option<String> {
+    pub fn source_text(&self) -> Option<String> {
         match self {
             #[cfg(not(no_source_text))]
             Span::Compiler(s) => s.source_text(),
@@ -565,7 +564,7 @@ pub(crate) enum Group {
 }
 
 impl Group {
-    pub(crate) fn new(delimiter: Delimiter, stream: TokenStream) -> Self {
+    pub fn new(delimiter: Delimiter, stream: TokenStream) -> Self {
         match stream {
             TokenStream::Compiler(tts) => {
                 let delimiter = match delimiter {
@@ -582,7 +581,7 @@ impl Group {
         }
     }
 
-    pub(crate) fn delimiter(&self) -> Delimiter {
+    pub fn delimiter(&self) -> Delimiter {
         match self {
             Group::Compiler(g) => match g.delimiter() {
                 proc_macro::Delimiter::Parenthesis => Delimiter::Parenthesis,
@@ -594,35 +593,35 @@ impl Group {
         }
     }
 
-    pub(crate) fn stream(&self) -> TokenStream {
+    pub fn stream(&self) -> TokenStream {
         match self {
             Group::Compiler(g) => TokenStream::Compiler(DeferredTokenStream::new(g.stream())),
             Group::Fallback(g) => TokenStream::Fallback(g.stream()),
         }
     }
 
-    pub(crate) fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match self {
             Group::Compiler(g) => Span::Compiler(g.span()),
             Group::Fallback(g) => Span::Fallback(g.span()),
         }
     }
 
-    pub(crate) fn span_open(&self) -> Span {
+    pub fn span_open(&self) -> Span {
         match self {
             Group::Compiler(g) => Span::Compiler(g.span_open()),
             Group::Fallback(g) => Span::Fallback(g.span_open()),
         }
     }
 
-    pub(crate) fn span_close(&self) -> Span {
+    pub fn span_close(&self) -> Span {
         match self {
             Group::Compiler(g) => Span::Compiler(g.span_close()),
             Group::Fallback(g) => Span::Fallback(g.span_close()),
         }
     }
 
-    pub(crate) fn set_span(&mut self, span: Span) {
+    pub fn set_span(&mut self, span: Span) {
         match (self, span) {
             (Group::Compiler(g), Span::Compiler(s)) => g.set_span(s),
             (Group::Fallback(g), Span::Fallback(s)) => g.set_span(s),
@@ -671,29 +670,37 @@ pub(crate) enum Ident {
 
 impl Ident {
     #[track_caller]
-    pub(crate) fn new_checked(string: &str, span: Span) -> Self {
+    pub fn new_checked(string: &str, span: Span) -> Self {
         match span {
             Span::Compiler(s) => Ident::Compiler(proc_macro::Ident::new(string, s)),
             Span::Fallback(s) => Ident::Fallback(fallback::Ident::new_checked(string, s)),
         }
     }
 
+    pub fn new_unchecked(string: &str, span: fallback::Span) -> Self {
+        Ident::Fallback(fallback::Ident::new_unchecked(string, span))
+    }
+
     #[track_caller]
-    pub(crate) fn new_raw_checked(string: &str, span: Span) -> Self {
+    pub fn new_raw_checked(string: &str, span: Span) -> Self {
         match span {
             Span::Compiler(s) => Ident::Compiler(proc_macro::Ident::new_raw(string, s)),
             Span::Fallback(s) => Ident::Fallback(fallback::Ident::new_raw_checked(string, s)),
         }
     }
 
-    pub(crate) fn span(&self) -> Span {
+    pub fn new_raw_unchecked(string: &str, span: fallback::Span) -> Self {
+        Ident::Fallback(fallback::Ident::new_raw_unchecked(string, span))
+    }
+
+    pub fn span(&self) -> Span {
         match self {
             Ident::Compiler(t) => Span::Compiler(t.span()),
             Ident::Fallback(t) => Span::Fallback(t.span()),
         }
     }
 
-    pub(crate) fn set_span(&mut self, span: Span) {
+    pub fn set_span(&mut self, span: Span) {
         match (self, span) {
             (Ident::Compiler(t), Span::Compiler(s)) => t.set_span(s),
             (Ident::Fallback(t), Span::Fallback(s)) => t.set_span(s),
@@ -707,12 +714,6 @@ impl Ident {
             Ident::Compiler(s) => s,
             Ident::Fallback(_) => mismatch(line!()),
         }
-    }
-}
-
-impl From<fallback::Ident> for Ident {
-    fn from(inner: fallback::Ident) -> Self {
-        Ident::Fallback(inner)
     }
 }
 
@@ -766,7 +767,7 @@ pub(crate) enum Literal {
 
 macro_rules! suffixed_numbers {
     ($($name:ident => $kind:ident,)*) => ($(
-        pub(crate) fn $name(n: $kind) -> Literal {
+        pub fn $name(n: $kind) -> Literal {
             if inside_proc_macro() {
                 Literal::Compiler(proc_macro::Literal::$name(n))
             } else {
@@ -778,7 +779,7 @@ macro_rules! suffixed_numbers {
 
 macro_rules! unsuffixed_integers {
     ($($name:ident => $kind:ident,)*) => ($(
-        pub(crate) fn $name(n: $kind) -> Literal {
+        pub fn $name(n: $kind) -> Literal {
             if inside_proc_macro() {
                 Literal::Compiler(proc_macro::Literal::$name(n))
             } else {
@@ -789,19 +790,9 @@ macro_rules! unsuffixed_integers {
 }
 
 impl Literal {
-    pub(crate) fn from_str_checked(repr: &str) -> Result<Self, LexError> {
+    pub unsafe fn from_str_unchecked(repr: &str) -> Self {
         if inside_proc_macro() {
-            let literal = proc_macro::Literal::from_str_checked(repr)?;
-            Ok(Literal::Compiler(literal))
-        } else {
-            let literal = fallback::Literal::from_str_checked(repr)?;
-            Ok(Literal::Fallback(literal))
-        }
-    }
-
-    pub(crate) unsafe fn from_str_unchecked(repr: &str) -> Self {
-        if inside_proc_macro() {
-            Literal::Compiler(proc_macro::Literal::from_str_unchecked(repr))
+            Literal::Compiler(proc_macro::Literal::from_str(repr).expect("invalid literal"))
         } else {
             Literal::Fallback(unsafe { fallback::Literal::from_str_unchecked(repr) })
         }
@@ -840,7 +831,7 @@ impl Literal {
         isize_unsuffixed => isize,
     }
 
-    pub(crate) fn f32_unsuffixed(f: f32) -> Literal {
+    pub fn f32_unsuffixed(f: f32) -> Literal {
         if inside_proc_macro() {
             Literal::Compiler(proc_macro::Literal::f32_unsuffixed(f))
         } else {
@@ -848,7 +839,7 @@ impl Literal {
         }
     }
 
-    pub(crate) fn f64_unsuffixed(f: f64) -> Literal {
+    pub fn f64_unsuffixed(f: f64) -> Literal {
         if inside_proc_macro() {
             Literal::Compiler(proc_macro::Literal::f64_unsuffixed(f))
         } else {
@@ -856,7 +847,7 @@ impl Literal {
         }
     }
 
-    pub(crate) fn string(string: &str) -> Literal {
+    pub fn string(string: &str) -> Literal {
         if inside_proc_macro() {
             Literal::Compiler(proc_macro::Literal::string(string))
         } else {
@@ -864,7 +855,7 @@ impl Literal {
         }
     }
 
-    pub(crate) fn character(ch: char) -> Literal {
+    pub fn character(ch: char) -> Literal {
         if inside_proc_macro() {
             Literal::Compiler(proc_macro::Literal::character(ch))
         } else {
@@ -872,7 +863,7 @@ impl Literal {
         }
     }
 
-    pub(crate) fn byte_character(byte: u8) -> Literal {
+    pub fn byte_character(byte: u8) -> Literal {
         if inside_proc_macro() {
             Literal::Compiler({
                 #[cfg(not(no_literal_byte_character))]
@@ -883,7 +874,7 @@ impl Literal {
                 #[cfg(no_literal_byte_character)]
                 {
                     let fallback = fallback::Literal::byte_character(byte);
-                    proc_macro::Literal::from_str_unchecked(&fallback.repr)
+                    fallback.repr.parse::<proc_macro::Literal>().unwrap()
                 }
             })
         } else {
@@ -891,7 +882,7 @@ impl Literal {
         }
     }
 
-    pub(crate) fn byte_string(bytes: &[u8]) -> Literal {
+    pub fn byte_string(bytes: &[u8]) -> Literal {
         if inside_proc_macro() {
             Literal::Compiler(proc_macro::Literal::byte_string(bytes))
         } else {
@@ -899,7 +890,7 @@ impl Literal {
         }
     }
 
-    pub(crate) fn c_string(string: &CStr) -> Literal {
+    pub fn c_string(string: &CStr) -> Literal {
         if inside_proc_macro() {
             Literal::Compiler({
                 #[cfg(not(no_literal_c_string))]
@@ -910,7 +901,7 @@ impl Literal {
                 #[cfg(no_literal_c_string)]
                 {
                     let fallback = fallback::Literal::c_string(string);
-                    proc_macro::Literal::from_str_unchecked(&fallback.repr)
+                    fallback.repr.parse::<proc_macro::Literal>().unwrap()
                 }
             })
         } else {
@@ -918,14 +909,14 @@ impl Literal {
         }
     }
 
-    pub(crate) fn span(&self) -> Span {
+    pub fn span(&self) -> Span {
         match self {
             Literal::Compiler(lit) => Span::Compiler(lit.span()),
             Literal::Fallback(lit) => Span::Fallback(lit.span()),
         }
     }
 
-    pub(crate) fn set_span(&mut self, span: Span) {
+    pub fn set_span(&mut self, span: Span) {
         match (self, span) {
             (Literal::Compiler(lit), Span::Compiler(s)) => lit.set_span(s),
             (Literal::Fallback(lit), Span::Fallback(s)) => lit.set_span(s),
@@ -934,10 +925,10 @@ impl Literal {
         }
     }
 
-    pub(crate) fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
+    pub fn subspan<R: RangeBounds<usize>>(&self, range: R) -> Option<Span> {
         match self {
             #[cfg(proc_macro_span)]
-            Literal::Compiler(lit) => proc_macro_span::subspan(lit, range).map(Span::Compiler),
+            Literal::Compiler(lit) => lit.subspan(range).map(Span::Compiler),
             #[cfg(not(proc_macro_span))]
             Literal::Compiler(_lit) => None,
             Literal::Fallback(lit) => lit.subspan(range).map(Span::Fallback),
@@ -955,6 +946,20 @@ impl Literal {
 impl From<fallback::Literal> for Literal {
     fn from(s: fallback::Literal) -> Self {
         Literal::Fallback(s)
+    }
+}
+
+impl FromStr for Literal {
+    type Err = LexError;
+
+    fn from_str(repr: &str) -> Result<Self, Self::Err> {
+        if inside_proc_macro() {
+            let literal = proc_macro::Literal::from_str(repr)?;
+            Ok(Literal::Compiler(literal))
+        } else {
+            let literal = fallback::Literal::from_str(repr)?;
+            Ok(Literal::Fallback(literal))
+        }
     }
 }
 

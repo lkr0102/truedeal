@@ -100,13 +100,6 @@ use crate::lifetime::Lifetime;
 #[cfg(feature = "parsing")]
 use crate::parse::{Parse, ParseStream};
 use crate::span::IntoSpans;
-#[cfg(feature = "extra-traits")]
-use core::cmp;
-#[cfg(feature = "extra-traits")]
-use core::fmt::{self, Debug};
-#[cfg(feature = "extra-traits")]
-use core::hash::{Hash, Hasher};
-use core::ops::{Deref, DerefMut};
 use proc_macro2::extra::DelimSpan;
 use proc_macro2::Span;
 #[cfg(feature = "printing")]
@@ -116,7 +109,14 @@ use proc_macro2::{Delimiter, Ident};
 #[cfg(feature = "parsing")]
 use proc_macro2::{Literal, Punct, TokenTree};
 #[cfg(feature = "printing")]
-use quote::{ToTokens, TokenStreamExt as _};
+use quote::{ToTokens, TokenStreamExt};
+#[cfg(feature = "extra-traits")]
+use std::cmp;
+#[cfg(feature = "extra-traits")]
+use std::fmt::{self, Debug};
+#[cfg(feature = "extra-traits")]
+use std::hash::{Hash, Hasher};
+use std::ops::{Deref, DerefMut};
 
 /// Marker trait for types that represent single tokens.
 ///
@@ -143,7 +143,7 @@ pub(crate) mod private {
     /// Support writing `token.span` rather than `token.spans[0]` on tokens that
     /// hold a single span.
     #[repr(transparent)]
-    #[allow(unknown_lints, repr_transparent_non_zst_fields)] // False positive: https://github.com/rust-lang/rust/issues/115922
+    #[allow(unknown_lints, repr_transparent_external_private_fields)] // False positive: https://github.com/rust-lang/rust/issues/78586#issuecomment-1722680482
     pub struct WithSpan {
         pub span: Span,
     }
@@ -219,7 +219,7 @@ macro_rules! define_keywords {
                 }
             }
 
-            impl core::default::Default for $name {
+            impl std::default::Default for $name {
                 fn default() -> Self {
                     $name {
                         span: Span::call_site(),
@@ -324,7 +324,7 @@ macro_rules! define_punctuation_structs {
     ($($token:literal pub struct $name:ident/$len:tt #[doc = $usage:literal])*) => {
         $(
             #[cfg_attr(not(doc), repr(transparent))]
-            #[allow(unknown_lints, repr_transparent_non_zst_fields)] // False positive: https://github.com/rust-lang/rust/issues/115922
+            #[allow(unknown_lints, repr_transparent_external_private_fields)] // False positive: https://github.com/rust-lang/rust/issues/78586#issuecomment-1722680482
             #[doc = concat!('`', $token, '`')]
             ///
             /// Usage:
@@ -346,7 +346,7 @@ macro_rules! define_punctuation_structs {
                 }
             }
 
-            impl core::default::Default for $name {
+            impl std::default::Default for $name {
                 fn default() -> Self {
                     $name {
                         spans: [Span::call_site(); $len],
@@ -455,7 +455,7 @@ macro_rules! define_delimiters {
                 }
             }
 
-            impl core::default::Default for $name {
+            impl std::default::Default for $name {
                 fn default() -> Self {
                     $name(Span::call_site())
                 }
@@ -501,7 +501,6 @@ macro_rules! define_delimiters {
 
             impl $name {
                 #[cfg(feature = "printing")]
-                #[cfg_attr(docsrs, doc(cfg(feature = "printing")))]
                 pub fn surround<F>(&self, tokens: &mut TokenStream, f: F)
                 where
                     F: FnOnce(&mut TokenStream),
@@ -583,7 +582,7 @@ pub fn Group<S: IntoSpans<Span>>(span: S) -> Group {
     }
 }
 
-impl core::default::Default for Group {
+impl std::default::Default for Group {
     fn default() -> Self {
         Group {
             span: Span::call_site(),
@@ -631,7 +630,6 @@ impl Hash for Group {
 
 impl Group {
     #[cfg(feature = "printing")]
-    #[cfg_attr(docsrs, doc(cfg(feature = "printing")))]
     pub fn surround<F>(&self, tokens: &mut TokenStream, f: F)
     where
         F: FnOnce(&mut TokenStream),
@@ -978,7 +976,6 @@ pub(crate) mod parsing {
     use crate::buffer::Cursor;
     use crate::error::{Error, Result};
     use crate::parse::ParseStream;
-    use alloc::format;
     use proc_macro2::{Spacing, Span};
 
     pub(crate) fn keyword(input: ParseStream, token: &str) -> Result<Span> {
@@ -1058,9 +1055,8 @@ pub(crate) mod parsing {
 #[doc(hidden)]
 #[cfg(feature = "printing")]
 pub(crate) mod printing {
-    use crate::ext::PunctExt as _;
     use proc_macro2::{Delimiter, Group, Ident, Punct, Spacing, Span, TokenStream};
-    use quote::TokenStreamExt as _;
+    use quote::TokenStreamExt;
 
     #[doc(hidden)]
     pub fn punct(s: &str, spans: &[Span], tokens: &mut TokenStream) {
@@ -1071,10 +1067,14 @@ pub(crate) mod printing {
         let ch = chars.next_back().unwrap();
         let span = spans.next_back().unwrap();
         for (ch, span) in chars.zip(spans) {
-            tokens.append(Punct::new_spanned(ch, Spacing::Joint, *span));
+            let mut op = Punct::new(ch, Spacing::Joint);
+            op.set_span(*span);
+            tokens.append(op);
         }
 
-        tokens.append(Punct::new_spanned(ch, Spacing::Alone, *span));
+        let mut op = Punct::new(ch, Spacing::Alone);
+        op.set_span(*span);
+        tokens.append(op);
     }
 
     pub(crate) fn keyword(s: &str, span: Span, tokens: &mut TokenStream) {

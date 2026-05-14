@@ -11,7 +11,6 @@
     clippy::let_underscore_untyped,
     clippy::shadow_unrelated,
     clippy::too_many_lines,
-    clippy::uninlined_format_args,
     clippy::unreadable_literal,
     clippy::unseparated_literal_suffix,
     clippy::vec_init_then_push,
@@ -148,8 +147,8 @@ fn test_write_f64() {
         (3.1, "3.1"),
         (-1.5, "-1.5"),
         (0.5, "0.5"),
-        (f64::MIN, "-1.7976931348623157e+308"),
-        (f64::MAX, "1.7976931348623157e+308"),
+        (f64::MIN, "-1.7976931348623157e308"),
+        (f64::MAX, "1.7976931348623157e308"),
         (f64::EPSILON, "2.220446049250313e-16"),
     ];
     test_encode_ok(tests);
@@ -270,11 +269,11 @@ fn test_write_list() {
 fn test_write_object() {
     test_encode_ok(&[
         (treemap!(), "{}"),
-        (treemap!("a".to_owned() => true), "{\"a\":true}"),
+        (treemap!("a".to_string() => true), "{\"a\":true}"),
         (
             treemap!(
-                "a".to_owned() => true,
-                "b".to_owned() => false,
+                "a".to_string() => true,
+                "b".to_string() => false,
             ),
             "{\"a\":true,\"b\":false}",
         ),
@@ -283,44 +282,44 @@ fn test_write_object() {
     test_encode_ok(&[
         (
             treemap![
-                "a".to_owned() => treemap![],
-                "b".to_owned() => treemap![],
-                "c".to_owned() => treemap![],
+                "a".to_string() => treemap![],
+                "b".to_string() => treemap![],
+                "c".to_string() => treemap![],
             ],
             "{\"a\":{},\"b\":{},\"c\":{}}",
         ),
         (
             treemap![
-                "a".to_owned() => treemap![
-                    "a".to_owned() => treemap!["a" => vec![1,2,3]],
-                    "b".to_owned() => treemap![],
-                    "c".to_owned() => treemap![],
+                "a".to_string() => treemap![
+                    "a".to_string() => treemap!["a" => vec![1,2,3]],
+                    "b".to_string() => treemap![],
+                    "c".to_string() => treemap![],
                 ],
-                "b".to_owned() => treemap![],
-                "c".to_owned() => treemap![],
+                "b".to_string() => treemap![],
+                "c".to_string() => treemap![],
             ],
             "{\"a\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"b\":{},\"c\":{}}",
         ),
         (
             treemap![
-                "a".to_owned() => treemap![],
-                "b".to_owned() => treemap![
-                    "a".to_owned() => treemap!["a" => vec![1,2,3]],
-                    "b".to_owned() => treemap![],
-                    "c".to_owned() => treemap![],
+                "a".to_string() => treemap![],
+                "b".to_string() => treemap![
+                    "a".to_string() => treemap!["a" => vec![1,2,3]],
+                    "b".to_string() => treemap![],
+                    "c".to_string() => treemap![],
                 ],
-                "c".to_owned() => treemap![],
+                "c".to_string() => treemap![],
             ],
             "{\"a\":{},\"b\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}},\"c\":{}}",
         ),
         (
             treemap![
-                "a".to_owned() => treemap![],
-                "b".to_owned() => treemap![],
-                "c".to_owned() => treemap![
-                    "a".to_owned() => treemap!["a" => vec![1,2,3]],
-                    "b".to_owned() => treemap![],
-                    "c".to_owned() => treemap![],
+                "a".to_string() => treemap![],
+                "b".to_string() => treemap![],
+                "c".to_string() => treemap![
+                    "a".to_string() => treemap!["a" => vec![1,2,3]],
+                    "b".to_string() => treemap![],
+                    "c".to_string() => treemap![],
                 ],
             ],
             "{\"a\":{},\"b\":{},\"c\":{\"a\":{\"a\":[1,2,3]},\"b\":{},\"c\":{}}}",
@@ -332,9 +331,9 @@ fn test_write_object() {
     test_pretty_encode_ok(&[
         (
             treemap![
-                "a".to_owned() => treemap![],
-                "b".to_owned() => treemap![],
-                "c".to_owned() => treemap![],
+                "a".to_string() => treemap![],
+                "b".to_string() => treemap![],
+                "c".to_string() => treemap![],
             ],
             pretty_str!({
                 "a": {},
@@ -344,13 +343,13 @@ fn test_write_object() {
         ),
         (
             treemap![
-                "a".to_owned() => treemap![
-                    "a".to_owned() => treemap!["a" => vec![1,2,3]],
-                    "b".to_owned() => treemap![],
-                    "c".to_owned() => treemap![],
+                "a".to_string() => treemap![
+                    "a".to_string() => treemap!["a" => vec![1,2,3]],
+                    "b".to_string() => treemap![],
+                    "c".to_string() => treemap![],
                 ],
-                "b".to_owned() => treemap![],
-                "c".to_owned() => treemap![],
+                "b".to_string() => treemap![],
+                "c".to_string() => treemap![],
             ],
             pretty_str!({
                 "a": {
@@ -370,13 +369,13 @@ fn test_write_object() {
         ),
         (
             treemap![
-                "a".to_owned() => treemap![],
-                "b".to_owned() => treemap![
-                    "a".to_owned() => treemap!["a" => vec![1,2,3]],
-                    "b".to_owned() => treemap![],
-                    "c".to_owned() => treemap![],
+                "a".to_string() => treemap![],
+                "b".to_string() => treemap![
+                    "a".to_string() => treemap!["a" => vec![1,2,3]],
+                    "b".to_string() => treemap![],
+                    "c".to_string() => treemap![],
                 ],
-                "c".to_owned() => treemap![],
+                "c".to_string() => treemap![],
             ],
             pretty_str!({
                 "a": {},
@@ -396,12 +395,12 @@ fn test_write_object() {
         ),
         (
             treemap![
-                "a".to_owned() => treemap![],
-                "b".to_owned() => treemap![],
-                "c".to_owned() => treemap![
-                    "a".to_owned() => treemap!["a" => vec![1,2,3]],
-                    "b".to_owned() => treemap![],
-                    "c".to_owned() => treemap![],
+                "a".to_string() => treemap![],
+                "b".to_string() => treemap![],
+                "c".to_string() => treemap![
+                    "a".to_string() => treemap!["a" => vec![1,2,3]],
+                    "b".to_string() => treemap![],
+                    "c".to_string() => treemap![],
                 ],
             ],
             pretty_str!({
@@ -425,15 +424,15 @@ fn test_write_object() {
     test_pretty_encode_ok(&[
         (treemap!(), "{}"),
         (
-            treemap!("a".to_owned() => true),
+            treemap!("a".to_string() => true),
             pretty_str!({
                 "a": true
             }),
         ),
         (
             treemap!(
-                "a".to_owned() => true,
-                "b".to_owned() => false,
+                "a".to_string() => true,
+                "b".to_string() => false,
             ),
             pretty_str!( {
                 "a": true,
@@ -494,26 +493,26 @@ fn test_write_enum() {
     test_encode_ok(&[
         (Animal::Dog, "\"Dog\""),
         (
-            Animal::Frog("Henry".to_owned(), vec![]),
+            Animal::Frog("Henry".to_string(), vec![]),
             "{\"Frog\":[\"Henry\",[]]}",
         ),
         (
-            Animal::Frog("Henry".to_owned(), vec![349]),
+            Animal::Frog("Henry".to_string(), vec![349]),
             "{\"Frog\":[\"Henry\",[349]]}",
         ),
         (
-            Animal::Frog("Henry".to_owned(), vec![349, 102]),
+            Animal::Frog("Henry".to_string(), vec![349, 102]),
             "{\"Frog\":[\"Henry\",[349,102]]}",
         ),
         (
             Animal::Cat {
                 age: 5,
-                name: "Kate".to_owned(),
+                name: "Kate".to_string(),
             },
             "{\"Cat\":{\"age\":5,\"name\":\"Kate\"}}",
         ),
         (
-            Animal::AntHive(vec!["Bob".to_owned(), "Stuart".to_owned()]),
+            Animal::AntHive(vec!["Bob".to_string(), "Stuart".to_string()]),
             "{\"AntHive\":[\"Bob\",\"Stuart\"]}",
         ),
     ]);
@@ -521,7 +520,7 @@ fn test_write_enum() {
     test_pretty_encode_ok(&[
         (Animal::Dog, "\"Dog\""),
         (
-            Animal::Frog("Henry".to_owned(), vec![]),
+            Animal::Frog("Henry".to_string(), vec![]),
             pretty_str!({
                 "Frog": [
                     "Henry",
@@ -530,7 +529,7 @@ fn test_write_enum() {
             }),
         ),
         (
-            Animal::Frog("Henry".to_owned(), vec![349]),
+            Animal::Frog("Henry".to_string(), vec![349]),
             pretty_str!({
                 "Frog": [
                     "Henry",
@@ -541,7 +540,7 @@ fn test_write_enum() {
             }),
         ),
         (
-            Animal::Frog("Henry".to_owned(), vec![349, 102]),
+            Animal::Frog("Henry".to_string(), vec![349, 102]),
             pretty_str!({
                 "Frog": [
                     "Henry",
@@ -1037,28 +1036,22 @@ fn test_parse_number() {
 
     #[cfg(feature = "arbitrary_precision")]
     test_parse_ok(vec![
-        ("1e999", Number::from_string_unchecked("1e+999".to_owned())),
+        ("1e999", Number::from_string_unchecked("1e999".to_owned())),
         ("1e+999", Number::from_string_unchecked("1e+999".to_owned())),
-        (
-            "-1e999",
-            Number::from_string_unchecked("-1e+999".to_owned()),
-        ),
+        ("-1e999", Number::from_string_unchecked("-1e999".to_owned())),
         ("1e-999", Number::from_string_unchecked("1e-999".to_owned())),
-        ("1E999", Number::from_string_unchecked("1e+999".to_owned())),
-        ("1E+999", Number::from_string_unchecked("1e+999".to_owned())),
-        (
-            "-1E999",
-            Number::from_string_unchecked("-1e+999".to_owned()),
-        ),
-        ("1E-999", Number::from_string_unchecked("1e-999".to_owned())),
-        ("1E+000", Number::from_string_unchecked("1e+000".to_owned())),
+        ("1E999", Number::from_string_unchecked("1E999".to_owned())),
+        ("1E+999", Number::from_string_unchecked("1E+999".to_owned())),
+        ("-1E999", Number::from_string_unchecked("-1E999".to_owned())),
+        ("1E-999", Number::from_string_unchecked("1E-999".to_owned())),
+        ("1E+000", Number::from_string_unchecked("1E+000".to_owned())),
         (
             "2.3e999",
-            Number::from_string_unchecked("2.3e+999".to_owned()),
+            Number::from_string_unchecked("2.3e999".to_owned()),
         ),
         (
             "-2.3e999",
-            Number::from_string_unchecked("-2.3e+999".to_owned()),
+            Number::from_string_unchecked("-2.3e999".to_owned()),
         ),
     ]);
 }
@@ -1124,16 +1117,16 @@ fn test_parse_string() {
 
     test_parse_ok(vec![
         ("\"\"", String::new()),
-        ("\"foo\"", "foo".to_owned()),
-        (" \"foo\" ", "foo".to_owned()),
-        ("\"\\\"\"", "\"".to_owned()),
-        ("\"\\b\"", "\x08".to_owned()),
-        ("\"\\n\"", "\n".to_owned()),
-        ("\"\\r\"", "\r".to_owned()),
-        ("\"\\t\"", "\t".to_owned()),
-        ("\"\\u12ab\"", "\u{12ab}".to_owned()),
-        ("\"\\uAB12\"", "\u{AB12}".to_owned()),
-        ("\"\\uD83C\\uDF95\"", "\u{1F395}".to_owned()),
+        ("\"foo\"", "foo".to_string()),
+        (" \"foo\" ", "foo".to_string()),
+        ("\"\\\"\"", "\"".to_string()),
+        ("\"\\b\"", "\x08".to_string()),
+        ("\"\\n\"", "\n".to_string()),
+        ("\"\\r\"", "\r".to_string()),
+        ("\"\\t\"", "\t".to_string()),
+        ("\"\\u12ab\"", "\u{12ab}".to_string()),
+        ("\"\\uAB12\"", "\u{AB12}".to_string()),
+        ("\"\\uD83C\\uDF95\"", "\u{1F395}".to_string()),
     ]);
 }
 
@@ -1191,24 +1184,24 @@ fn test_parse_object() {
     test_parse_ok(vec![
         ("{}", treemap!()),
         ("{ }", treemap!()),
-        ("{\"a\":3}", treemap!("a".to_owned() => 3u64)),
-        ("{ \"a\" : 3 }", treemap!("a".to_owned() => 3)),
+        ("{\"a\":3}", treemap!("a".to_string() => 3u64)),
+        ("{ \"a\" : 3 }", treemap!("a".to_string() => 3)),
         (
             "{\"a\":3,\"b\":4}",
-            treemap!("a".to_owned() => 3, "b".to_owned() => 4),
+            treemap!("a".to_string() => 3, "b".to_string() => 4),
         ),
         (
             " { \"a\" : 3 , \"b\" : 4 } ",
-            treemap!("a".to_owned() => 3, "b".to_owned() => 4),
+            treemap!("a".to_string() => 3, "b".to_string() => 4),
         ),
     ]);
 
     test_parse_ok(vec![(
         "{\"a\": {\"b\": 3, \"c\": 4}}",
         treemap!(
-            "a".to_owned() => treemap!(
-                "b".to_owned() => 3u64,
-                "c".to_owned() => 4,
+            "a".to_string() => treemap!(
+                "b".to_string() => 3u64,
+                "c".to_string() => 4,
             ),
         ),
     )]);
@@ -1255,7 +1248,7 @@ fn test_parse_struct() {
                 inner: vec![Inner {
                     a: (),
                     b: 2,
-                    c: vec!["abc".to_owned(), "xyz".to_owned()],
+                    c: vec!["abc".to_string(), "xyz".to_string()],
                 }],
             },
         ),
@@ -1276,7 +1269,7 @@ fn test_parse_struct() {
             inner: vec![Inner {
                 a: (),
                 b: 2,
-                c: vec!["abc".to_owned(), "xyz".to_owned()],
+                c: vec!["abc".to_string(), "xyz".to_string()],
             }],
         }
     );
@@ -1290,7 +1283,7 @@ fn test_parse_struct() {
 fn test_parse_option() {
     test_parse_ok(vec![
         ("null", None::<String>),
-        ("\"jodhpurs\"", Some("jodhpurs".to_owned())),
+        ("\"jodhpurs\"", Some("jodhpurs".to_string())),
     ]);
 
     #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -1345,29 +1338,29 @@ fn test_parse_enum() {
         (" \"Dog\" ", Animal::Dog),
         (
             "{\"Frog\":[\"Henry\",[]]}",
-            Animal::Frog("Henry".to_owned(), vec![]),
+            Animal::Frog("Henry".to_string(), vec![]),
         ),
         (
             " { \"Frog\": [ \"Henry\" , [ 349, 102 ] ] } ",
-            Animal::Frog("Henry".to_owned(), vec![349, 102]),
+            Animal::Frog("Henry".to_string(), vec![349, 102]),
         ),
         (
             "{\"Cat\": {\"age\": 5, \"name\": \"Kate\"}}",
             Animal::Cat {
                 age: 5,
-                name: "Kate".to_owned(),
+                name: "Kate".to_string(),
             },
         ),
         (
             " { \"Cat\" : { \"age\" : 5 , \"name\" : \"Kate\" } } ",
             Animal::Cat {
                 age: 5,
-                name: "Kate".to_owned(),
+                name: "Kate".to_string(),
             },
         ),
         (
             " { \"AntHive\" : [\"Bob\", \"Stuart\"] } ",
-            Animal::AntHive(vec!["Bob".to_owned(), "Stuart".to_owned()]),
+            Animal::AntHive(vec!["Bob".to_string(), "Stuart".to_string()]),
         ),
     ]);
 
@@ -1384,8 +1377,8 @@ fn test_parse_enum() {
             "}"
         ),
         treemap!(
-            "a".to_owned() => Animal::Dog,
-            "b".to_owned() => Animal::Frog("Henry".to_owned(), vec![]),
+            "a".to_string() => Animal::Dog,
+            "b".to_string() => Animal::Frog("Henry".to_string(), vec![]),
         ),
     )]);
 }
@@ -1660,7 +1653,7 @@ fn test_deserialize_from_stream() {
 
     let mut stream = TcpStream::connect("localhost:20000").unwrap();
     let request = Message {
-        message: "hi there".to_owned(),
+        message: "hi there".to_string(),
     };
     to_writer(&mut stream, &request).unwrap();
 
@@ -1686,20 +1679,20 @@ fn test_serialize_rejects_adt_keys() {
 fn test_bytes_ser() {
     let buf = vec![];
     let bytes = Bytes::new(&buf);
-    assert_eq!(to_string(&bytes).unwrap(), "[]".to_owned());
+    assert_eq!(to_string(&bytes).unwrap(), "[]".to_string());
 
     let buf = vec![1, 2, 3];
     let bytes = Bytes::new(&buf);
-    assert_eq!(to_string(&bytes).unwrap(), "[1,2,3]".to_owned());
+    assert_eq!(to_string(&bytes).unwrap(), "[1,2,3]".to_string());
 }
 
 #[test]
 fn test_byte_buf_ser() {
     let bytes = ByteBuf::new();
-    assert_eq!(to_string(&bytes).unwrap(), "[]".to_owned());
+    assert_eq!(to_string(&bytes).unwrap(), "[]".to_string());
 
     let bytes = ByteBuf::from(vec![1, 2, 3]);
-    assert_eq!(to_string(&bytes).unwrap(), "[1,2,3]".to_owned());
+    assert_eq!(to_string(&bytes).unwrap(), "[1,2,3]".to_string());
 }
 
 #[test]

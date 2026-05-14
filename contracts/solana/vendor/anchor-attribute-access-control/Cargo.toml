@@ -38,5 +38,3 @@ features = ["full"]
 
 [features]
 anchor-debug = ["anchor-syn/anchor-debug"]
-
-

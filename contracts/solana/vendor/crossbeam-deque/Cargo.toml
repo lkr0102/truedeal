@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.61"
 name = "crossbeam-deque"
 version = "0.8.6"
 build = false
@@ -90,5 +90,3 @@ check-cfg = [
     "cfg(crossbeam_loom)",
     "cfg(crossbeam_sanitize)",
 ]
-
-

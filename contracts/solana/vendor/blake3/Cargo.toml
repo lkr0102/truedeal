@@ -84,8 +84,7 @@ version = "0.4.2"
 default-features = false
 
 [dependencies.digest]
-version = "0.10"
-
+version = "0.11.2"
 features = ["mac"]
 optional = true
 
@@ -137,4 +136,3 @@ version = "1.1.12"
 
 [target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies.cpufeatures]
 version = "0.3.0"
-

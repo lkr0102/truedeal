@@ -1,10 +1,7 @@
 use self::{Action::*, Input::*};
 use proc_macro2::{Delimiter, Ident, Spacing, TokenTree};
 use syn::parse::{ParseStream, Result};
-#[allow(unused_imports)]
-//#[cfg_attr(not(test), expect(unused_imports))] // Rust 1.81+
-use syn::Token;
-use syn::{AngleBracketedGenericArguments, BinOp, Expr, ExprPath, Lifetime, Lit, Type};
+use syn::{AngleBracketedGenericArguments, BinOp, Expr, ExprPath, Lifetime, Lit, Token, Type};
 
 enum Input {
     Keyword(&'static str),
@@ -95,14 +92,13 @@ static BREAK_VALUE: [(Input, Action); 3] = [
     (Otherwise, SetState(&POSTFIX)),
 ];
 
-static CLOSURE: [(Input, Action); 7] = [
+static CLOSURE: [(Input, Action); 6] = [
     (Keyword("async"), SetState(&CLOSURE)),
     (Keyword("move"), SetState(&CLOSURE)),
     (Punct(","), SetState(&CLOSURE)),
     (Punct(">"), SetState(&CLOSURE)),
     (Punct("|"), SetState(&CLOSURE_ARGS)),
     (ConsumeLifetime, SetState(&CLOSURE)),
-    (ConsumeIdent, SetState(&CLOSURE)),
 ];
 
 static CLOSURE_ARGS: [(Input, Action); 2] = [

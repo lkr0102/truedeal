@@ -93,7 +93,6 @@ fn trailing_empty_none_group() {
 }
 
 #[test]
-#[cfg_attr(miri, ignore)] // https://github.com/rust-lang/miri/issues/4793
 fn test_unwind_safe() {
     fn parse(input: ParseStream) -> Result<Ident> {
         let thread_result = panic::catch_unwind(|| input.parse());

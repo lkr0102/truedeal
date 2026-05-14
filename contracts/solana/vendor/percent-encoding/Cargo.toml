@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.60"
+rust-version = "1.51"
 name = "percent-encoding"
 version = "2.3.2"
 authors = ["The rust-url developers"]
@@ -38,4 +38,3 @@ std = ["alloc"]
 [lib]
 name = "percent_encoding"
 path = "src/lib.rs"
-

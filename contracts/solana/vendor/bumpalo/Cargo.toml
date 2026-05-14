@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.71.1"
 name = "bumpalo"
 version = "3.20.2"
 authors = ["Nick Fitzgerald <fitzgen@gmail.com>"]
@@ -92,4 +92,3 @@ features = ["derive"]
 
 [dev-dependencies.serde_json]
 version = "1.0.115"
-

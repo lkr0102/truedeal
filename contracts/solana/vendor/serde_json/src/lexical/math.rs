@@ -272,7 +272,9 @@ mod scalar {
 mod small {
     use super::*;
 
-    // ADDITION
+    // MULTIPLICATIION
+
+    /// ADDITION
 
     /// Implied AddAssign implementation for adding a small integer to bigint.
     ///

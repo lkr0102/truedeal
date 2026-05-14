@@ -11,7 +11,6 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
 name = "wit-bindgen"
 version = "0.57.1"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
@@ -91,19 +90,5 @@ version = "0.57.1"
 optional = true
 default-features = false
 
-[lints.clippy]
-allow_attributes_without_reason = "warn"
-clone_on_copy = "warn"
-manual_strip = "warn"
-map_clone = "warn"
-uninlined_format_args = "warn"
-unnecessary_cast = "warn"
-unnecessary_fallible_conversions = "warn"
-unnecessary_mut_passed = "warn"
-unnecessary_to_owned = "warn"
-
-[lints.clippy.all]
-level = "allow"
-priority = -1
 
 

@@ -1,7 +1,5 @@
 use crate::attr::Attribute;
 use crate::item::Item;
-use alloc::string::String;
-use alloc::vec::Vec;
 
 ast_struct! {
     /// A complete file of Rust source code.
@@ -91,7 +89,6 @@ pub(crate) mod parsing {
     use crate::error::Result;
     use crate::file::File;
     use crate::parse::{Parse, ParseStream};
-    use alloc::vec::Vec;
 
     #[cfg_attr(docsrs, doc(cfg(feature = "parsing")))]
     impl Parse for File {
@@ -116,7 +113,7 @@ mod printing {
     use crate::attr::FilterAttrs;
     use crate::file::File;
     use proc_macro2::TokenStream;
-    use quote::{ToTokens, TokenStreamExt as _};
+    use quote::{ToTokens, TokenStreamExt};
 
     #[cfg_attr(docsrs, doc(cfg(feature = "printing")))]
     impl ToTokens for File {

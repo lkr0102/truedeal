@@ -10,10 +10,16 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-edition = "2018"
+edition = "2021"
 name = "digest"
-version = "0.10.7"
+version = "0.11.3"
 authors = ["RustCrypto Developers"]
+build = false
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
 description = "Traits for cryptographic hash functions and message authentication codes"
 documentation = "https://docs.rs/digest"
 readme = "README.md"
@@ -31,40 +37,59 @@ repository = "https://github.com/RustCrypto/traits"
 
 [package.metadata.docs.rs]
 all-features = true
-rustdoc-args = [
-    "--cfg",
-    "docsrs",
-]
-
-[dependencies.blobby]
-version = "0.3"
-optional = true
-
-[dependencies.block-buffer]
-version = "0.10"
-optional = true
-
-[dependencies.const-oid]
-version = "0.9"
-optional = true
-
-[dependencies.crypto-common]
-version = "0.1.3"
-
-[dependencies.subtle]
-version = "2.4"
-optional = true
-default-features = false
 
 [features]
 alloc = []
-core-api = ["block-buffer"]
-default = ["core-api"]
+block-api = ["dep:block-buffer"]
+default = ["block-api"]
 dev = ["blobby"]
-mac = ["subtle"]
-oid = ["const-oid"]
-rand_core = ["crypto-common/rand_core"]
-std = [
-    "alloc",
-    "crypto-common/std",
+getrandom = [
+    "common/getrandom",
+    "rand_core",
 ]
+mac = ["dep:ctutils"]
+oid = ["dep:const-oid"]
+rand_core = ["common/rand_core"]
+zeroize = [
+    "dep:zeroize",
+    "block-buffer?/zeroize",
+]
+
+[lib]
+name = "digest"
+path = "src/lib.rs"
+
+[[test]]
+name = "dummy_fixed"
+path = "tests/dummy_fixed.rs"
+
+[dependencies.blobby]
+version = "0.4"
+optional = true
+
+[dependencies.block-buffer]
+version = "0.12"
+optional = true
+
+[dependencies.common]
+version = "0.2"
+package = "crypto-common"
+
+[dependencies.const-oid]
+version = "0.10"
+optional = true
+
+[dependencies.ctutils]
+version = "0.4"
+optional = true
+
+[dependencies.zeroize]
+version = "1.7"
+optional = true
+default-features = false
+
+[dev-dependencies.sha2]
+version = "0.11"
+
+
+

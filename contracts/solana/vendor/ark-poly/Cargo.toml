@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.63"
 name = "ark-poly"
 version = "0.4.2"
 authors = ["arkworks contributors"]
@@ -96,5 +96,3 @@ std = [
     "ark-std/std",
     "ark-ff/std",
 ]
-
-

@@ -1,6 +1,5 @@
 use crate::path::Path;
 use crate::token;
-use alloc::boxed::Box;
 
 ast_enum! {
     /// The visibility level of an item: inherited or `pub` or
@@ -67,7 +66,6 @@ pub(crate) mod parsing {
     use crate::path::Path;
     use crate::restriction::{VisRestricted, Visibility};
     use crate::token;
-    use alloc::boxed::Box;
 
     #[cfg_attr(docsrs, doc(cfg(feature = "parsing")))]
     impl Parse for Visibility {

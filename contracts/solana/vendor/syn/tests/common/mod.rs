@@ -3,4 +3,3 @@
 
 pub mod eq;
 pub mod parse;
-pub mod visit;

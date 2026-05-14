@@ -3,9 +3,7 @@
 
 #[cfg(any(feature = "derive", feature = "full"))]
 use crate::tt::TokenStreamHelper;
-#[cfg(feature = "extra-traits")]
-use alloc::string::ToString;
-use core::hash::{Hash, Hasher};
+use std::hash::{Hash, Hasher};
 #[cfg(any(feature = "derive", feature = "full"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "extra-traits")))]
 impl Hash for crate::Abi {

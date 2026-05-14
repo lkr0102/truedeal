@@ -10,7 +10,7 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-rust-version = "1.60"
+rust-version = "1.0"
 name = "autocfg"
 version = "1.5.0"
 authors = ["Josh Stone <cuviper@gmail.com>"]
@@ -74,4 +74,3 @@ name = "wrappers"
 path = "tests/wrappers.rs"
 
 [dependencies]
-

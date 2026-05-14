@@ -11,9 +11,9 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.65.0"
 name = "winnow"
-version = "1.0.2"
+version = "1.0.3"
 build = false
 include = [
     "build.rs",
@@ -401,4 +401,3 @@ panic = "abort"
 lto = true
 codegen-units = 1
 panic = "abort"
-

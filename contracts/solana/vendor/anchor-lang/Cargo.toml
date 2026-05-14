@@ -100,5 +100,3 @@ idl-build = [
     "anchor-syn/idl-build",
 ]
 init-if-needed = ["anchor-derive-accounts/init-if-needed"]
-
-

@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.60"
+rust-version = "1.31"
 name = "num-integer"
 version = "0.1.46"
 authors = ["The Rust Project Developers"]
@@ -47,4 +47,3 @@ default-features = false
 default = ["std"]
 i128 = []
 std = ["num-traits/std"]
-

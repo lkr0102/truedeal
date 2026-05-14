@@ -1,17 +1,16 @@
-use crate::raw::Bucket;
-use crate::raw::{Allocator, Global, RawIter, RawIterRange, RawTable};
+use crate::alloc::{Allocator, Global};
+use crate::raw::{Bucket, RawIter, RawIterRange, RawTable};
 use crate::scopeguard::guard;
-use alloc::alloc::dealloc;
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
 use rayon::iter::{
-    plumbing::{self, Folder, UnindexedConsumer, UnindexedProducer},
     ParallelIterator,
+    plumbing::{self, Folder, UnindexedConsumer, UnindexedProducer},
 };
 
 /// Parallel iterator which returns a raw pointer to every full bucket in the table.
-pub struct RawParIter<T> {
+pub(crate) struct RawParIter<T> {
     iter: RawIterRange<T>,
 }
 
@@ -76,18 +75,18 @@ impl<T> UnindexedProducer for ParIterProducer<T> {
 }
 
 /// Parallel iterator which consumes a table and returns elements.
-pub struct RawIntoParIter<T, A: Allocator + Clone = Global> {
+pub(crate) struct RawIntoParIter<T, A: Allocator = Global> {
     table: RawTable<T, A>,
 }
 
-impl<T, A: Allocator + Clone> RawIntoParIter<T, A> {
+impl<T, A: Allocator> RawIntoParIter<T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub(super) unsafe fn par_iter(&self) -> RawParIter<T> {
-        self.table.par_iter()
+        unsafe { self.table.par_iter() }
     }
 }
 
-impl<T: Send, A: Allocator + Clone> ParallelIterator for RawIntoParIter<T, A> {
+impl<T: Send, A: Allocator + Send> ParallelIterator for RawIntoParIter<T, A> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -97,9 +96,9 @@ impl<T: Send, A: Allocator + Clone> ParallelIterator for RawIntoParIter<T, A> {
     {
         let iter = unsafe { self.table.iter().iter };
         let _guard = guard(self.table.into_allocation(), |alloc| {
-            if let Some((ptr, layout)) = *alloc {
+            if let Some((ptr, layout, ref alloc)) = *alloc {
                 unsafe {
-                    dealloc(ptr.as_ptr(), layout);
+                    alloc.deallocate(ptr, layout);
                 }
             }
         });
@@ -109,23 +108,23 @@ impl<T: Send, A: Allocator + Clone> ParallelIterator for RawIntoParIter<T, A> {
 }
 
 /// Parallel iterator which consumes elements without freeing the table storage.
-pub struct RawParDrain<'a, T, A: Allocator + Clone = Global> {
+pub(crate) struct RawParDrain<'a, T, A: Allocator = Global> {
     // We don't use a &'a mut RawTable<T> because we want RawParDrain to be
     // covariant over T.
     table: NonNull<RawTable<T, A>>,
     marker: PhantomData<&'a RawTable<T, A>>,
 }
 
-unsafe impl<T, A: Allocator + Clone> Send for RawParDrain<'_, T, A> {}
+unsafe impl<T: Send, A: Allocator> Send for RawParDrain<'_, T, A> {}
 
-impl<T, A: Allocator + Clone> RawParDrain<'_, T, A> {
+impl<T, A: Allocator> RawParDrain<'_, T, A> {
     #[cfg_attr(feature = "inline-more", inline)]
     pub(super) unsafe fn par_iter(&self) -> RawParIter<T> {
-        self.table.as_ref().par_iter()
+        unsafe { self.table.as_ref().par_iter() }
     }
 }
 
-impl<T: Send, A: Allocator + Clone> ParallelIterator for RawParDrain<'_, T, A> {
+impl<T: Send, A: Allocator> ParallelIterator for RawParDrain<'_, T, A> {
     type Item = T;
 
     #[cfg_attr(feature = "inline-more", inline)]
@@ -134,7 +133,7 @@ impl<T: Send, A: Allocator + Clone> ParallelIterator for RawParDrain<'_, T, A> {
         C: UnindexedConsumer<Self::Item>,
     {
         let _guard = guard(self.table, |table| unsafe {
-            table.as_mut().clear_no_drop()
+            table.as_mut().clear_no_drop();
         });
         let iter = unsafe { self.table.as_ref().iter().iter };
         mem::forget(self);
@@ -143,10 +142,12 @@ impl<T: Send, A: Allocator + Clone> ParallelIterator for RawParDrain<'_, T, A> {
     }
 }
 
-impl<T, A: Allocator + Clone> Drop for RawParDrain<'_, T, A> {
+impl<T, A: Allocator> Drop for RawParDrain<'_, T, A> {
     fn drop(&mut self) {
         // If drive_unindexed is not called then simply clear the table.
-        unsafe { self.table.as_mut().clear() }
+        unsafe {
+            self.table.as_mut().clear();
+        }
     }
 }
 
@@ -175,7 +176,7 @@ impl<T: Send> UnindexedProducer for ParDrainProducer<T> {
     {
         // Make sure to modify the iterator in-place so that any remaining
         // elements are processed in our Drop impl.
-        while let Some(item) = self.iter.next() {
+        for item in &mut self.iter {
             folder = folder.consume(unsafe { item.read() });
             if folder.full() {
                 return folder;
@@ -193,7 +194,7 @@ impl<T> Drop for ParDrainProducer<T> {
     fn drop(&mut self) {
         // Drop all remaining elements
         if mem::needs_drop::<T>() {
-            while let Some(item) = self.iter.next() {
+            for item in &mut self.iter {
                 unsafe {
                     item.drop();
                 }
@@ -202,25 +203,27 @@ impl<T> Drop for ParDrainProducer<T> {
     }
 }
 
-impl<T, A: Allocator + Clone> RawTable<T, A> {
+impl<T, A: Allocator> RawTable<T, A> {
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub unsafe fn par_iter(&self) -> RawParIter<T> {
-        RawParIter {
-            iter: self.iter().iter,
+    pub(crate) unsafe fn par_iter(&self) -> RawParIter<T> {
+        unsafe {
+            RawParIter {
+                iter: self.iter().iter,
+            }
         }
     }
 
     /// Returns a parallel iterator over the elements in a `RawTable`.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn into_par_iter(self) -> RawIntoParIter<T, A> {
+    pub(crate) fn into_par_iter(self) -> RawIntoParIter<T, A> {
         RawIntoParIter { table: self }
     }
 
     /// Returns a parallel iterator which consumes all elements of a `RawTable`
     /// without freeing its memory allocation.
     #[cfg_attr(feature = "inline-more", inline)]
-    pub fn par_drain(&mut self) -> RawParDrain<'_, T, A> {
+    pub(crate) fn par_drain(&mut self) -> RawParDrain<'_, T, A> {
         RawParDrain {
             table: NonNull::from(self),
             marker: PhantomData,

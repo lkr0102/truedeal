@@ -1,5 +1,4 @@
 #![allow(
-    clippy::elidable_lifetime_names,
     clippy::manual_let_else,
     clippy::needless_lifetimes,
     clippy::too_many_lines,
@@ -7,15 +6,10 @@
 )]
 
 #[macro_use]
-mod snapshot;
-
-mod debug;
+mod macros;
 
 use quote::quote;
-use syn::{
-    parse_quote, DeriveInput, GenericParam, Generics, ItemFn, Lifetime, LifetimeParam,
-    TypeParamBound, WhereClause, WherePredicate,
-};
+use syn::{DeriveInput, ItemFn, TypeParamBound, WhereClause, WherePredicate};
 
 #[test]
 fn test_split_for_impl() {
@@ -133,7 +127,7 @@ fn test_split_for_impl() {
 }
 
 #[test]
-fn test_type_param_bound() {
+fn test_ty_param_bound() {
     let tokens = quote!('a);
     snapshot!(tokens as TypeParamBound, @r#"
     TypeParamBound::Lifetime {
@@ -174,42 +168,6 @@ fn test_type_param_bound() {
         },
     })
     "#);
-
-    let tokens = quote!(for<'a> Trait);
-    snapshot!(tokens as TypeParamBound, @r#"
-    TypeParamBound::Trait(TraitBound {
-        lifetimes: Some(BoundLifetimes {
-            lifetimes: [
-                GenericParam::Lifetime(LifetimeParam {
-                    lifetime: Lifetime {
-                        ident: "a",
-                    },
-                }),
-            ],
-        }),
-        path: Path {
-            segments: [
-                PathSegment {
-                    ident: "Trait",
-                },
-            ],
-        },
-    })
-    "#);
-
-    let tokens = quote!(for<> ?Trait);
-    let err = syn::parse2::<TypeParamBound>(tokens).unwrap_err();
-    assert_eq!(
-        "`for<...>` binder not allowed with `?` trait polarity modifier",
-        err.to_string(),
-    );
-
-    let tokens = quote!(?for<> Trait);
-    let err = syn::parse2::<TypeParamBound>(tokens).unwrap_err();
-    assert_eq!(
-        "`for<...>` binder not allowed with `?` trait polarity modifier",
-        err.to_string(),
-    );
 }
 
 #[test]
@@ -322,35 +280,4 @@ fn test_where_clause_at_end_of_input() {
     snapshot!(input as WhereClause, @"WhereClause");
 
     assert_eq!(input.predicates.len(), 0);
-}
-
-// Regression test for https://github.com/dtolnay/syn/issues/1718
-#[test]
-#[allow(clippy::map_unwrap_or)]
-fn no_opaque_drop() {
-    let mut generics = Generics::default();
-
-    let _ = generics
-        .lifetimes()
-        .next()
-        .map(|param| param.lifetime.clone())
-        .unwrap_or_else(|| {
-            let lifetime: Lifetime = parse_quote!('a);
-            generics.params.insert(
-                0,
-                GenericParam::Lifetime(LifetimeParam::new(lifetime.clone())),
-            );
-            lifetime
-        });
-}
-
-#[test]
-fn type_param_with_colon_and_no_bounds() {
-    let tokens = quote!(T:);
-    snapshot!(tokens as GenericParam, @r#"
-    GenericParam::Type(TypeParam {
-        ident: "T",
-        colon_token: Some,
-    })
-    "#);
 }

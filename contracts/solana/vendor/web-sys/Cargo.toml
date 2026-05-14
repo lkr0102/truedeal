@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.77"
 name = "web-sys"
 version = "0.3.98"
 authors = ["The wasm-bindgen Developers"]
@@ -2821,5 +2821,3 @@ type_complexity = "allow"
 level = "warn"
 priority = 0
 check-cfg = ["cfg(web_sys_unstable_apis)"]
-
-

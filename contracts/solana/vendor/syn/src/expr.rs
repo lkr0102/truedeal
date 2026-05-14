@@ -23,16 +23,14 @@ use crate::token;
 #[cfg(feature = "full")]
 use crate::ty::ReturnType;
 use crate::ty::Type;
-use alloc::boxed::Box;
-use alloc::vec::Vec;
-#[cfg(feature = "printing")]
-use core::fmt::{self, Display};
-use core::hash::{Hash, Hasher};
-#[cfg(all(feature = "parsing", feature = "full"))]
-use core::mem;
 use proc_macro2::{Span, TokenStream};
 #[cfg(feature = "printing")]
 use quote::IdentFragment;
+#[cfg(feature = "printing")]
+use std::fmt::{self, Display};
+use std::hash::{Hash, Hasher};
+#[cfg(all(feature = "parsing", feature = "full"))]
+use std::mem;
 
 ast_enum_of_structs! {
     /// A Rust expression.
@@ -197,7 +195,7 @@ ast_enum_of_structs! {
         /// A parenthesized expression: `(a + b)`.
         Paren(ExprParen),
 
-        /// A path like `core::mem::replace` possibly containing generic
+        /// A path like `std::mem::replace` possibly containing generic
         /// parameters and a qualified self-type.
         ///
         /// A plain identifier like `x` is a path of length 1.
@@ -558,7 +556,7 @@ ast_struct! {
 }
 
 ast_struct! {
-    /// A path like `core::mem::replace` possibly containing generic
+    /// A path like `std::mem::replace` possibly containing generic
     /// parameters and a qualified self-type.
     ///
     /// A plain identifier like `x` is a path of length 1.
@@ -719,8 +717,8 @@ impl Expr {
     /// An unspecified invalid expression.
     ///
     /// ```
-    /// use core::mem;
     /// use quote::ToTokens;
+    /// use std::mem;
     /// use syn::{parse_quote, Expr};
     ///
     /// fn unparenthesize(e: &mut Expr) {
@@ -758,7 +756,7 @@ impl Expr {
     ///
     /// ```
     /// # struct S;
-    /// # impl core::ops::Deref for S {
+    /// # impl std::ops::Deref for S {
     /// #     type Target = bool;
     /// #     fn deref(&self) -> &Self::Target {
     /// #         &true
@@ -906,7 +904,7 @@ impl Expr {
     #[cfg(feature = "parsing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "parsing")))]
     pub fn peek(input: ParseStream) -> bool {
-        input.peek(Ident::peek_any) && !input.peek(Token![as]) // value name or keyword
+        input.peek(Ident::peek_any) // value name or keyword
             || input.peek(token::Paren) // tuple
             || input.peek(token::Bracket) // array
             || input.peek(token::Brace) // block
@@ -1034,16 +1032,6 @@ impl IdentFragment for Member {
         match self {
             Member::Named(m) => Some(m.span()),
             Member::Unnamed(m) => Some(m.span),
-        }
-    }
-}
-
-#[cfg(any(feature = "parsing", feature = "printing"))]
-impl Member {
-    pub(crate) fn is_named(&self) -> bool {
-        match self {
-            Member::Named(_) => true,
-            Member::Unnamed(_) => false,
         }
     }
 }
@@ -1191,7 +1179,7 @@ pub(crate) mod parsing {
         FieldValue, Index, Member,
     };
     #[cfg(feature = "full")]
-    use crate::generics::{self, BoundLifetimes};
+    use crate::generics::BoundLifetimes;
     use crate::ident::Ident;
     #[cfg(feature = "full")]
     use crate::lifetime::Lifetime;
@@ -1214,13 +1202,9 @@ pub(crate) mod parsing {
     #[cfg(feature = "full")]
     use crate::ty::{ReturnType, Type};
     use crate::verbatim;
-    use alloc::boxed::Box;
-    use alloc::format;
-    use alloc::string::ToString;
-    use alloc::vec::Vec;
-    use core::mem;
     #[cfg(feature = "full")]
-    use proc_macro2::{Span, TokenStream};
+    use proc_macro2::TokenStream;
+    use std::mem;
 
     // When we're parsing expressions which occur before blocks, like in an if
     // statement's condition, we cannot parse a struct literal.
@@ -1257,7 +1241,7 @@ pub(crate) mod parsing {
         } else if input.peek(Token![while]) {
             Expr::While(input.parse()?)
         } else if input.peek(Token![for])
-            && !generics::parsing::choose_generics_over_qpath_after_keyword(input)
+            && !(input.peek2(Token![<]) && (input.peek3(Lifetime) || input.peek3(Token![>])))
         {
             Expr::ForLoop(input.parse()?)
         } else if input.peek(Token![loop]) {
@@ -1321,18 +1305,14 @@ pub(crate) mod parsing {
     ) -> Result<Expr> {
         loop {
             let ahead = input.fork();
-            if let Expr::Range(_) = lhs {
-                // A range cannot be the left-hand side of another binary operator.
+            if let Expr::Range(ExprRange { end: Some(_), .. }) = lhs {
+                // A range with an upper bound cannot be the left-hand side of
+                // another binary operator.
                 break;
             } else if let Ok(op) = ahead.parse::<BinOp>() {
                 let precedence = Precedence::of_binop(&op);
                 if precedence < base {
                     break;
-                }
-                if precedence == Precedence::Assign {
-                    if let Expr::Range(_) = lhs {
-                        break;
-                    }
                 }
                 if precedence == Precedence::Compare {
                     if let Expr::Binary(lhs) = &lhs {
@@ -1349,13 +1329,7 @@ pub(crate) mod parsing {
                     op,
                     right,
                 });
-            } else if Precedence::Assign >= base
-                && input.peek(Token![=])
-                && !input.peek(Token![=>])
-                && match lhs {
-                    Expr::Range(_) => false,
-                    _ => true,
-                }
+            } else if Precedence::Assign >= base && input.peek(Token![=]) && !input.peek(Token![=>])
             {
                 let eq_token: Token![=] = input.parse()?;
                 let right = parse_binop_rhs(input, allow_struct, Precedence::Assign)?;
@@ -1605,18 +1579,7 @@ pub(crate) mod parsing {
 
         if let Expr::Verbatim(tokens) = &mut e {
             *tokens = verbatim::between(&begin, input);
-        } else if !attrs.is_empty() {
-            if let Expr::Range(range) = e {
-                let spans: &[Span] = match &range.limits {
-                    RangeLimits::HalfOpen(limits) => &limits.spans,
-                    RangeLimits::Closed(limits) => &limits.spans,
-                };
-                return Err(crate::error::new2(
-                    spans[0],
-                    *spans.last().unwrap(),
-                    "attributes are not allowed on range expressions starting with `..`",
-                ));
-            }
+        } else {
             let inner_attrs = e.replace_attrs(Vec::new());
             attrs.extend(inner_attrs);
             e.replace_attrs(attrs);
@@ -1700,12 +1663,7 @@ pub(crate) mod parsing {
                     bracket_token: bracketed!(content in input),
                     index: content.parse()?,
                 });
-            } else if input.peek(Token![?])
-                && match e {
-                    Expr::Range(_) => false,
-                    _ => true,
-                }
-            {
+            } else if input.peek(Token![?]) {
                 e = Expr::Try(ExprTry {
                     attrs: Vec::new(),
                     expr: Box::new(e),
@@ -1809,7 +1767,8 @@ pub(crate) mod parsing {
         } else if input.peek(Token![|])
             || input.peek(Token![move])
             || input.peek(Token![for])
-                && generics::parsing::choose_generics_over_qpath_after_keyword(input)
+                && input.peek2(Token![<])
+                && (input.peek3(Lifetime) || input.peek3(Token![>]))
             || input.peek(Token![const]) && !input.peek2(token::Brace)
             || input.peek(Token![static])
             || input.peek(Token![async]) && (input.peek2(Token![|]) || input.peek2(Token![move]))
@@ -2259,6 +2218,7 @@ pub(crate) mod parsing {
                 if lookahead.peek(Token![if]) {
                     expr.else_branch = Some((else_token, Box::new(Expr::PLACEHOLDER)));
                     clauses.push(expr);
+                    continue;
                 } else if lookahead.peek(token::Brace) {
                     expr.else_branch = Some((
                         else_token,
@@ -2358,7 +2318,10 @@ pub(crate) mod parsing {
             let brace_token = braced!(content in input);
             attr::parsing::parse_inner(&content, &mut attrs)?;
 
-            let arms = Arm::parse_multiple(&content)?;
+            let mut arms = Vec::new();
+            while !content.is_empty() {
+                arms.push(content.call(Arm::parse)?);
+            }
 
             Ok(ExprMatch {
                 attrs,
@@ -2897,23 +2860,7 @@ pub(crate) mod parsing {
                 || input.peek(Token![,])
                 || input.peek(Token![;])
                 || input.peek(Token![.]) && !input.peek(Token![..])
-                || input.peek(Token![?])
-                || input.peek(Token![=>])
-                || !allow_struct.0 && input.peek(token::Brace)
-                || input.peek(Token![=])
-                || input.peek(Token![+])
-                || input.peek(Token![/])
-                || input.peek(Token![%])
-                || input.peek(Token![^])
-                || input.peek(Token![>])
-                || input.peek(Token![<=])
-                || input.peek(Token![!=])
-                || input.peek(Token![-=])
-                || input.peek(Token![*=])
-                || input.peek(Token![&=])
-                || input.peek(Token![|=])
-                || input.peek(Token![<<=])
-                || input.peek(Token![as]))
+                || !allow_struct.0 && input.peek(token::Brace))
         {
             Ok(None)
         } else {
@@ -2985,17 +2932,6 @@ pub(crate) mod parsing {
             } else {
                 Err(input.error("expected identifier or integer"))
             }
-        }
-    }
-
-    #[cfg(feature = "full")]
-    impl Arm {
-        pub(crate) fn parse_multiple(input: ParseStream) -> Result<Vec<Self>> {
-            let mut arms = Vec::new();
-            while !input.is_empty() {
-                arms.push(input.call(Arm::parse)?);
-            }
-            Ok(arms)
         }
     }
 
@@ -3085,6 +3021,15 @@ pub(crate) mod parsing {
         Ok(!trailing_dot)
     }
 
+    impl Member {
+        pub(crate) fn is_named(&self) -> bool {
+            match self {
+                Member::Named(_) => true,
+                Member::Unnamed(_) => false,
+            }
+        }
+    }
+
     #[cfg(feature = "full")]
     #[cfg_attr(docsrs, doc(cfg(feature = "parsing")))]
     impl Parse for PointerMutability {
@@ -3151,7 +3096,7 @@ pub(crate) mod printing {
     #[cfg(feature = "full")]
     use crate::ty::ReturnType;
     use proc_macro2::{Literal, Span, TokenStream};
-    use quote::{ToTokens, TokenStreamExt as _};
+    use quote::{ToTokens, TokenStreamExt};
 
     #[cfg(feature = "full")]
     pub(crate) fn outer_attrs_to_tokens(attrs: &[Attribute], tokens: &mut TokenStream) {
@@ -3166,7 +3111,17 @@ pub(crate) mod printing {
     #[cfg(not(feature = "full"))]
     pub(crate) fn outer_attrs_to_tokens(_attrs: &[Attribute], _tokens: &mut TokenStream) {}
 
-    pub(crate) fn print_subexpression(
+    #[cfg(feature = "full")]
+    fn print_condition(expr: &Expr, tokens: &mut TokenStream) {
+        print_subexpression(
+            expr,
+            classify::confusable_with_adjacent_block(expr),
+            tokens,
+            FixupContext::new_condition(),
+        );
+    }
+
+    fn print_subexpression(
         expr: &Expr,
         needs_group: bool,
         tokens: &mut TokenStream,
@@ -3198,7 +3153,7 @@ pub(crate) mod printing {
 
     pub(crate) fn print_expr(expr: &Expr, tokens: &mut TokenStream, mut fixup: FixupContext) {
         #[cfg(feature = "full")]
-        let needs_group = fixup.parenthesize(expr);
+        let needs_group = fixup.would_cause_statement_boundary(expr);
         #[cfg(not(feature = "full"))]
         let needs_group = false;
 
@@ -3223,7 +3178,7 @@ pub(crate) mod printing {
             Expr::Call(e) => print_expr_call(e, tokens, fixup),
             Expr::Cast(e) => print_expr_cast(e, tokens, fixup),
             #[cfg(feature = "full")]
-            Expr::Closure(e) => print_expr_closure(e, tokens, fixup),
+            Expr::Closure(e) => e.to_tokens(tokens),
             #[cfg(feature = "full")]
             Expr::Const(e) => e.to_tokens(tokens),
             #[cfg(feature = "full")]
@@ -3234,6 +3189,7 @@ pub(crate) mod printing {
             Expr::Group(e) => e.to_tokens(tokens),
             #[cfg(feature = "full")]
             Expr::If(e) => e.to_tokens(tokens),
+            #[cfg(feature = "full")]
             Expr::Index(e) => print_expr_index(e, tokens, fixup),
             #[cfg(feature = "full")]
             Expr::Infer(e) => e.to_tokens(tokens),
@@ -3262,6 +3218,7 @@ pub(crate) mod printing {
             Expr::Try(e) => print_expr_try(e, tokens, fixup),
             #[cfg(feature = "full")]
             Expr::TryBlock(e) => e.to_tokens(tokens),
+            #[cfg(feature = "full")]
             Expr::Tuple(e) => e.to_tokens(tokens),
             Expr::Unary(e) => print_expr_unary(e, tokens, fixup),
             #[cfg(feature = "full")]
@@ -3303,35 +3260,21 @@ pub(crate) mod printing {
     }
 
     #[cfg(feature = "full")]
-    fn print_expr_assign(e: &ExprAssign, tokens: &mut TokenStream, mut fixup: FixupContext) {
+    fn print_expr_assign(e: &ExprAssign, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
-
-        let needs_group = !e.attrs.is_empty();
-        if needs_group {
-            fixup = FixupContext::NONE;
-        }
-
-        let do_print_expr = |tokens: &mut TokenStream| {
-            let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_operator(
-                &e.left,
-                false,
-                false,
-                Precedence::Assign,
-            );
-            print_subexpression(&e.left, left_prec <= Precedence::Range, tokens, left_fixup);
-            e.eq_token.to_tokens(tokens);
-            print_expr(
-                &e.right,
-                tokens,
-                fixup.rightmost_subexpression_fixup(false, false, Precedence::Assign),
-            );
-        };
-
-        if needs_group {
-            token::Paren::default().surround(tokens, do_print_expr);
-        } else {
-            do_print_expr(tokens);
-        }
+        print_subexpression(
+            &e.left,
+            Precedence::of(&e.left) <= Precedence::Range,
+            tokens,
+            fixup.leftmost_subexpression(),
+        );
+        e.eq_token.to_tokens(tokens);
+        print_subexpression(
+            &e.right,
+            fixup.trailing_precedence(&e.right) < Precedence::Assign,
+            tokens,
+            fixup.subsequent_subexpression(),
+        );
     }
 
     #[cfg(feature = "full")]
@@ -3356,12 +3299,11 @@ pub(crate) mod printing {
     #[cfg(feature = "full")]
     fn print_expr_await(e: &ExprAwait, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
-        let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_dot(&e.base);
         print_subexpression(
             &e.base,
-            left_prec < Precedence::Unambiguous,
+            Precedence::of(&e.base) < Precedence::Unambiguous,
             tokens,
-            left_fixup,
+            fixup.leftmost_subexpression_with_dot(),
         );
         e.dot_token.to_tokens(tokens);
         e.await_token.to_tokens(tokens);
@@ -3374,64 +3316,45 @@ pub(crate) mod printing {
         }
     }
 
-    fn print_expr_binary(e: &ExprBinary, tokens: &mut TokenStream, mut fixup: FixupContext) {
+    fn print_expr_binary(e: &ExprBinary, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
 
-        let needs_group = !e.attrs.is_empty();
-        if needs_group {
-            fixup = FixupContext::NONE;
-        }
+        let left_fixup = fixup.leftmost_subexpression_with_begin_operator(
+            #[cfg(feature = "full")]
+            match &e.op {
+                BinOp::Sub(_)
+                | BinOp::Mul(_)
+                | BinOp::And(_)
+                | BinOp::Or(_)
+                | BinOp::BitAnd(_)
+                | BinOp::BitOr(_)
+                | BinOp::Shl(_)
+                | BinOp::Lt(_) => true,
+                _ => false,
+            },
+            match &e.op {
+                BinOp::Shl(_) | BinOp::Lt(_) => true,
+                _ => false,
+            },
+        );
 
-        let do_print_expr = |tokens: &mut TokenStream| {
-            let binop_prec = Precedence::of_binop(&e.op);
-            let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_operator(
-                &e.left,
-                #[cfg(feature = "full")]
-                match &e.op {
-                    BinOp::Sub(_)
-                    | BinOp::Mul(_)
-                    | BinOp::And(_)
-                    | BinOp::Or(_)
-                    | BinOp::BitAnd(_)
-                    | BinOp::BitOr(_)
-                    | BinOp::Shl(_)
-                    | BinOp::Lt(_) => true,
-                    _ => false,
-                },
-                match &e.op {
-                    BinOp::Shl(_) | BinOp::Lt(_) => true,
-                    _ => false,
-                },
-                #[cfg(feature = "full")]
-                binop_prec,
-            );
-            let left_needs_group = match binop_prec {
-                Precedence::Assign => left_prec <= Precedence::Range,
-                Precedence::Compare => left_prec <= binop_prec,
-                _ => left_prec < binop_prec,
-            };
-
-            let right_fixup = fixup.rightmost_subexpression_fixup(
-                #[cfg(feature = "full")]
-                false,
-                #[cfg(feature = "full")]
-                false,
-                #[cfg(feature = "full")]
-                binop_prec,
-            );
-            let right_needs_group = binop_prec != Precedence::Assign
-                && right_fixup.rightmost_subexpression_precedence(&e.right) <= binop_prec;
-
-            print_subexpression(&e.left, left_needs_group, tokens, left_fixup);
-            e.op.to_tokens(tokens);
-            print_subexpression(&e.right, right_needs_group, tokens, right_fixup);
+        let binop_prec = Precedence::of_binop(&e.op);
+        let left_prec = left_fixup.leading_precedence(&e.left);
+        let right_prec = fixup.trailing_precedence(&e.right);
+        let (left_needs_group, right_needs_group) = match binop_prec {
+            Precedence::Assign => (left_prec <= Precedence::Range, right_prec < binop_prec),
+            Precedence::Compare => (left_prec <= binop_prec, right_prec <= binop_prec),
+            _ => (left_prec < binop_prec, right_prec <= binop_prec),
         };
 
-        if needs_group {
-            token::Paren::default().surround(tokens, do_print_expr);
-        } else {
-            do_print_expr(tokens);
-        }
+        print_subexpression(&e.left, left_needs_group, tokens, left_fixup);
+        e.op.to_tokens(tokens);
+        print_subexpression(
+            &e.right,
+            right_needs_group,
+            tokens,
+            fixup.subsequent_subexpression(),
+        );
     }
 
     #[cfg(feature = "full")]
@@ -3467,7 +3390,7 @@ pub(crate) mod printing {
                 //                     ^---------------------------------^
                 e.label.is_none() && classify::expr_leading_label(value),
                 tokens,
-                fixup.rightmost_subexpression_fixup(true, true, Precedence::Jump),
+                fixup.subsequent_subexpression(),
             );
         }
     }
@@ -3482,20 +3405,22 @@ pub(crate) mod printing {
     fn print_expr_call(e: &ExprCall, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
 
-        let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_operator(
-            &e.func,
+        let call_precedence = if let Expr::Field(_) = &*e.func {
+            Precedence::MIN
+        } else {
+            Precedence::Unambiguous
+        };
+        let func_fixup = fixup.leftmost_subexpression_with_begin_operator(
             #[cfg(feature = "full")]
             true,
             false,
-            #[cfg(feature = "full")]
-            Precedence::Unambiguous,
         );
-        let needs_group = if let Expr::Field(func) = &*e.func {
-            func.member.is_named()
-        } else {
-            left_prec < Precedence::Unambiguous
-        };
-        print_subexpression(&e.func, needs_group, tokens, left_fixup);
+        print_subexpression(
+            &e.func,
+            func_fixup.leading_precedence(&e.func) < call_precedence,
+            tokens,
+            func_fixup,
+        );
 
         e.paren_token.surround(tokens, |tokens| {
             e.args.to_tokens(tokens);
@@ -3509,67 +3434,39 @@ pub(crate) mod printing {
         }
     }
 
-    fn print_expr_cast(e: &ExprCast, tokens: &mut TokenStream, mut fixup: FixupContext) {
+    fn print_expr_cast(e: &ExprCast, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
-
-        let needs_group = !e.attrs.is_empty();
-        if needs_group {
-            fixup = FixupContext::NONE;
-        }
-
-        let do_print_expr = |tokens: &mut TokenStream| {
-            let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_operator(
-                &e.expr,
-                #[cfg(feature = "full")]
-                false,
-                false,
-                #[cfg(feature = "full")]
-                Precedence::Cast,
-            );
-            print_subexpression(&e.expr, left_prec < Precedence::Cast, tokens, left_fixup);
-            e.as_token.to_tokens(tokens);
-            e.ty.to_tokens(tokens);
-        };
-
-        if needs_group {
-            token::Paren::default().surround(tokens, do_print_expr);
-        } else {
-            do_print_expr(tokens);
-        }
+        print_subexpression(
+            &e.expr,
+            Precedence::of(&e.expr) < Precedence::Cast,
+            tokens,
+            fixup.leftmost_subexpression(),
+        );
+        e.as_token.to_tokens(tokens);
+        e.ty.to_tokens(tokens);
     }
 
     #[cfg(feature = "full")]
     #[cfg_attr(docsrs, doc(cfg(feature = "printing")))]
     impl ToTokens for ExprClosure {
         fn to_tokens(&self, tokens: &mut TokenStream) {
-            print_expr_closure(self, tokens, FixupContext::NONE);
-        }
-    }
-
-    #[cfg(feature = "full")]
-    fn print_expr_closure(e: &ExprClosure, tokens: &mut TokenStream, fixup: FixupContext) {
-        outer_attrs_to_tokens(&e.attrs, tokens);
-        e.lifetimes.to_tokens(tokens);
-        e.constness.to_tokens(tokens);
-        e.movability.to_tokens(tokens);
-        e.asyncness.to_tokens(tokens);
-        e.capture.to_tokens(tokens);
-        e.or1_token.to_tokens(tokens);
-        e.inputs.to_tokens(tokens);
-        e.or2_token.to_tokens(tokens);
-        e.output.to_tokens(tokens);
-        if matches!(e.output, ReturnType::Default)
-            || matches!(&*e.body, Expr::Block(body) if body.attrs.is_empty() && body.label.is_none())
-        {
-            print_expr(
-                &e.body,
-                tokens,
-                fixup.rightmost_subexpression_fixup(false, false, Precedence::Jump),
-            );
-        } else {
-            token::Brace::default().surround(tokens, |tokens| {
-                print_expr(&e.body, tokens, FixupContext::new_stmt());
-            });
+            outer_attrs_to_tokens(&self.attrs, tokens);
+            self.lifetimes.to_tokens(tokens);
+            self.constness.to_tokens(tokens);
+            self.movability.to_tokens(tokens);
+            self.asyncness.to_tokens(tokens);
+            self.capture.to_tokens(tokens);
+            self.or1_token.to_tokens(tokens);
+            self.inputs.to_tokens(tokens);
+            self.or2_token.to_tokens(tokens);
+            self.output.to_tokens(tokens);
+            if matches!(self.output, ReturnType::Default) || matches!(*self.body, Expr::Block(_)) {
+                self.body.to_tokens(tokens);
+            } else {
+                token::Brace::default().surround(tokens, |tokens| {
+                    print_expr(&self.body, tokens, FixupContext::new_stmt());
+                });
+            }
         }
     }
 
@@ -3605,12 +3502,11 @@ pub(crate) mod printing {
 
     fn print_expr_field(e: &ExprField, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
-        let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_dot(&e.base);
         print_subexpression(
             &e.base,
-            left_prec < Precedence::Unambiguous,
+            Precedence::of(&e.base) < Precedence::Unambiguous,
             tokens,
-            left_fixup,
+            fixup.leftmost_subexpression_with_dot(),
         );
         e.dot_token.to_tokens(tokens);
         e.member.to_tokens(tokens);
@@ -3625,7 +3521,7 @@ pub(crate) mod printing {
             self.for_token.to_tokens(tokens);
             self.pat.to_tokens(tokens);
             self.in_token.to_tokens(tokens);
-            print_expr(&self.expr, tokens, FixupContext::new_condition());
+            print_condition(&self.expr, tokens);
             self.body.brace_token.surround(tokens, |tokens| {
                 inner_attrs_to_tokens(&self.attrs, tokens);
                 tokens.append_all(&self.body.stmts);
@@ -3652,7 +3548,7 @@ pub(crate) mod printing {
             let mut expr = self;
             loop {
                 expr.if_token.to_tokens(tokens);
-                print_expr(&expr.cond, tokens, FixupContext::new_condition());
+                print_condition(&expr.cond, tokens);
                 expr.then_branch.to_tokens(tokens);
 
                 let (else_token, else_) = match &expr.else_branch {
@@ -3691,19 +3587,16 @@ pub(crate) mod printing {
 
     fn print_expr_index(e: &ExprIndex, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
-        let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_operator(
-            &e.expr,
+        let obj_fixup = fixup.leftmost_subexpression_with_begin_operator(
             #[cfg(feature = "full")]
             true,
             false,
-            #[cfg(feature = "full")]
-            Precedence::Unambiguous,
         );
         print_subexpression(
             &e.expr,
-            left_prec < Precedence::Unambiguous,
+            obj_fixup.leading_precedence(&e.expr) < Precedence::Unambiguous,
             tokens,
-            left_fixup,
+            obj_fixup,
         );
         e.bracket_token.surround(tokens, |tokens| {
             e.index.to_tokens(tokens);
@@ -3733,8 +3626,12 @@ pub(crate) mod printing {
         e.let_token.to_tokens(tokens);
         e.pat.to_tokens(tokens);
         e.eq_token.to_tokens(tokens);
-        let (right_prec, right_fixup) = fixup.rightmost_subexpression(&e.expr, Precedence::Let);
-        print_subexpression(&e.expr, right_prec < Precedence::Let, tokens, right_fixup);
+        print_subexpression(
+            &e.expr,
+            fixup.needs_group_as_let_scrutinee(&e.expr),
+            tokens,
+            FixupContext::NONE,
+        );
     }
 
     #[cfg_attr(docsrs, doc(cfg(feature = "printing")))]
@@ -3773,7 +3670,7 @@ pub(crate) mod printing {
         fn to_tokens(&self, tokens: &mut TokenStream) {
             outer_attrs_to_tokens(&self.attrs, tokens);
             self.match_token.to_tokens(tokens);
-            print_expr(&self.expr, tokens, FixupContext::new_condition());
+            print_condition(&self.expr, tokens);
             self.brace_token.surround(tokens, |tokens| {
                 inner_attrs_to_tokens(&self.attrs, tokens);
                 for (i, arm) in self.arms.iter().enumerate() {
@@ -3801,12 +3698,11 @@ pub(crate) mod printing {
 
     fn print_expr_method_call(e: &ExprMethodCall, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
-        let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_dot(&e.receiver);
         print_subexpression(
             &e.receiver,
-            left_prec < Precedence::Unambiguous,
+            Precedence::of(&e.receiver) < Precedence::Unambiguous,
             tokens,
-            left_fixup,
+            fixup.leftmost_subexpression_with_dot(),
         );
         e.dot_token.to_tokens(tokens);
         e.method.to_tokens(tokens);
@@ -3849,37 +3745,24 @@ pub(crate) mod printing {
     }
 
     #[cfg(feature = "full")]
-    fn print_expr_range(e: &ExprRange, tokens: &mut TokenStream, mut fixup: FixupContext) {
+    fn print_expr_range(e: &ExprRange, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
-
-        let needs_group = !e.attrs.is_empty();
-        if needs_group {
-            fixup = FixupContext::NONE;
+        if let Some(start) = &e.start {
+            print_subexpression(
+                start,
+                Precedence::of(start) <= Precedence::Range,
+                tokens,
+                fixup.leftmost_subexpression(),
+            );
         }
-
-        let do_print_expr = |tokens: &mut TokenStream| {
-            if let Some(start) = &e.start {
-                let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_operator(
-                    start,
-                    true,
-                    false,
-                    Precedence::Range,
-                );
-                print_subexpression(start, left_prec <= Precedence::Range, tokens, left_fixup);
-            }
-            e.limits.to_tokens(tokens);
-            if let Some(end) = &e.end {
-                let right_fixup =
-                    fixup.rightmost_subexpression_fixup(false, true, Precedence::Range);
-                let right_prec = right_fixup.rightmost_subexpression_precedence(end);
-                print_subexpression(end, right_prec <= Precedence::Range, tokens, right_fixup);
-            }
-        };
-
-        if needs_group {
-            token::Paren::default().surround(tokens, do_print_expr);
-        } else {
-            do_print_expr(tokens);
+        e.limits.to_tokens(tokens);
+        if let Some(end) = &e.end {
+            print_subexpression(
+                end,
+                fixup.trailing_precedence(end) <= Precedence::Range,
+                tokens,
+                fixup.subsequent_subexpression(),
+            );
         }
     }
 
@@ -3897,12 +3780,11 @@ pub(crate) mod printing {
         e.and_token.to_tokens(tokens);
         e.raw.to_tokens(tokens);
         e.mutability.to_tokens(tokens);
-        let (right_prec, right_fixup) = fixup.rightmost_subexpression(&e.expr, Precedence::Prefix);
         print_subexpression(
             &e.expr,
-            right_prec < Precedence::Prefix,
+            fixup.trailing_precedence(&e.expr) < Precedence::Prefix,
             tokens,
-            right_fixup,
+            fixup.subsequent_subexpression(),
         );
     }
 
@@ -3917,16 +3799,11 @@ pub(crate) mod printing {
         outer_attrs_to_tokens(&e.attrs, tokens);
         e.and_token.to_tokens(tokens);
         e.mutability.to_tokens(tokens);
-        let (right_prec, right_fixup) = fixup.rightmost_subexpression(
-            &e.expr,
-            #[cfg(feature = "full")]
-            Precedence::Prefix,
-        );
         print_subexpression(
             &e.expr,
-            right_prec < Precedence::Prefix,
+            fixup.trailing_precedence(&e.expr) < Precedence::Prefix,
             tokens,
-            right_fixup,
+            fixup.subsequent_subexpression(),
         );
     }
 
@@ -3956,11 +3833,7 @@ pub(crate) mod printing {
         outer_attrs_to_tokens(&e.attrs, tokens);
         e.return_token.to_tokens(tokens);
         if let Some(expr) = &e.expr {
-            print_expr(
-                expr,
-                tokens,
-                fixup.rightmost_subexpression_fixup(true, false, Precedence::Jump),
-            );
+            print_expr(expr, tokens, fixup.subsequent_subexpression());
         }
     }
 
@@ -3992,12 +3865,11 @@ pub(crate) mod printing {
     #[cfg(feature = "full")]
     fn print_expr_try(e: &ExprTry, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
-        let (left_prec, left_fixup) = fixup.leftmost_subexpression_with_dot(&e.expr);
         print_subexpression(
             &e.expr,
-            left_prec < Precedence::Unambiguous,
+            Precedence::of(&e.expr) < Precedence::Unambiguous,
             tokens,
-            left_fixup,
+            fixup.leftmost_subexpression_with_dot(),
         );
         e.question_token.to_tokens(tokens);
     }
@@ -4037,16 +3909,11 @@ pub(crate) mod printing {
     fn print_expr_unary(e: &ExprUnary, tokens: &mut TokenStream, fixup: FixupContext) {
         outer_attrs_to_tokens(&e.attrs, tokens);
         e.op.to_tokens(tokens);
-        let (right_prec, right_fixup) = fixup.rightmost_subexpression(
-            &e.expr,
-            #[cfg(feature = "full")]
-            Precedence::Prefix,
-        );
         print_subexpression(
             &e.expr,
-            right_prec < Precedence::Prefix,
+            fixup.trailing_precedence(&e.expr) < Precedence::Prefix,
             tokens,
-            right_fixup,
+            fixup.subsequent_subexpression(),
         );
     }
 
@@ -4070,7 +3937,7 @@ pub(crate) mod printing {
             outer_attrs_to_tokens(&self.attrs, tokens);
             self.label.to_tokens(tokens);
             self.while_token.to_tokens(tokens);
-            print_expr(&self.cond, tokens, FixupContext::new_condition());
+            print_condition(&self.cond, tokens);
             self.body.brace_token.surround(tokens, |tokens| {
                 inner_attrs_to_tokens(&self.attrs, tokens);
                 tokens.append_all(&self.body.stmts);
@@ -4091,11 +3958,7 @@ pub(crate) mod printing {
         outer_attrs_to_tokens(&e.attrs, tokens);
         e.yield_token.to_tokens(tokens);
         if let Some(expr) = &e.expr {
-            print_expr(
-                expr,
-                tokens,
-                fixup.rightmost_subexpression_fixup(true, false, Precedence::Jump),
-            );
+            print_expr(expr, tokens, fixup.subsequent_subexpression());
         }
     }
 

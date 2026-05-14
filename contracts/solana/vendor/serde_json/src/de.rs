@@ -45,17 +45,11 @@ where
     /// Create a JSON deserializer from one of the possible serde_json input
     /// sources.
     ///
-    /// When reading from a source against which short reads are not efficient, such
-    /// as a [`File`], you will want to apply your own buffering because serde_json
-    /// will not buffer the input. See [`std::io::BufReader`].
-    ///
     /// Typically it is more convenient to use one of these methods instead:
     ///
     ///   - Deserializer::from_str
     ///   - Deserializer::from_slice
     ///   - Deserializer::from_reader
-    ///
-    /// [`File`]: std::fs::File
     pub fn new(read: R) -> Self {
         Deserializer {
             read,
@@ -368,7 +362,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             None => {
                 return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
             }
-        }
+        };
 
         tri!(self.scan_integer128(&mut buf));
 
@@ -993,7 +987,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn scan_number(&mut self, buf: &mut String) -> Result<()> {
         match tri!(self.peek_or_null()) {
             b'.' => self.scan_decimal(buf),
-            b'e' | b'E' => self.scan_exponent(buf),
+            e @ (b'e' | b'E') => self.scan_exponent(e as char, buf),
             _ => Ok(()),
         }
     }
@@ -1018,15 +1012,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
 
         match tri!(self.peek_or_null()) {
-            b'e' | b'E' => self.scan_exponent(buf),
+            e @ (b'e' | b'E') => self.scan_exponent(e as char, buf),
             _ => Ok(()),
         }
     }
 
     #[cfg(feature = "arbitrary_precision")]
-    fn scan_exponent(&mut self, buf: &mut String) -> Result<()> {
+    fn scan_exponent(&mut self, e: char, buf: &mut String) -> Result<()> {
         self.eat_char();
-        buf.push('e');
+        buf.push(e);
 
         match tri!(self.peek_or_null()) {
             b'+' => {
@@ -1037,9 +1031,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 buf.push('-');
             }
-            _ => {
-                buf.push('+');
-            }
+            _ => {}
         }
 
         // Make sure a digit follows the exponent place.
@@ -1386,7 +1378,7 @@ macro_rules! check_recursion {
     };
 }
 
-impl<'de, R: Read<'de>> de::Deserializer<'de> for &mut Deserializer<R> {
+impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
 
     #[inline]
@@ -1934,37 +1926,31 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
     where
         T: de::DeserializeSeed<'de>,
     {
-        fn has_next_element<'de, 'a, R: Read<'de> + 'a>(
-            seq: &mut SeqAccess<'a, R>,
-        ) -> Result<bool> {
-            let peek = match tri!(seq.de.parse_whitespace()) {
-                Some(b) => b,
-                None => {
-                    return Err(seq.de.peek_error(ErrorCode::EofWhileParsingList));
-                }
-            };
-
-            if peek == b']' {
-                Ok(false)
-            } else if seq.first {
-                seq.first = false;
-                Ok(true)
-            } else if peek == b',' {
-                seq.de.eat_char();
-                match tri!(seq.de.parse_whitespace()) {
-                    Some(b']') => Err(seq.de.peek_error(ErrorCode::TrailingComma)),
-                    Some(_) => Ok(true),
-                    None => Err(seq.de.peek_error(ErrorCode::EofWhileParsingValue)),
-                }
-            } else {
-                Err(seq.de.peek_error(ErrorCode::ExpectedListCommaOrEnd))
+        let peek = match tri!(self.de.parse_whitespace()) {
+            Some(b']') => {
+                return Ok(None);
             }
-        }
+            Some(b',') if !self.first => {
+                self.de.eat_char();
+                tri!(self.de.parse_whitespace())
+            }
+            Some(b) => {
+                if self.first {
+                    self.first = false;
+                    Some(b)
+                } else {
+                    return Err(self.de.peek_error(ErrorCode::ExpectedListCommaOrEnd));
+                }
+            }
+            None => {
+                return Err(self.de.peek_error(ErrorCode::EofWhileParsingList));
+            }
+        };
 
-        if tri!(has_next_element(self)) {
-            Ok(Some(tri!(seed.deserialize(&mut *self.de))))
-        } else {
-            Ok(None)
+        match peek {
+            Some(b']') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
+            Some(_) => Ok(Some(tri!(seed.deserialize(&mut *self.de)))),
+            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
     }
 }
@@ -1987,40 +1973,32 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
     where
         K: de::DeserializeSeed<'de>,
     {
-        fn has_next_key<'de, 'a, R: Read<'de> + 'a>(map: &mut MapAccess<'a, R>) -> Result<bool> {
-            let peek = match tri!(map.de.parse_whitespace()) {
-                Some(b) => b,
-                None => {
-                    return Err(map.de.peek_error(ErrorCode::EofWhileParsingObject));
-                }
-            };
-
-            if peek == b'}' {
-                Ok(false)
-            } else if map.first {
-                map.first = false;
-                if peek == b'"' {
-                    Ok(true)
-                } else {
-                    Err(map.de.peek_error(ErrorCode::KeyMustBeAString))
-                }
-            } else if peek == b',' {
-                map.de.eat_char();
-                match tri!(map.de.parse_whitespace()) {
-                    Some(b'"') => Ok(true),
-                    Some(b'}') => Err(map.de.peek_error(ErrorCode::TrailingComma)),
-                    Some(_) => Err(map.de.peek_error(ErrorCode::KeyMustBeAString)),
-                    None => Err(map.de.peek_error(ErrorCode::EofWhileParsingValue)),
-                }
-            } else {
-                Err(map.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd))
+        let peek = match tri!(self.de.parse_whitespace()) {
+            Some(b'}') => {
+                return Ok(None);
             }
-        }
+            Some(b',') if !self.first => {
+                self.de.eat_char();
+                tri!(self.de.parse_whitespace())
+            }
+            Some(b) => {
+                if self.first {
+                    self.first = false;
+                    Some(b)
+                } else {
+                    return Err(self.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
+                }
+            }
+            None => {
+                return Err(self.de.peek_error(ErrorCode::EofWhileParsingObject));
+            }
+        };
 
-        if tri!(has_next_key(self)) {
-            Ok(Some(tri!(seed.deserialize(MapKey { de: &mut *self.de }))))
-        } else {
-            Ok(None)
+        match peek {
+            Some(b'"') => seed.deserialize(MapKey { de: &mut *self.de }).map(Some),
+            Some(b'}') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
+            Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
+            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
     }
 
@@ -2525,7 +2503,10 @@ where
 /// reading a file completely into memory and then applying [`from_str`]
 /// or [`from_slice`] on it. See [issue #160].
 ///
-/// [`File`]: std::fs::File
+/// [`File`]: https://doc.rust-lang.org/std/fs/struct.File.html
+/// [`std::io::BufReader`]: https://doc.rust-lang.org/std/io/struct.BufReader.html
+/// [`from_str`]: ./fn.from_str.html
+/// [`from_slice`]: ./fn.from_slice.html
 /// [issue #160]: https://github.com/serde-rs/json/issues/160
 ///
 /// # Example
@@ -2572,7 +2553,6 @@ where
 /// use serde::Deserialize;
 ///
 /// use std::error::Error;
-/// use std::io::BufReader;
 /// use std::net::{TcpListener, TcpStream};
 ///
 /// #[derive(Deserialize, Debug)]
@@ -2581,8 +2561,8 @@ where
 ///     location: String,
 /// }
 ///
-/// fn read_user_from_stream(stream: &mut BufReader<TcpStream>) -> Result<User, Box<dyn Error>> {
-///     let mut de = serde_json::Deserializer::from_reader(stream);
+/// fn read_user_from_stream(tcp_stream: TcpStream) -> Result<User, Box<dyn Error>> {
+///     let mut de = serde_json::Deserializer::from_reader(tcp_stream);
 ///     let u = User::deserialize(&mut de)?;
 ///
 ///     Ok(u)
@@ -2593,9 +2573,8 @@ where
 /// # fn fake_main() {
 ///     let listener = TcpListener::bind("127.0.0.1:4000").unwrap();
 ///
-///     for tcp_stream in listener.incoming() {
-///         let mut buffered = BufReader::new(tcp_stream.unwrap());
-///         println!("{:#?}", read_user_from_stream(&mut buffered));
+///     for stream in listener.incoming() {
+///         println!("{:#?}", read_user_from_stream(stream.unwrap()));
 ///     }
 /// }
 /// ```

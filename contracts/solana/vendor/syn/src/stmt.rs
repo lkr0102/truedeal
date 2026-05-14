@@ -4,8 +4,6 @@ use crate::item::Item;
 use crate::mac::Macro;
 use crate::pat::Pat;
 use crate::token;
-use alloc::boxed::Box;
-use alloc::vec::Vec;
 
 ast_struct! {
     /// A braced block containing Rust statements.
@@ -40,7 +38,7 @@ ast_enum! {
 }
 
 ast_struct! {
-    /// A local `let` binding: `let x: u64 = s.parse()?;`.
+    /// A local `let` binding: `let x: u64 = s.parse()?`.
     #[cfg_attr(docsrs, doc(cfg(feature = "full")))]
     pub struct Local {
         pub attrs: Vec<Attribute>,
@@ -95,8 +93,6 @@ pub(crate) mod parsing {
     use crate::stmt::{Block, Local, LocalInit, Stmt, StmtMacro};
     use crate::token;
     use crate::ty::Type;
-    use alloc::boxed::Box;
-    use alloc::vec::Vec;
     use proc_macro2::TokenStream;
 
     struct AllowNoSemi(bool);
@@ -212,8 +208,7 @@ pub(crate) mod parsing {
                 if ahead.peek2(Ident) || ahead.peek2(Token![try]) {
                     is_item_macro = true;
                 } else if ahead.peek2(token::Brace)
-                    && !(ahead.peek3(Token![.]) && !ahead.peek3(Token![..])
-                        || ahead.peek3(Token![?]))
+                    && !(ahead.peek3(Token![.]) || ahead.peek3(Token![?]))
                 {
                     input.advance_to(&ahead);
                     return stmt_mac(input, attrs, path).map(Stmt::Macro);
@@ -423,7 +418,7 @@ pub(crate) mod printing {
     use crate::stmt::{Block, Local, Stmt, StmtMacro};
     use crate::token;
     use proc_macro2::TokenStream;
-    use quote::{ToTokens, TokenStreamExt as _};
+    use quote::{ToTokens, TokenStreamExt};
 
     #[cfg_attr(docsrs, doc(cfg(feature = "printing")))]
     impl ToTokens for Block {
@@ -457,12 +452,11 @@ pub(crate) mod printing {
             self.pat.to_tokens(tokens);
             if let Some(init) = &self.init {
                 init.eq_token.to_tokens(tokens);
-                expr::printing::print_subexpression(
-                    &init.expr,
-                    init.diverge.is_some() && classify::expr_trailing_brace(&init.expr),
-                    tokens,
-                    FixupContext::NONE,
-                );
+                if init.diverge.is_some() && classify::expr_trailing_brace(&init.expr) {
+                    token::Paren::default().surround(tokens, |tokens| init.expr.to_tokens(tokens));
+                } else {
+                    init.expr.to_tokens(tokens);
+                }
                 if let Some((else_token, diverge)) = &init.diverge {
                     else_token.to_tokens(tokens);
                     match &**diverge {

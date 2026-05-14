@@ -99,5 +99,3 @@ check-cfg = [
     "cfg(crossbeam_loom)",
     "cfg(crossbeam_sanitize)",
 ]
-
-

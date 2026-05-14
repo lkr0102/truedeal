@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.60"
+rust-version = "1.66.0"
 name = "borsh"
 version = "0.10.4"
 authors = ["Near Inc <hello@near.org>"]
@@ -142,4 +142,3 @@ const-generics = []
 default = ["std"]
 rc = []
 std = []
-

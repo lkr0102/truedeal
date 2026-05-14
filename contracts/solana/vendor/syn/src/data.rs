@@ -5,7 +5,6 @@ use crate::punctuated::{self, Punctuated};
 use crate::restriction::{FieldMutability, Visibility};
 use crate::token;
 use crate::ty::Type;
-use alloc::vec::Vec;
 
 ast_struct! {
     /// An enum variant.
@@ -377,7 +376,7 @@ mod printing {
     use crate::data::{Field, FieldsNamed, FieldsUnnamed, Variant};
     use crate::print::TokensOrDefault;
     use proc_macro2::TokenStream;
-    use quote::{ToTokens, TokenStreamExt as _};
+    use quote::{ToTokens, TokenStreamExt};
 
     #[cfg_attr(docsrs, doc(cfg(feature = "printing")))]
     impl ToTokens for Variant {

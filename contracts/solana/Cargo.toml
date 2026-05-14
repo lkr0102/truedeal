@@ -16,9 +16,6 @@ codegen-units = 1
 
 [patch.crates-io]
 getrandom = { git = "https://github.com/rust-random/getrandom", tag = "v0.2.10" }
-hashbrown = { path = "vendor/hashbrown" }
-block-buffer = { path = "vendor/block-buffer-0.10.4" }
-syn = { path = "vendor/syn" }
 toml = { git = "https://github.com/toml-rs/toml", tag = "toml-v0.8.19" }
 toml_edit = { git = "https://github.com/toml-rs/toml", tag = "v0.22.22" }
 toml_datetime = { git = "https://github.com/toml-rs/toml", tag = "toml_datetime-v0.6.3" }
@@ -28,8 +25,8 @@ serde = { git = "https://github.com/serde-rs/serde.git", tag = "v1.0.210" }
 serde_json = { git = "https://github.com/serde-rs/json.git", tag = "v1.0.128" }
 proc-macro2 = { git = "https://github.com/dtolnay/proc-macro2.git", tag = "1.0.86" }
 blake3 = { git = "https://github.com/BLAKE3-team/BLAKE3.git", tag = "1.5.4" }
-digest = { git = "https://github.com/RustCrypto/traits.git", tag = "digest-v0.10.7" }
-crypto-common = { git = "https://github.com/RustCrypto/traits.git", tag = "crypto-common-v0.1.6" }
+digest = { path = "vendor/digest" }
+crypto-common = { path = "vendor/crypto-common" }
 ahash = { git = "https://github.com/tkaitchuck/ahash.git", tag = "v0.8.11" }
 
 

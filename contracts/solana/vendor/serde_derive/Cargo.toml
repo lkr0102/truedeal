@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.61"
 name = "serde_derive"
 version = "1.0.228"
 authors = [
@@ -85,5 +85,3 @@ default-features = false
 
 [dev-dependencies.serde]
 version = "1"
-
-

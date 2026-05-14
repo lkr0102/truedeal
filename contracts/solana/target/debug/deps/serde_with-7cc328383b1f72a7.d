@@ -1,0 +1,13 @@
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\serde_with-7cc328383b1f72a7.d: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\de\mod.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\de\impls.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\formats.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\rust.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\ser\mod.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\ser\impls.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\utils.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\utils\duration.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libserde_with-7cc328383b1f72a7.rmeta: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\de\mod.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\de\impls.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\formats.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\rust.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\ser\mod.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\ser\impls.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\utils.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\utils\duration.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\lib.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\de\mod.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\de\impls.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\formats.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\rust.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\ser\mod.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\ser\impls.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\utils.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\serde_with\src\utils\duration.rs:

@@ -11,9 +11,9 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.56"
 name = "proc-macro2"
-version = "1.0.106"
+version = "1.0.86"
 authors = [
     "David Tolnay <dtolnay@gmail.com>",
     "Alex Crichton <alex@alexcrichton.com>",
@@ -36,17 +36,16 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/dtolnay/proc-macro2"
 
 [package.metadata.docs.rs]
-rustc-args = ["--cfg=procmacro2_semver_exempt"]
-targets = ["x86_64-unknown-linux-gnu"]
-rustdoc-args = [
-    "--cfg=procmacro2_semver_exempt",
-    "--generate-link-to-definition",
-    "--generate-macro-expansion",
-    "--extern-html-root-url=core=https://doc.rust-lang.org",
-    "--extern-html-root-url=alloc=https://doc.rust-lang.org",
-    "--extern-html-root-url=std=https://doc.rust-lang.org",
-    "--extern-html-root-url=proc_macro=https://doc.rust-lang.org",
+rustc-args = [
+    "--cfg",
+    "procmacro2_semver_exempt",
 ]
+rustdoc-args = [
+    "--cfg",
+    "procmacro2_semver_exempt",
+    "--generate-link-to-definition",
+]
+targets = ["x86_64-unknown-linux-gnu"]
 
 [package.metadata.playground]
 features = ["span-locations"]
@@ -60,6 +59,7 @@ span-locations = []
 [lib]
 name = "proc_macro2"
 path = "src/lib.rs"
+doc-scrape-examples = false
 
 [[test]]
 name = "comments"
@@ -85,23 +85,24 @@ path = "tests/test_fmt.rs"
 name = "test_size"
 path = "tests/test_size.rs"
 
-[dependencies.unicode-ident]
-version = "1.0"
+[dependencies]
+unicode-ident = "1.0"
 
-[dev-dependencies.flate2]
-version = "1.0"
+[dev-dependencies]
+flate2 = "1.0"
+rayon = "1.0"
+rustversion = "1"
+tar = "0.4"
 
 [dev-dependencies.quote]
 version = "1.0"
 default-features = false
 
-[dev-dependencies.rayon]
-version = "1.0"
+[workspace]
+members = [
+    "benches/bench-libproc-macro",
+    "tests/ui",
+]
 
-[dev-dependencies.rustversion]
-version = "1"
-
-[dev-dependencies.tar]
-version = "0.4"
-
-
+[patch.crates-io.proc-macro2]
+path = "."

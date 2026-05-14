@@ -27,19 +27,16 @@ use crate::error::Result;
 use crate::parse::{Parse, ParseStream};
 #[cfg(feature = "parsing")]
 use crate::token::Token;
-use alloc::boxed::Box;
-#[cfg(all(feature = "fold", any(feature = "full", feature = "derive")))]
-use alloc::collections::VecDeque;
-use alloc::vec::{self, Vec};
 #[cfg(feature = "extra-traits")]
-use core::fmt::{self, Debug};
+use std::fmt::{self, Debug};
 #[cfg(feature = "extra-traits")]
-use core::hash::{Hash, Hasher};
+use std::hash::{Hash, Hasher};
 #[cfg(any(feature = "full", feature = "derive"))]
-use core::iter;
-use core::ops::{Index, IndexMut};
-use core::option;
-use core::slice;
+use std::iter;
+use std::ops::{Index, IndexMut};
+use std::option;
+use std::slice;
+use std::vec;
 
 /// **A punctuated sequence of syntax tree nodes of type `T` separated by
 /// punctuation of type `P`.**
@@ -308,9 +305,9 @@ impl<T, P> Punctuated<T, P> {
     /// [`parse_terminated`]: Punctuated::parse_terminated
     #[cfg(feature = "parsing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "parsing")))]
-    pub fn parse_terminated_with<'a>(
-        input: ParseStream<'a>,
-        parser: fn(ParseStream<'a>) -> Result<T>,
+    pub fn parse_terminated_with(
+        input: ParseStream,
+        parser: fn(ParseStream) -> Result<T>,
     ) -> Result<Self>
     where
         P: Parse,
@@ -360,9 +357,9 @@ impl<T, P> Punctuated<T, P> {
     /// [`parse_separated_nonempty`]: Punctuated::parse_separated_nonempty
     #[cfg(feature = "parsing")]
     #[cfg_attr(docsrs, doc(cfg(feature = "parsing")))]
-    pub fn parse_separated_nonempty_with<'a>(
-        input: ParseStream<'a>,
-        parser: fn(ParseStream<'a>) -> Result<T>,
+    pub fn parse_separated_nonempty_with(
+        input: ParseStream,
+        parser: fn(ParseStream) -> Result<T>,
     ) -> Result<Self>
     where
         P: Token + Parse,
@@ -522,13 +519,8 @@ impl<T, P> IntoIterator for Punctuated<T, P> {
 
     fn into_iter(self) -> Self::IntoIter {
         let mut elements = Vec::with_capacity(self.len());
-
-        for (t, _) in self.inner {
-            elements.push(t);
-        }
-        if let Some(t) = self.last {
-            elements.push(*t);
-        }
+        elements.extend(self.inner.into_iter().map(|pair| pair.0));
+        elements.extend(self.last.map(|t| *t));
 
         IntoIter {
             inner: elements.into_iter(),
@@ -1080,7 +1072,7 @@ impl<T, P> Index<usize> for Punctuated<T, P> {
     type Output = T;
 
     fn index(&self, index: usize) -> &Self::Output {
-        if index.checked_add(1) == Some(self.len()) {
+        if index == self.len() - 1 {
             match &self.last {
                 Some(t) => t,
                 None => &self.inner[index].0,
@@ -1093,7 +1085,7 @@ impl<T, P> Index<usize> for Punctuated<T, P> {
 
 impl<T, P> IndexMut<usize> for Punctuated<T, P> {
     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        if index.checked_add(1) == Some(self.len()) {
+        if index == self.len() - 1 {
             match &mut self.last {
                 Some(t) => t,
                 None => &mut self.inner[index].0,
@@ -1114,20 +1106,13 @@ where
     V: ?Sized,
     F: FnMut(&mut V, T) -> T,
 {
-    let Punctuated { inner, last } = punctuated;
-
-    // Convert into VecDeque to prevent needing to allocate a new Vec<(T, P)>
-    // for the folded elements.
-    let mut inner = VecDeque::from(inner);
-    for _ in 0..inner.len() {
-        if let Some((t, p)) = inner.pop_front() {
-            inner.push_back((f(fold, t), p));
-        }
-    }
-
     Punctuated {
-        inner: Vec::from(inner),
-        last: match last {
+        inner: punctuated
+            .inner
+            .into_iter()
+            .map(|(t, p)| (f(fold, t), p))
+            .collect(),
+        last: match punctuated.last {
             Some(t) => Some(Box::new(f(fold, *t))),
             None => None,
         },
@@ -1138,7 +1123,7 @@ where
 mod printing {
     use crate::punctuated::{Pair, Punctuated};
     use proc_macro2::TokenStream;
-    use quote::{ToTokens, TokenStreamExt as _};
+    use quote::{ToTokens, TokenStreamExt};
 
     #[cfg_attr(docsrs, doc(cfg(feature = "printing")))]
     impl<T, P> ToTokens for Punctuated<T, P>

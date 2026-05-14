@@ -11,13 +11,9 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
 name = "toml_edit"
-version = "0.19.15"
-authors = [
-    "Andronik Ordian <write@reusable.software>",
-    "Ed Page <eopage@gmail.com>",
-]
+version = "0.25.11+spec-1.1.0"
+build = false
 include = [
     "build.rs",
     "src/**/*",
@@ -25,10 +21,13 @@ include = [
     "Cargo.lock",
     "LICENSE*",
     "README.md",
-    "benches/**/*",
     "examples/**/*",
-    "tests/**/*",
 ]
+autolib = false
+autobins = false
+autoexamples = false
+autotests = false
+autobenches = false
 description = "Yet another format-preserving TOML parser."
 readme = "README.md"
 keywords = [
@@ -45,113 +44,146 @@ license = "MIT OR Apache-2.0"
 repository = "https://github.com/toml-rs/toml"
 
 [package.metadata.docs.rs]
-features = ["serde"]
-rustdoc-args = [
-    "--cfg",
-    "docsrs",
-]
+all-features = true
+rustdoc-args = ["--generate-link-to-definition"]
 
 [package.metadata.release]
 tag-name = "v{{version}}"
 
 [[package.metadata.release.pre-release-replacements]]
 file = "CHANGELOG.md"
-min = 1
-replace = "{{version}}"
 search = "Unreleased"
-
-[[package.metadata.release.pre-release-replacements]]
-exactly = 1
-file = "CHANGELOG.md"
-replace = "...{{tag_name}}"
-search = '\.\.\.HEAD'
-
-[[package.metadata.release.pre-release-replacements]]
-file = "CHANGELOG.md"
+replace = "{{version}}"
 min = 1
-replace = "{{date}}"
-search = "ReleaseDate"
 
 [[package.metadata.release.pre-release-replacements]]
-exactly = 1
 file = "CHANGELOG.md"
+search = '\.\.\.HEAD'
+replace = "...{{tag_name}}"
+exactly = 1
+
+[[package.metadata.release.pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "ReleaseDate"
+replace = "{{date}}"
+min = 1
+
+[[package.metadata.release.pre-release-replacements]]
+file = "CHANGELOG.md"
+search = "<!-- next-header -->"
 replace = """
 <!-- next-header -->
 ## [Unreleased] - ReleaseDate
 """
-search = "<!-- next-header -->"
+exactly = 1
 
 [[package.metadata.release.pre-release-replacements]]
-exactly = 1
 file = "CHANGELOG.md"
+search = "<!-- next-url -->"
 replace = """
 <!-- next-url -->
 [Unreleased]: https://github.com/toml-rs/toml/compare/{{tag_name}}...HEAD"""
-search = "<!-- next-url -->"
-
-[[example]]
-name = "visit"
-test = true
-
-[[test]]
-name = "decoder_compliance"
-harness = false
-
-[[test]]
-name = "encoder_compliance"
-harness = false
-
-[[test]]
-name = "invalid"
-harness = false
-
-[dependencies.indexmap]
-version = "2.0.0"
-features = ["std"]
-
-[dependencies.kstring]
-version = "2.0.0"
-features = ["max_inline"]
-optional = true
-
-[dependencies.serde]
-version = "1.0.145"
-optional = true
-
-[dependencies.serde_spanned]
-version = "0.6.3"
-features = ["serde"]
-optional = true
-
-[dependencies.toml_datetime]
-version = "0.6.3"
-
-[dependencies.winnow]
-version = "0.5.0"
-
-[dev-dependencies.libtest-mimic]
-version = "0.6.0"
-
-[dev-dependencies.serde_json]
-version = "1.0.96"
-
-[dev-dependencies.snapbox]
-version = "0.4.11"
-features = ["harness"]
-
-[dev-dependencies.toml-test-data]
-version = "1.3.0"
-
-[dev-dependencies.toml-test-harness]
-version = "0.4.3"
+exactly = 1
 
 [features]
-default = []
-perf = ["dep:kstring"]
+debug = [
+    "toml_parser?/debug",
+    "dep:anstream",
+    "dep:anstyle",
+    "display",
+]
+default = [
+    "parse",
+    "display",
+]
+display = ["dep:toml_writer"]
+parse = [
+    "dep:toml_parser",
+    "dep:winnow",
+]
 serde = [
-    "dep:serde",
+    "dep:serde_core",
     "toml_datetime/serde",
     "dep:serde_spanned",
 ]
 unbounded = []
+
+[lib]
+name = "toml_edit"
+path = "src/lib.rs"
+
+[[example]]
+name = "visit"
+path = "examples/visit.rs"
+test = true
+required-features = [
+    "parse",
+    "display",
+]
+
+[dependencies.anstream]
+version = "1.0.0"
+optional = true
+
+[dependencies.anstyle]
+version = "1.0.14"
+optional = true
+
+[dependencies.indexmap]
+version = "2.13.0"
+features = ["std"]
+
+[dependencies.serde_core]
+version = "1.0.228"
+optional = true
+
+[dependencies.serde_spanned]
+version = "1.1.1"
+features = ["serde"]
+optional = true
+
+[dependencies.toml_datetime]
+version = "1.1.1"
+
+[dependencies.toml_parser]
+version = "1.1.2"
+optional = true
+
+[dependencies.toml_writer]
+version = "1.1.1"
+optional = true
+
+[dependencies.winnow]
+version = "1.0.0"
+optional = true
+
+[dev-dependencies.proptest]
+version = "1.10.0"
+
+[dev-dependencies.serde]
+version = "1.0.228"
+features = ["derive"]
+
+[dev-dependencies.serde-untagged]
+version = "0.1.9"
+
+[dev-dependencies.serde_json]
+version = "1.0.149"
+
+[dev-dependencies.snapbox]
+version = "1.1.0"
+
+[dev-dependencies.toml-test-data]
+version = "2.4.0"
+
+[dev-dependencies.toml-test-harness]
+version = "1.4.0"
+features = ["snapshot"]
+
+[dev-dependencies.walkdir]
+version = "2.5.0"
+
+
+
+
 
