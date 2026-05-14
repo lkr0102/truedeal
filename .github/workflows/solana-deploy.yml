@@ -72,8 +72,8 @@ jobs:
           echo "$TRUEDEAL_DEPLOY_KEY" > contracts/solana/target/deploy/truedeal-keypair.json
           chmod 600 contracts/solana/target/deploy/truedeal-keypair.json
 
-      - name: Remove vendor override
-        run: rm -f contracts/solana/.cargo/config.toml
+      # - name: Remove vendor override
+      #   run: rm -f contracts/solana/.cargo/config.toml
 
       - name: Use committed safe Cargo.lock
         working-directory: contracts/solana
