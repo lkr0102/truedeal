@@ -12,7 +12,7 @@
 [package]
 edition = "2021"
 name = "hybrid-array"
-version = "0.4.12"
+version = "0.4.7"
 authors = ["RustCrypto Developers"]
 build = false
 autolib = false
@@ -47,10 +47,6 @@ name = "hybrid_array"
 path = "src/lib.rs"
 
 [[test]]
-name = "ctutils"
-path = "tests/ctutils.rs"
-
-[[test]]
 name = "mod"
 path = "tests/mod.rs"
 
@@ -67,10 +63,6 @@ version = "1"
 optional = true
 default-features = false
 
-[dependencies.ctutils]
-version = "0.4"
-optional = true
-
 [dependencies.serde]
 version = "1"
 optional = true
@@ -83,7 +75,7 @@ optional = true
 default-features = false
 
 [dependencies.typenum]
-version = "1.20"
+version = "1.17"
 features = ["const-generics"]
 
 [dependencies.zerocopy]
@@ -95,9 +87,6 @@ optional = true
 version = "1.8"
 optional = true
 default-features = false
-
-[dev-dependencies.serde_json]
-version = "1"
 
 
 

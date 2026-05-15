@@ -849,13 +849,6 @@ mod extra_sizes {
     pub type U1530 = uint!(0 1 0 1 1 1 1 1 1 0 1);
     pub type U1658 = uint!(0 1 0 1 1 1 1 0 0 1 1);
 
-    // HPKE Hybrid KEM sizes
-    // - MLKEM768-P256
-    pub type U1153 = uint!(1 0 0 0 0 0 0 1 0 0 1);
-    pub type U1249 = uint!(1 0 0 0 0 1 1 1 0 0 1);
-    // - MLKEM1024-P384
-    pub type U1665 = uint!(1 0 0 0 0 0 0 1 0 1 1);
-
     // LMS sizes
     pub type U2047 = uint!(1 1 1 1 1 1 1 1 1 1 1);
     pub type U2180 = uint!(0 0 1 0 0 0 0 1 0 0 0 1);
@@ -880,11 +873,6 @@ mod extra_sizes {
     pub type U43088 = uint!(0 0 0 0 1 0 1 0 0 0 0 1 0 1 0 1);
     pub type U21632 = uint!(0 0 0 0 0 0 0 1 0 0 1 0 1 0 1);
     pub type U21696 = uint!(0 0 0 0 0 0 1 1 0 0 1 0 1 0 1);
-
-    // HKDF-Expand common max output sizes
-    pub type U8160 = uint!(0 0 0 0 0 1 1 1 1 1 1 1 1);
-    pub type U12240 = uint!(0 0 0 0 1 0 1 1 1 1 1 1 0 1);
-    pub type U16320 = uint!(0 0 0 0 0 0 1 1 1 1 1 1 1 1);
 
     impl_array_sizes! {
         base_extra,
@@ -1117,14 +1105,6 @@ mod extra_sizes {
         1658 => U1658,
     }
 
-    // HPKE Hybrid KEM sizes
-    impl_array_sizes! {
-        hpke_hybrid,
-        1153 => U1153,
-        1249 => U1249,
-        1665 => U1665,
-    }
-
     // LMS sizes
     impl_array_sizes! {
         lms,
@@ -1149,57 +1129,5 @@ mod extra_sizes {
         43088 => U43088,
         21632 => U21632,
         21696 => U21696,
-    }
-
-    // HKDF-Expand common max output sizes
-    impl_array_sizes! {
-        hkdf_expand_max_output,
-        8160 => U8160,
-        12240 => U12240,
-        16320 => U16320,
-    }
-
-    // HQC-KEM sizes (FIPS 207)
-    pub type U2241 = uint!(1 0 0 0 0 0 1 1 0 0 0 1);
-    pub type U4433 = uint!(1 0 0 0 1 0 1 0 1 0 0 0 1);
-    pub type U4514 = uint!(0 1 0 0 0 1 0 1 1 0 0 0 1);
-    pub type U7237 = uint!(1 0 1 0 0 0 1 0 0 0 1 1 1);
-    pub type U8978 = uint!(0 1 0 0 1 0 0 0 1 1 0 0 0 1);
-    pub type U14421 = uint!(1 0 1 0 1 0 1 0 0 0 0 1 1 1);
-
-    impl_array_sizes! {
-        hqc,
-        2241 => U2241,
-        4433 => U4433,
-        4514 => U4514,
-        7237 => U7237,
-        8978 => U8978,
-        14421 => U14421,
-    }
-
-    // Classic McEliece sizes
-    pub type U6492 = uint!(0 0 1 1 1 0 1 0 1 0 0 1 1);
-    pub type U13608 = uint!(0 0 0 1 0 1 0 0 1 0 1 0 1 1);
-    pub type U13932 = uint!(0 0 1 1 0 1 1 0 0 1 1 0 1 1);
-    pub type U13948 = uint!(0 0 1 1 1 1 1 0 0 1 1 0 1 1);
-    pub type U14120 = uint!(0 0 0 1 0 1 0 0 1 1 1 0 1 1);
-    pub type U261120 = uint!(0 0 0 0 0 0 0 0 0 0 1 1 1 1 1 1 1 1);
-    pub type U524160 = uint!(0 0 0 0 0 0 0 1 1 1 1 1 1 1 1 1 1 1 1);
-    pub type U1044992 = uint!(0 0 0 0 0 0 0 0 0 1 0 0 1 1 1 1 1 1 1 1);
-    pub type U1047319 = uint!(1 1 1 0 1 0 0 0 1 1 0 1 1 1 1 1 1 1 1 1);
-    pub type U1357824 = uint!(0 0 0 0 0 0 0 0 0 0 0 1 1 1 0 1 0 0 1 0 1);
-
-    impl_array_sizes! {
-        classic_mceliece,
-        6492 => U6492,
-        13608 => U13608,
-        13932 => U13932,
-        13948 => U13948,
-        14120 => U14120,
-        261120 => U261120,
-        524160 => U524160,
-        1044992 => U1044992,
-        1047319 => U1047319,
-        1357824 => U1357824,
     }
 }

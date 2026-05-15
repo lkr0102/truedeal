@@ -126,13 +126,16 @@ use core::{
     ptr,
     slice::{self, Iter, IterMut},
 };
-use typenum::{Diff, Sum, U1};
+use typenum::{Diff, Sum};
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
 
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, Zeroable};
+
+#[cfg(feature = "subtle")]
+use subtle::{Choice, ConditionallySelectable, ConstantTimeEq};
 
 #[cfg(feature = "zeroize")]
 use zeroize::{Zeroize, ZeroizeOnDrop};
@@ -207,7 +210,7 @@ where
     /// Returns an iterator that allows modifying each value.
     #[inline]
     pub fn iter_mut(&mut self) -> IterMut<'_, T> {
-        self.0.as_mut().iter_mut()
+        self.as_mut().iter_mut()
     }
 
     /// Returns an array of the same size as `self`, with function `f` applied to each element in
@@ -401,19 +404,6 @@ where
     }
 }
 
-impl<T> Array<T, U1> {
-    /// Convert a reference to `T` into a reference to an [`Array`] of length [`U1`].
-    pub const fn from_ref(r: &T) -> &Self {
-        Self::cast_from_core(core::array::from_ref(r))
-    }
-
-    /// Converts a mutable reference to `T` into a mutable reference to an [`Array`] of
-    /// length [`U1`].
-    pub const fn from_mut(r: &mut T) -> &mut Self {
-        Self::cast_from_core_mut(core::array::from_mut(r))
-    }
-}
-
 impl<T, U, V> Array<Array<T, U>, V>
 where
     U: ArraySize,
@@ -488,18 +478,18 @@ impl<T, U, const N: usize> Array<T, U>
 where
     U: ArraySize<ArrayType<T> = [T; N]>,
 {
-    /// Cast a reference to a core array to an [`Array`] reference.
+    /// Transform slice to slice of core array type.
     #[inline]
-    pub const fn cast_from_core(array_ref: &[T; N]) -> &Self {
+    pub const fn cast_slice_to_core(slice: &[Self]) -> &[[T; N]] {
         // SAFETY: `Self` is a `repr(transparent)` newtype for `[T; N]`
-        unsafe { &*array_ref.as_ptr().cast() }
+        unsafe { slice::from_raw_parts(slice.as_ptr().cast(), slice.len()) }
     }
 
-    /// Cast a mutable reference to a core array to an [`Array`] reference.
+    /// Transform mutable slice to mutable slice of core array type.
     #[inline]
-    pub const fn cast_from_core_mut(array_ref: &mut [T; N]) -> &mut Self {
-        // SAFETY: `Self` is a `repr(transparent)` newtype for `[T; 1]`
-        unsafe { &mut *array_ref.as_mut_ptr().cast() }
+    pub const fn cast_slice_to_core_mut(slice: &mut [Self]) -> &mut [[T; N]] {
+        // SAFETY: `Self` is a `repr(transparent)` newtype for `[T; N]`
+        unsafe { slice::from_raw_parts_mut(slice.as_mut_ptr().cast(), slice.len()) }
     }
 
     /// Transform slice to slice of core array type.
@@ -512,20 +502,6 @@ where
     /// Transform mutable slice to mutable slice of core array type.
     #[inline]
     pub const fn cast_slice_from_core_mut(slice: &mut [[T; N]]) -> &mut [Self] {
-        // SAFETY: `Self` is a `repr(transparent)` newtype for `[T; N]`
-        unsafe { slice::from_raw_parts_mut(slice.as_mut_ptr().cast(), slice.len()) }
-    }
-
-    /// Transform slice to slice of core array type.
-    #[inline]
-    pub const fn cast_slice_to_core(slice: &[Self]) -> &[[T; N]] {
-        // SAFETY: `Self` is a `repr(transparent)` newtype for `[T; N]`
-        unsafe { slice::from_raw_parts(slice.as_ptr().cast(), slice.len()) }
-    }
-
-    /// Transform mutable slice to mutable slice of core array type.
-    #[inline]
-    pub const fn cast_slice_to_core_mut(slice: &mut [Self]) -> &mut [[T; N]] {
         // SAFETY: `Self` is a `repr(transparent)` newtype for `[T; N]`
         unsafe { slice::from_raw_parts_mut(slice.as_mut_ptr().cast(), slice.len()) }
     }
@@ -602,16 +578,6 @@ where
     #[inline]
     fn as_ref(&self) -> &[T; N] {
         &self.0
-    }
-}
-
-impl<T, U> AsMut<Array<T, U>> for Array<T, U>
-where
-    U: ArraySize,
-{
-    #[inline]
-    fn as_mut(&mut self) -> &mut Self {
-        self
     }
 }
 
@@ -770,7 +736,8 @@ where
 {
     #[inline]
     fn from(array_ref: &'a [T; N]) -> &'a Array<T, U> {
-        Array::cast_from_core(array_ref)
+        // SAFETY: `Self` is a `repr(transparent)` newtype for `[T; $len]`
+        unsafe { &*array_ref.as_ptr().cast() }
     }
 }
 
@@ -790,7 +757,8 @@ where
 {
     #[inline]
     fn from(array_ref: &'a mut [T; N]) -> &'a mut Array<T, U> {
-        Array::cast_from_core_mut(array_ref)
+        // SAFETY: `Self` is a `repr(transparent)` newtype for `[T; $len]`
+        unsafe { &mut *array_ref.as_mut_ptr().cast() }
     }
 }
 
@@ -996,14 +964,14 @@ where
 #[cfg(feature = "alloc")]
 impl<T, U> TryFrom<alloc::boxed::Box<[T]>> for Array<T, U>
 where
+    Self: Clone,
     U: ArraySize,
 {
     type Error = TryFromSliceError;
 
     #[inline]
     fn try_from(b: alloc::boxed::Box<[T]>) -> Result<Self, TryFromSliceError> {
-        check_slice_length::<T, U>(b.as_ref())?;
-        Ok(Array::from_iter(b))
+        Self::try_from(&*b)
     }
 }
 
@@ -1024,14 +992,14 @@ where
 #[cfg(feature = "alloc")]
 impl<T, U> TryFrom<alloc::vec::Vec<T>> for Array<T, U>
 where
+    Self: Clone,
     U: ArraySize,
 {
     type Error = TryFromSliceError;
 
     #[inline]
     fn try_from(v: alloc::vec::Vec<T>) -> Result<Self, TryFromSliceError> {
-        check_slice_length::<T, U>(v.as_ref())?;
-        Ok(Array::from_iter(v))
+        Self::try_from(v.as_slice())
     }
 }
 
@@ -1119,57 +1087,21 @@ where
 {
 }
 
-#[cfg(feature = "ctutils")]
-impl<T, U> ctutils::CtAssign for Array<T, U>
-where
-    [T]: ctutils::CtAssign,
-    U: ArraySize,
-{
-    #[inline]
-    fn ct_assign(&mut self, other: &Self, choice: ctutils::Choice) {
-        self.as_mut_slice().ct_assign(other.as_slice(), choice);
-    }
-}
-
-#[cfg(feature = "ctutils")]
-impl<T, U> ctutils::CtSelect for Array<T, U>
-where
-    U: ArraySize,
-    U::ArrayType<T>: ctutils::CtSelect,
-{
-    #[inline]
-    fn ct_select(&self, other: &Self, choice: ctutils::Choice) -> Self {
-        Self(self.0.ct_select(&other.0, choice))
-    }
-}
-
-#[cfg(feature = "ctutils")]
-impl<T, U> ctutils::CtEq for Array<T, U>
-where
-    U: ArraySize,
-    U::ArrayType<T>: ctutils::CtEq,
-{
-    #[inline]
-    fn ct_eq(&self, other: &Self) -> ctutils::Choice {
-        self.0.ct_eq(&other.0)
-    }
-}
-
 #[cfg(feature = "subtle")]
-impl<T, U> subtle::ConditionallySelectable for Array<T, U>
+impl<T, U> ConditionallySelectable for Array<T, U>
 where
     Self: Copy,
-    T: subtle::ConditionallySelectable,
+    T: ConditionallySelectable,
     U: ArraySize,
 {
     #[inline]
-    fn conditional_select(a: &Self, b: &Self, choice: subtle::Choice) -> Self {
+    fn conditional_select(a: &Self, b: &Self, choice: Choice) -> Self {
         let mut output = *a;
         output.conditional_assign(b, choice);
         output
     }
 
-    fn conditional_assign(&mut self, other: &Self, choice: subtle::Choice) {
+    fn conditional_assign(&mut self, other: &Self, choice: Choice) {
         for (a_i, b_i) in self.iter_mut().zip(other) {
             a_i.conditional_assign(b_i, choice);
         }
@@ -1177,16 +1109,16 @@ where
 }
 
 #[cfg(feature = "subtle")]
-impl<T, U> subtle::ConstantTimeEq for Array<T, U>
+impl<T, U> ConstantTimeEq for Array<T, U>
 where
-    T: subtle::ConstantTimeEq,
+    T: ConstantTimeEq,
     U: ArraySize,
 {
     #[inline]
-    fn ct_eq(&self, other: &Self) -> subtle::Choice {
+    fn ct_eq(&self, other: &Self) -> Choice {
         self.iter()
             .zip(other.iter())
-            .fold(subtle::Choice::from(1), |acc, (a, b)| acc & a.ct_eq(b))
+            .fold(Choice::from(1), |acc, (a, b)| acc & a.ct_eq(b))
     }
 }
 
@@ -1211,13 +1143,17 @@ where
 }
 
 /// Generate a [`TryFromSliceError`] if the slice doesn't match the given length.
+#[cfg_attr(debug_assertions, allow(clippy::panic_in_result_fn))]
 fn check_slice_length<T, U: ArraySize>(slice: &[T]) -> Result<(), TryFromSliceError> {
     debug_assert_eq!(Array::<(), U>::default().len(), U::USIZE);
 
-    if slice.len() == U::USIZE {
-        Ok(())
-    } else {
-        // Hack: `TryFromSliceError` lacks a public constructor, so this fakes one
-        <&[T; 1]>::try_from([].as_slice()).map(|_| ())
+    if slice.len() != U::USIZE {
+        // Hack: `TryFromSliceError` lacks a public constructor
+        <&[T; 1]>::try_from([].as_slice())?;
+
+        #[cfg(debug_assertions)]
+        unreachable!();
     }
+
+    Ok(())
 }

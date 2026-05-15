@@ -5,46 +5,6 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.4.12 (2026-05-09)
-### Added
-- `ArraySize` impls for Classic McEliece ([#220])
-
-[#220]: https://github.com/RustCrypto/hybrid-array/pull/220
-
-## 0.4.11 (2026-04-24)
-### Added
-- HPKE Hybrid KEM sizes ([#218])
-
-### Removed
-- `Clone` bounds on `Box`/`Vec` conversions ([#209])
-
-[#209]: https://github.com/RustCrypto/hybrid-array/pull/209
-[#218]: https://github.com/RustCrypto/hybrid-array/pull/218
-
-## 0.4.10 (2026-03-31)
-### Added
-- `AsMut<Array<T, U>>` impl for `Array<T, U>` ([#193])
-- HQC KEM sizes ([#195])
-
-[#193]: https://github.com/RustCrypto/hybrid-array/pull/193
-[#195]: https://github.com/RustCrypto/hybrid-array/pull/195
-
-## 0.4.9 (2026-03-30)
-### Added
-- Functions for casting from core references ([#181])
-  - `Array::cast_from_core`: `const fn` equivalent of `From<[T; N]>`
-  - `Array::cast_from_core_mut`: `mut` equivalent of the above
-  - `Array::from_ref`: cast `&T` to `&Array<T; U1>`
-  - `Array::from_mut`: `mut` equivalent of the above
-
-[#181]: https://github.com/RustCrypto/hybrid-array/pull/181
-
-## 0.4.8 (2026-03-08)
-### Added
-- `ctutils` support ([#177])
-
-[#177]: https://github.com/RustCrypto/hybrid-array/pull/177
-
 ## 0.4.7 (2026-02-03)
 ### Added
 - `Flatten` and `Unflatten` traits ([#170])
