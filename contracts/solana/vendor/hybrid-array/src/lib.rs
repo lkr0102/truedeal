@@ -193,12 +193,12 @@ where
 
     /// Returns a pointer to the start of the array.
     pub const fn as_ptr(&self) -> *const T {
-        ptr::from_ref::<Self>(self).cast::<T>()
+        self as *const Self as *const T
     }
 
     /// Returns a mutable pointer to the start of the array.
     pub const fn as_mut_ptr(&mut self) -> *mut T {
-        ptr::from_mut::<Self>(self).cast::<T>()
+        self as *mut Self as *mut T
     }
 
     /// Returns an iterator over the array.

@@ -18,7 +18,7 @@ impl fmt::Display for TryFromIteratorError {
     }
 }
 
-impl core::error::Error for TryFromIteratorError {}
+
 
 impl<T, U> Array<T, U>
 where
