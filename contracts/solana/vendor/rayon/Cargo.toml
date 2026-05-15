@@ -11,7 +11,6 @@
 
 [package]
 edition = "2021"
-rust-version = "1.80"
 name = "rayon"
 version = "1.12.0"
 build = false

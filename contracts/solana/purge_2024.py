@@ -11,18 +11,23 @@ for root, dirs, files in os.walk(vendor_dir):
             content = f.read()
         
         changed = False
+        
+        # ALWAYS remove rust-version to prevent compiler version conflicts
+        if re.search(r'rust-version = ".*"\n', content):
+            content = re.sub(r'rust-version = ".*"\n', '', content)
+            changed = True
+            
         if 'edition = "2024"' in content:
-            print(f"Patching {path}...")
+            print(f"Patching edition for {path}...")
             # Downgrade edition
             content = content.replace('edition = "2024"', 'edition = "2021"')
-            
-            # Remove rust-version
-            content = re.sub(r'rust-version = ".*"\n', '', content)
             
             # Remove lints section (and everything after it in the section)
             content = re.sub(r'\[lints\..*?\][\s\S]*?(?=\n\n|\[|\Z)', '', content)
             content = re.sub(r'\[lints\][\s\S]*?(?=\n\n|\[|\Z)', '', content)
             changed = True
+            
+        if changed:
             
             with open(path, 'w', encoding='utf-8') as f:
                 f.write(content)

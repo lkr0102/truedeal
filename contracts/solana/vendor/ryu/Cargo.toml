@@ -11,7 +11,6 @@
 
 [package]
 edition = "2021"
-rust-version = "1.71"
 name = "ryu"
 version = "1.0.23"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
