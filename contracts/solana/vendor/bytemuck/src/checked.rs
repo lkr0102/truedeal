@@ -229,14 +229,12 @@ impl core::fmt::Display for CheckedCastError {
 impl std::error::Error for CheckedCastError {}
 
 // Rust 1.81+
-#[cfg(all(feature = "impl_core_error", not(feature = "extern_crate_std")))]
-
-
 impl From<crate::PodCastError> for CheckedCastError {
   fn from(err: crate::PodCastError) -> CheckedCastError {
     CheckedCastError::PodCastError(err)
   }
 }
+
 
 /// Re-interprets `&[u8]` as `&T`.
 ///
