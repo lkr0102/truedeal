@@ -157,27 +157,7 @@ impl<K, V> Slice<K, V> {
         (Self::from_mut_slice(first), Self::from_mut_slice(second))
     }
 
-    /// Divides one slice into two at an index.
-    ///
-    /// Returns `None` if `index > len`.
-    pub const fn split_at_checked(&self, index: usize) -> Option<(&Self, &Self)> {
-        if let Some((first, second)) = self.entries.split_at_checked(index) {
-            Some((Self::from_slice(first), Self::from_slice(second)))
-        } else {
-            None
-        }
-    }
 
-    /// Divides one mutable slice into two at an index.
-    ///
-    /// Returns `None` if `index > len`.
-    pub const fn split_at_mut_checked(&mut self, index: usize) -> Option<(&mut Self, &mut Self)> {
-        if let Some((first, second)) = self.entries.split_at_mut_checked(index) {
-            Some((Self::from_mut_slice(first), Self::from_mut_slice(second)))
-        } else {
-            None
-        }
-    }
 
     /// Returns the first key-value pair and the rest of the slice,
     /// or `None` if it is empty.
@@ -298,35 +278,7 @@ impl<K, V> Slice<K, V> {
         self.binary_search_by(|k, v| f(k, v).cmp(b))
     }
 
-    /// Checks if the keys of this slice are sorted.
-    #[inline]
-    pub fn is_sorted(&self) -> bool
-    where
-        K: PartialOrd,
-    {
-        self.entries.is_sorted_by(|a, b| a.key <= b.key)
-    }
 
-    /// Checks if this slice is sorted using the given comparator function.
-    #[inline]
-    pub fn is_sorted_by<'a, F>(&'a self, mut cmp: F) -> bool
-    where
-        F: FnMut(&'a K, &'a V, &'a K, &'a V) -> bool,
-    {
-        self.entries
-            .is_sorted_by(move |a, b| cmp(&a.key, &a.value, &b.key, &b.value))
-    }
-
-    /// Checks if this slice is sorted using the given sort-key function.
-    #[inline]
-    pub fn is_sorted_by_key<'a, F, T>(&'a self, mut sort_key: F) -> bool
-    where
-        F: FnMut(&'a K, &'a V) -> T,
-        T: PartialOrd,
-    {
-        self.entries
-            .is_sorted_by_key(move |a| sort_key(&a.key, &a.value))
-    }
 
     /// Returns the index of the partition point of a sorted map according to the given predicate
     /// (the index of the first element of the second partition).

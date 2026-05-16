@@ -11,7 +11,7 @@ mod entry;
 mod extract;
 
 use alloc::vec::{self, Vec};
-use core::mem;
+use core::mem::{self, size_of};
 use core::ops::RangeBounds;
 use hashbrown::hash_table;
 
@@ -34,7 +34,7 @@ pub(crate) struct Core<K, V> {
 }
 
 #[inline(always)]
-fn get_hash<K, V>(entries: &[Bucket<K, V>]) -> impl Fn(&usize) -> u64  {
+fn get_hash<K, V>(entries: &[Bucket<K, V>]) -> impl Fn(&usize) -> u64 + '_ {
     move |&i| entries[i].hash.get()
 }
 
@@ -42,7 +42,7 @@ fn get_hash<K, V>(entries: &[Bucket<K, V>]) -> impl Fn(&usize) -> u64  {
 fn equivalent<'a, K, V, Q: ?Sized + Equivalent<K>>(
     key: &'a Q,
     entries: &'a [Bucket<K, V>],
-) -> impl Fn(&usize) -> bool  {
+) -> impl Fn(&usize) -> bool + 'a {
     move |&i| Q::equivalent(key, &entries[i].key)
 }
 

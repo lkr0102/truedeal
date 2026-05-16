@@ -281,4 +281,4 @@ impl core::fmt::Display for GetDisjointMutError {
     }
 }
 
-impl core::error::Error for GetDisjointMutError {}
+
