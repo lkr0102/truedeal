@@ -775,7 +775,7 @@ impl fmt::Display for DatetimeParseError {
     }
 }
 
-
+impl core::error::Error for DatetimeParseError {}
 
 #[cfg(feature = "serde")]
 #[cfg(feature = "alloc")]

@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.71"
 name = "parking_lot"
 version = "0.12.5"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]

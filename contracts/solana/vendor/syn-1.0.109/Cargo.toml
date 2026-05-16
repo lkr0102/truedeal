@@ -11,6 +11,7 @@
 
 [package]
 edition = "2018"
+rust-version = "1.31"
 name = "syn"
 version = "1.0.109"
 authors = ["David Tolnay <dtolnay@gmail.com>"]
@@ -144,4 +145,3 @@ proc-macro = [
 test = ["syn-test-suite/all-features"]
 visit = []
 visit-mut = []
-

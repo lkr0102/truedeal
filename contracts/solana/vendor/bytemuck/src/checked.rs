@@ -114,13 +114,13 @@ use crate::{
 ///
 /// # Safety
 ///
-/// * `Self` *must* have the same layout as the specified `Bits` except for the
-///   possible invalid bit patterns being checked during
-///   [`is_valid_bit_pattern`].
-/// * This almost certainly means your type must be `#[repr(C)]` or a similar
+/// * `Self` *must* have the same layout as the specified `Bits` except for
+/// the possible invalid bit patterns being checked during
+/// [`is_valid_bit_pattern`].
+///   * This almost certainly means your type must be `#[repr(C)]` or a similar
 ///   specified repr, but if you think you know better, you probably don't. If
-///   you still think you know better, be careful and have fun. And don't mess
-///   it up (I mean it).
+/// you   still think you know better, be careful and have fun. And don't mess
+/// it up   (I mean it).
 /// * If [`is_valid_bit_pattern`] returns true, then the bit pattern contained
 ///   in `bits` must also be valid for an instance of `Self`.
 /// * Probably more, don't mess it up (I mean it 2.0)
@@ -163,7 +163,6 @@ unsafe impl CheckedBitPattern for bool {
 
   #[inline]
   fn is_valid_bit_pattern(bits: &Self::Bits) -> bool {
-    // DO NOT use the `matches!` macro, it isn't 1.34 compatible.
     match *bits {
       0 | 1 => true,
       _ => false,
@@ -228,13 +227,11 @@ impl core::fmt::Display for CheckedCastError {
 #[cfg_attr(feature = "nightly_docs", doc(cfg(feature = "extern_crate_std")))]
 impl std::error::Error for CheckedCastError {}
 
-// Rust 1.81+
 impl From<crate::PodCastError> for CheckedCastError {
   fn from(err: crate::PodCastError) -> CheckedCastError {
     CheckedCastError::PodCastError(err)
   }
 }
-
 
 /// Re-interprets `&[u8]` as `&T`.
 ///
@@ -294,7 +291,7 @@ pub fn try_pod_read_unaligned<T: CheckedBitPattern>(
   }
 }
 
-/// Try to cast `A` into `B`.
+/// Try to cast `T` into `U`.
 ///
 /// Note that for this particular type of cast, alignment isn't a factor. The
 /// input value is semantically copied into the function and then returned to a
@@ -318,7 +315,7 @@ pub fn try_cast<A: NoUninit, B: CheckedBitPattern>(
   }
 }
 
-/// Try to convert a `&A` into `&B`.
+/// Try to convert a `&T` into `&U`.
 ///
 /// ## Failure
 ///
@@ -338,7 +335,7 @@ pub fn try_cast_ref<A: NoUninit, B: CheckedBitPattern>(
   }
 }
 
-/// Try to convert a `&mut A` into `&mut B`.
+/// Try to convert a `&mut T` into `&mut U`.
 ///
 /// As [`try_cast_ref`], but `mut`.
 #[inline]
@@ -370,6 +367,8 @@ pub fn try_cast_mut<
 ///   type, and the output slice wouldn't be a whole number of elements when
 ///   accounting for the size change (eg: 3 `u16` values is 1.5 `u32` values, so
 ///   that's a failure).
+/// * Similarly, you can't convert between a [ZST](https://doc.rust-lang.org/nomicon/exotic-sizes.html#zero-sized-types-zsts)
+///   and a non-ZST.
 /// * If any element of the converted slice would contain an invalid bit pattern
 ///   for `B` this fails.
 #[inline]
@@ -415,7 +414,6 @@ pub fn try_cast_slice_mut<
 ///
 /// This is [`try_from_bytes`] but will panic on error.
 #[inline]
-#[cfg_attr(feature = "track_caller", track_caller)]
 pub fn from_bytes<T: CheckedBitPattern>(s: &[u8]) -> &T {
   match try_from_bytes(s) {
     Ok(t) => t,
@@ -429,7 +427,6 @@ pub fn from_bytes<T: CheckedBitPattern>(s: &[u8]) -> &T {
 ///
 /// This is [`try_from_bytes_mut`] but will panic on error.
 #[inline]
-#[cfg_attr(feature = "track_caller", track_caller)]
 pub fn from_bytes_mut<T: NoUninit + CheckedBitPattern>(s: &mut [u8]) -> &mut T {
   match try_from_bytes_mut(s) {
     Ok(t) => t,
@@ -440,9 +437,8 @@ pub fn from_bytes_mut<T: NoUninit + CheckedBitPattern>(s: &mut [u8]) -> &mut T {
 /// Reads the slice into a `T` value.
 ///
 /// ## Panics
-/// * This is like [`try_pod_read_unaligned`] but will panic on failure.
+/// * This is like `try_pod_read_unaligned` but will panic on failure.
 #[inline]
-#[cfg_attr(feature = "track_caller", track_caller)]
 pub fn pod_read_unaligned<T: CheckedBitPattern>(bytes: &[u8]) -> T {
   match try_pod_read_unaligned(bytes) {
     Ok(t) => t,
@@ -450,13 +446,12 @@ pub fn pod_read_unaligned<T: CheckedBitPattern>(bytes: &[u8]) -> T {
   }
 }
 
-/// Cast `A` into `B`
+/// Cast `T` into `U`
 ///
 /// ## Panics
 ///
 /// * This is like [`try_cast`], but will panic on a size mismatch.
 #[inline]
-#[cfg_attr(feature = "track_caller", track_caller)]
 pub fn cast<A: NoUninit, B: CheckedBitPattern>(a: A) -> B {
   match try_cast(a) {
     Ok(t) => t,
@@ -464,13 +459,12 @@ pub fn cast<A: NoUninit, B: CheckedBitPattern>(a: A) -> B {
   }
 }
 
-/// Cast `&mut A` into `&mut B`.
+/// Cast `&mut T` into `&mut U`.
 ///
 /// ## Panics
 ///
 /// This is [`try_cast_mut`] but will panic on error.
 #[inline]
-#[cfg_attr(feature = "track_caller", track_caller)]
 pub fn cast_mut<
   A: NoUninit + AnyBitPattern,
   B: NoUninit + CheckedBitPattern,
@@ -483,13 +477,12 @@ pub fn cast_mut<
   }
 }
 
-/// Cast `&A` into `&B`.
+/// Cast `&T` into `&U`.
 ///
 /// ## Panics
 ///
 /// This is [`try_cast_ref`] but will panic on error.
 #[inline]
-#[cfg_attr(feature = "track_caller", track_caller)]
 pub fn cast_ref<A: NoUninit, B: CheckedBitPattern>(a: &A) -> &B {
   match try_cast_ref(a) {
     Ok(t) => t,
@@ -503,7 +496,6 @@ pub fn cast_ref<A: NoUninit, B: CheckedBitPattern>(a: &A) -> &B {
 ///
 /// This is [`try_cast_slice`] but will panic on error.
 #[inline]
-#[cfg_attr(feature = "track_caller", track_caller)]
 pub fn cast_slice<A: NoUninit, B: CheckedBitPattern>(a: &[A]) -> &[B] {
   match try_cast_slice(a) {
     Ok(t) => t,
@@ -511,13 +503,12 @@ pub fn cast_slice<A: NoUninit, B: CheckedBitPattern>(a: &[A]) -> &[B] {
   }
 }
 
-/// Cast `&mut [A]` into `&mut [B]`.
+/// Cast `&mut [T]` into `&mut [U]`.
 ///
 /// ## Panics
 ///
 /// This is [`try_cast_slice_mut`] but will panic on error.
 #[inline]
-#[cfg_attr(feature = "track_caller", track_caller)]
 pub fn cast_slice_mut<
   A: NoUninit + AnyBitPattern,
   B: NoUninit + CheckedBitPattern,

@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.61"
 name = "crossbeam-epoch"
 version = "0.9.18"
 description = "Epoch-based garbage collection"

@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.80"
 name = "rayon-core"
 version = "1.13.0"
 build = "build.rs"

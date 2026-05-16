@@ -49,16 +49,9 @@ unsafe impl Pod for usize {}
 unsafe impl Pod for isize {}
 unsafe impl Pod for u128 {}
 unsafe impl Pod for i128 {}
-#[cfg(feature = "nightly_float")]
-unsafe impl Pod for f16 {}
 unsafe impl Pod for f32 {}
 unsafe impl Pod for f64 {}
-#[cfg(feature = "nightly_float")]
-unsafe impl Pod for f128 {}
 unsafe impl<T: Pod> Pod for Wrapping<T> {}
-
-#[cfg(feature = "pod_saturating")]
-unsafe impl<T: Pod> Pod for core::num::Saturating<T>{}
 
 #[cfg(feature = "unsound_ptr_pod_impl")]
 #[cfg_attr(
@@ -143,7 +136,6 @@ impl_unsafe_marker_for_simd!(
   }
 );
 
-#[rustversion::before(2026-01-27)] // See https://github.com/Lokathor/bytemuck/issues/343
 #[cfg(feature = "nightly_portable_simd")]
 #[cfg_attr(
   feature = "nightly_docs",
@@ -156,42 +148,18 @@ where
 {
 }
 
-#[rustversion::since(2026-01-27)] // See https://github.com/Lokathor/bytemuck/issues/343
-#[cfg(feature = "nightly_portable_simd")]
-#[cfg_attr(
-  feature = "nightly_docs",
-  doc(cfg(feature = "nightly_portable_simd"))
-)]
-unsafe impl<T, const N: usize> Pod for core::simd::Simd<T, N>
-where
-  T: core::simd::SimdElement + Pod,
-{
-}
-
 impl_unsafe_marker_for_simd!(
-  #[cfg(all(target_arch = "x86", feature = "avx512_simd"))]
+  #[cfg(all(target_arch = "x86", feature = "nightly_stdsimd"))]
   unsafe impl Pod for x86::{
-    __m512, __m512d, __m512i
+    __m128bh, __m256bh, __m512,
+    __m512bh, __m512d, __m512i,
   }
 );
 
 impl_unsafe_marker_for_simd!(
-  #[cfg(all(target_arch = "x86_64", feature = "avx512_simd"))]
+  #[cfg(all(target_arch = "x86_64", feature = "nightly_stdsimd"))]
   unsafe impl Pod for x86_64::{
-    __m512, __m512d, __m512i
-  }
-);
-
-impl_unsafe_marker_for_simd!(
-    #[cfg(all(target_arch = "x86", feature = "avx512_simd"))]
-  unsafe impl Pod for x86::{
-    __m128bh, __m256bh, __m512bh
-  }
-);
-
-impl_unsafe_marker_for_simd!(
-    #[cfg(all(target_arch = "x86_64", feature = "avx512_simd"))]
-  unsafe impl Pod for x86_64::{
-    __m128bh, __m256bh, __m512bh
+    __m128bh, __m256bh, __m512,
+    __m512bh, __m512d, __m512i,
   }
 );

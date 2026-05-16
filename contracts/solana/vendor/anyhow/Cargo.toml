@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.68"
 name = "anyhow"
 version = "1.0.102"
 authors = ["David Tolnay <dtolnay@gmail.com>"]

@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.66.0"
 name = "toml_edit"
 version = "0.19.15"
 authors = [
@@ -153,4 +154,3 @@ serde = [
     "dep:serde_spanned",
 ]
 unbounded = []
-

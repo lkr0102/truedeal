@@ -1,0 +1,10 @@
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\anchor_spl-52a5d5f395133e0f.d: C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\lib.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\associated_token.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\mint.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\token.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\token_2022.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\token_interface.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libanchor_spl-52a5d5f395133e0f.rmeta: C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\lib.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\associated_token.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\mint.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\token.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\token_2022.rs C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\token_interface.rs
+
+C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\lib.rs:
+C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\associated_token.rs:
+C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\mint.rs:
+C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\token.rs:
+C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\token_2022.rs:
+C:\Users\João\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\anchor-spl-0.29.0\src\token_interface.rs:

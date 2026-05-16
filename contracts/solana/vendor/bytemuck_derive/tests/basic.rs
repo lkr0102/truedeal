@@ -1,9 +1,8 @@
 #![allow(dead_code)]
-#![deny(clippy::allow_attributes)]
 
 use bytemuck::{
-  checked::CheckedCastError, AnyBitPattern, CheckedBitPattern, Contiguous,
-  NoUninit, Pod, TransparentWrapper, Zeroable,
+  AnyBitPattern, CheckedBitPattern, Contiguous, NoUninit, Pod,
+  TransparentWrapper, Zeroable, checked::CheckedCastError,
 };
 use std::marker::{PhantomData, PhantomPinned};
 
@@ -49,53 +48,6 @@ impl<T: Pod> Copy for GenericPackedStructExplicitPackedAlignment<T> {}
 #[derive(Zeroable)]
 struct ZeroGeneric<T: bytemuck::Zeroable> {
   a: T,
-}
-
-#[derive(Zeroable)]
-#[repr(u8)]
-enum ZeroEnum {
-  A = 0,
-  B = 1,
-  C = 2,
-}
-
-#[derive(Zeroable)]
-#[repr(u8)]
-enum BasicFieldfulZeroEnum {
-  A(u8) = 0,
-  B = 1,
-  C(String) = 2,
-}
-
-#[derive(Zeroable)]
-#[repr(C)]
-enum ReprCFieldfulZeroEnum {
-  A(u8),
-  B(Box<[u8]>),
-  C,
-}
-
-#[derive(Zeroable)]
-#[repr(C, i32)]
-enum ReprCIntFieldfulZeroEnum {
-  B(String) = 1,
-  A(u8, bool, char) = 0,
-  C = 2,
-}
-
-#[derive(Zeroable)]
-#[repr(i32)]
-enum GenericFieldfulZeroEnum<T> {
-  A(Box<T>) = 1,
-  B(T, T) = 0,
-}
-
-#[derive(Zeroable)]
-#[repr(i32)]
-#[zeroable(bound = "")]
-enum GenericCustomBoundFieldfulZeroEnum<T> {
-  A(Option<Box<T>>),
-  B(String),
 }
 
 #[derive(TransparentWrapper)]
@@ -201,34 +153,6 @@ struct CheckedBitPatternStruct {
   b: CheckedBitPatternEnumNonContiguous,
 }
 
-#[derive(Debug, Copy, Clone, NoUninit)]
-#[repr(C)]
-enum NoUninitEnum {
-  A,
-  B,
-}
-
-#[derive(Debug, Copy, Clone, NoUninit)]
-#[repr(C)]
-enum NoUninitEnumWithFields {
-  A(u32, u32),
-  B(u16, u16, u16, u16),
-}
-
-#[derive(Debug, Copy, Clone, NoUninit)]
-#[repr(C, u16)]
-enum NoUninitEnumWithFieldsAndCAndDiscriminant {
-  A(u16, u16),
-  B(u8, u8, u8, u8),
-}
-
-#[derive(Debug, Clone, Copy, NoUninit)]
-#[repr(u16)]
-enum NoUninitEnumWithFieldsAndDiscriminant {
-  A(u16, u16),
-  B(u8, u8, u8, u8),
-}
-
 #[derive(Debug, Copy, Clone, AnyBitPattern, PartialEq, Eq)]
 #[repr(C)]
 struct AnyBitPatternTest<A: AnyBitPattern, B: AnyBitPattern> {
@@ -240,20 +164,6 @@ struct AnyBitPatternTest<A: AnyBitPattern, B: AnyBitPattern> {
 #[repr(C, align(8))]
 struct CheckedBitPatternAlignedStruct {
   a: u16,
-}
-
-#[derive(Clone, Copy, CheckedBitPattern)]
-#[repr(C, packed)]
-struct CheckedBitPatternPackedStruct {
-  a: u8,
-  b: u16,
-}
-
-#[derive(Debug, Clone, Copy, CheckedBitPattern, PartialEq, Eq)]
-#[repr(C)]
-enum CheckedBitPatternCDefaultDiscriminantEnum {
-  A,
-  B,
 }
 
 #[derive(Debug, Clone, Copy, CheckedBitPattern, PartialEq, Eq)]
@@ -284,10 +194,8 @@ enum CheckedBitPatternTransparentEnumWithFields {
 }
 
 // size 24, align 8.
-// first byte always the u8 discriminant, then 7 bytes of padding until the
-// payload union since the align of the payload is the greatest of the align of
-// all the variants, which is 8 (from
-// CheckedBitPatternCDefaultDiscriminantEnumWithFields)
+// first byte always the u8 discriminant, then 7 bytes of padding until the payload union since the align of the payload
+// is the greatest of the align of all the variants, which is 8 (from CheckedBitPatternCDefaultDiscriminantEnumWithFields)
 #[derive(Debug, Clone, Copy, CheckedBitPattern, PartialEq, Eq)]
 #[repr(C, u8)]
 enum CheckedBitPatternEnumNested {
@@ -311,31 +219,6 @@ enum CheckedBitPatternEnumNested {
 )]
 #[repr(transparent)]
 struct NewtypeWrapperTest<T>(T);
-
-#[derive(Debug, Clone, PartialEq, Eq, TransparentWrapper)]
-#[repr(transparent)]
-struct AlgebraicNewtypeWrapperTest<T>(Vec<T>);
-
-#[test]
-fn algebraic_newtype_corect() {
-  let x: Vec<u32> = vec![1, 2, 3, 4];
-  let y: AlgebraicNewtypeWrapperTest<u32> =
-    AlgebraicNewtypeWrapperTest::wrap(x.clone());
-  assert_eq!(y.0, x);
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, TransparentWrapper)]
-#[repr(transparent)]
-#[transparent(Vec<T>)]
-struct AlgebraicNewtypeWrapperTestWithFields<T, U>(Vec<T>, PhantomData<U>);
-
-#[test]
-fn algebraic_newtype_fields_corect() {
-  let x: Vec<u32> = vec![1, 2, 3, 4];
-  let y: AlgebraicNewtypeWrapperTestWithFields<u32, f32> =
-    AlgebraicNewtypeWrapperTestWithFields::wrap(x.clone());
-  assert_eq!(y.0, x);
-}
 
 #[test]
 fn fails_cast_contiguous() {
@@ -497,68 +380,52 @@ fn checkedbitpattern_nested_enum_with_fields() {
 
   // first we'll check variantA, nested variant A
   let pod = Align8Bytes([
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, // byte 0 discriminant = 0 = variant A, bytes 1-7 irrelevant padding.
-    0x00, 0x00, 0x00, 0x00, 0xcc, 0x55, 0x55,
-    0xcc, // bytes 8-15 are the nested CheckedBitPatternCEnumWithFields,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // byte 0 discriminant = 0 = variant A, bytes 1-7 irrelevant padding.
+    0x00, 0x00, 0x00, 0x00, 0xcc, 0x55, 0x55, 0xcc, // bytes 8-15 are the nested CheckedBitPatternCEnumWithFields,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // bytes 16-23 padding
   ]);
-  let value =
-    bytemuck::checked::from_bytes::<CheckedBitPatternEnumNested>(&pod.0);
-  assert_eq!(
-    value,
-    &CheckedBitPatternEnumNested::A(CheckedBitPatternCEnumWithFields::A(
-      0xcc5555cc
-    ))
-  );
+  let value = bytemuck::checked::from_bytes::<
+    CheckedBitPatternEnumNested,
+  >(&pod.0);
+  assert_eq!(value, &CheckedBitPatternEnumNested::A(CheckedBitPatternCEnumWithFields::A(0xcc5555cc)));
 
   // next we'll check invalid first discriminant fails
   let pod = Align8Bytes([
-    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, // byte 0 discriminant = 2 = invalid, bytes 1-7 padding
-    0x00, 0x00, 0x00, 0x00, 0xcc, 0x55, 0x55,
-    0xcc, // bytes 8-15 are the nested CheckedBitPatternCEnumWithFields = A,
+    0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // byte 0 discriminant = 2 = invalid, bytes 1-7 padding
+    0x00, 0x00, 0x00, 0x00, 0xcc, 0x55, 0x55, 0xcc, // bytes 8-15 are the nested CheckedBitPatternCEnumWithFields = A,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // bytes 16-23 padding
   ]);
-  let result =
-    bytemuck::checked::try_from_bytes::<CheckedBitPatternEnumNested>(&pod.0);
+  let result = bytemuck::checked::try_from_bytes::<
+    CheckedBitPatternEnumNested,
+  >(&pod.0);
   assert_eq!(result, Err(CheckedCastError::InvalidBitPattern));
+
 
   // next we'll check variant B, nested variant B
   let pod = Align8Bytes([
-    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, // byte 0 discriminant = 1 = variant B, bytes 1-7 padding
-    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, /* bytes 8-15 is C int size discriminant of
-           * CheckedBitPatternCDefaultDiscrimimantEnumWithFields, 1 (LE byte
-           * order) = variant B */
-    0xcc, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
-    0xcc, // bytes 16-13 is the data contained in nested variant B
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // byte 0 discriminant = 1 = variant B, bytes 1-7 padding
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // bytes 8-15 is C int size discriminant of CheckedBitPatternCDefaultDiscrimimantEnumWithFields, 1 (LE byte order) = variant B
+    0xcc, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xcc, // bytes 16-13 is the data contained in nested variant B
   ]);
-  let value =
-    bytemuck::checked::from_bytes::<CheckedBitPatternEnumNested>(&pod.0);
+  let value = bytemuck::checked::from_bytes::<
+    CheckedBitPatternEnumNested,
+  >(&pod.0);
   assert_eq!(
     value,
-    &CheckedBitPatternEnumNested::B(
-      CheckedBitPatternCDefaultDiscriminantEnumWithFields::B {
-        c: 0xcc555555555555cc
-      }
-    )
+    &CheckedBitPatternEnumNested::B(CheckedBitPatternCDefaultDiscriminantEnumWithFields::B {
+      c: 0xcc555555555555cc
+    })
   );
 
   // finally we'll check variant B, nested invalid discriminant
   let pod = Align8Bytes([
-    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, // 1 discriminant = variant B, bytes 1-7 padding
-    0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, /* bytes 8-15 is C int size discriminant of
-           * CheckedBitPatternCDefaultDiscrimimantEnumWithFields, 0x08 is
-           * invalid */
-    0xcc, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
-    0xcc, // bytes 16-13 is the data contained in nested variant B
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // 1 discriminant = variant B, bytes 1-7 padding
+    0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // bytes 8-15 is C int size discriminant of CheckedBitPatternCDefaultDiscrimimantEnumWithFields, 0x08 is invalid
+    0xcc, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xcc, // bytes 16-13 is the data contained in nested variant B
   ]);
-  let result =
-    bytemuck::checked::try_from_bytes::<CheckedBitPatternEnumNested>(&pod.0);
+  let result = bytemuck::checked::try_from_bytes::<
+    CheckedBitPatternEnumNested,
+  >(&pod.0);
   assert_eq!(result, Err(CheckedCastError::InvalidBitPattern));
 }
 #[test]
@@ -582,3 +449,4 @@ use bytemuck as reexport_name;
 #[bytemuck(crate = "reexport_name")]
 #[repr(C)]
 struct Issue93 {}
+

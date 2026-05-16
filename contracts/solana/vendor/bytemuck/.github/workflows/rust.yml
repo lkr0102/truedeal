@@ -19,7 +19,6 @@ jobs:
         include:
         # versions (all on linux-x86_64)
         - { rust: 1.34.0, os: ubuntu-latest }
-        - { rust: 1.68.0, os: ubuntu-latest }
         - { rust: stable, os: ubuntu-latest }
         - { rust: beta, os: ubuntu-latest }
         - { rust: nightly, os: ubuntu-latest }
@@ -37,21 +36,18 @@ jobs:
     - run: cargo test --verbose
     - run: cargo test --verbose --no-default-features
     - run: cargo test --verbose
-    - run: cargo test --verbose --features derive
-      if: matrix.rust == '1.68.0'
     - run: cargo test --verbose --all-features
       if: matrix.rust == 'nightly'
     - run: cargo test --verbose --manifest-path=derive/Cargo.toml --all-features
       if: matrix.rust == 'nightly'
-    - run: cd contiguous_bitset && cargo test
-      if: matrix.rust == 'stable'
 
   cross-test:
     name: Test on ${{ matrix.target }} with cross
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target: [i686-unknown-linux-gnu, s390x-unknown-linux-gnu]
+        # we once had mips runners for Big-endian coverage but those got demoted to tier 3.
+        target: [i686-unknown-linux-gnu]
     steps:
     - uses: hecrj/setup-rust-action@v1
       with:
@@ -60,7 +56,6 @@ jobs:
     - run: cargo install cross
     - run: cross test --verbose --target=${{ matrix.target }} --no-default-features
     - run: cross test --verbose --target=${{ matrix.target }}
-    - run: cd derive && cross test --verbose --target=${{ matrix.target }}
     - run: cross test --verbose --target=${{ matrix.target }} --all-features
       if: matrix.rust == 'nightly'
     - run: cross test --verbose --target=${{ matrix.target }} --manifest-path=derive/Cargo.toml --all-features
@@ -87,9 +82,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # leak is disabled because the config got outdated
-        # and bytemuck doesn't really do allocation anyway.
-        sanitizer: [address, memory]
+        sanitizer: [address, memory, leak]
     steps:
     - uses: actions/checkout@v3
     - uses: hecrj/setup-rust-action@v1

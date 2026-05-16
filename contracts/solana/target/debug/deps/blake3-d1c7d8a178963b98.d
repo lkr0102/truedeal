@@ -1,0 +1,15 @@
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\blake3-d1c7d8a178963b98.d: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\guts.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\platform.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_avx2.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_avx512.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\portable.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_sse2.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_sse41.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\traits.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\io.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\join.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libblake3-d1c7d8a178963b98.rmeta: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\guts.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\platform.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_avx2.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_avx512.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\portable.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_sse2.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_sse41.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\traits.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\io.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\join.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\lib.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\guts.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\platform.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_avx2.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_avx512.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\portable.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_sse2.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\ffi_sse41.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\traits.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\io.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\blake3\src\join.rs:

@@ -1,49 +1,6 @@
 
 ## `bytemuck_derive` changelog
 
-## 1.10.2
-
-* [Extend #[derive(TransparentWrapper)](https://github.com/Lokathor/bytemuck/pull/147)
-
-## 1.10.1
-
-* changes the derive macros to not use `transmute` size matching when checking
-  fof padding in a type. instead, an actual assert is used in a const block.
-
-## 1.10.0
-
-* add support for deriving NoUninit on enums with fields.
-
-## 1.9.2
-
-* Removes the `resolver` key from the manifest. This breaks the build
-  with cryptic error messages despite current docs vaguely saying otherwise.
-
-## 1.9.1
-
-* Fix the derive of CheckedBitPattern when used with a packed struct.
-  The Debug impl did not account for possibly-unaligned fields.
-
-## 1.9.0
-
-* The crate now declares an MSRV, so updates going forward should be simpler.
-
-## 1.8.1
-
-* https://github.com/Lokathor/bytemuck/pull/287
-
-## 1.8
-
-* [#257](https://github.com/Lokathor/bytemuck/pull/257): Allows deriving Zeroable on some enums.
-
-## 1.7.1
-
-* Adds the `bytemuck` attribute to the `NoUninit` derive, allowing it to be used when re-exported.
-
-## 1.7.0
-
-* Allow generics in `derive(ByteEq, ByteHash)` https://github.com/Lokathor/bytemuck/pull/219
-
 ## 1.6.0
 
 * This allows `CheckedBitPattern` to be derived for enums with fields.

@@ -11,6 +11,7 @@
 
 [package]
 edition = "2018"
+rust-version = "1.68"
 name = "serde_bytes"
 version = "0.11.19"
 authors = ["David Tolnay <dtolnay@gmail.com>"]

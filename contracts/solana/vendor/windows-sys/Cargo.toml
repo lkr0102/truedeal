@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.71"
 name = "windows-sys"
 version = "0.61.2"
 build = false

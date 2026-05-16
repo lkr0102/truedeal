@@ -1,0 +1,9 @@
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\spl_transfer_hook_interface-f875c37c828a5c6e.d: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\error.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\instruction.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\offchain.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\onchain.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libspl_transfer_hook_interface-f875c37c828a5c6e.rmeta: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\error.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\instruction.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\offchain.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\onchain.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\lib.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\error.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\instruction.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\offchain.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-transfer-hook-interface\src\onchain.rs:

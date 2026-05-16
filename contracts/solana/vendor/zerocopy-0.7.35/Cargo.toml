@@ -11,6 +11,7 @@
 
 [package]
 edition = "2018"
+rust-version = "1.60.0"
 name = "zerocopy"
 version = "0.7.35"
 authors = ["Joshua Liebow-Feeser <joshlf@google.com>"]
@@ -98,4 +99,3 @@ simd-nightly = ["simd"]
 
 [target."cfg(any())".dependencies.zerocopy-derive]
 version = "=0.7.35"
-

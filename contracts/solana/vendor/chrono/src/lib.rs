@@ -696,7 +696,7 @@ impl defmt::Format for OutOfRange {
 impl std::error::Error for OutOfRange {}
 
 #[cfg(all(not(feature = "std"), feature = "core-error"))]
-
+impl core::error::Error for OutOfRange {}
 
 /// Workaround because `?` is not (yet) available in const context.
 #[macro_export]

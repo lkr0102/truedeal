@@ -399,7 +399,7 @@ dependencies = [
 [[package]]
 name = "blake3"
 version = "1.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+source = "git+https://github.com/BLAKE3-team/BLAKE3.git?tag=1.5.0#5aa53f07f7188a569cadfc5daf1522972d9a9630"
 dependencies = [
  "arrayref",
  "arrayvec",
@@ -542,16 +542,16 @@ dependencies = [
 
 [[package]]
 name = "bytemuck"
-version = "1.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "1.16.0"
+source = "git+https://github.com/Lokathor/bytemuck.git?tag=v1.16.0#4c46b919e2cccae67b3ef2648b1f746d0638afb3"
 dependencies = [
  "bytemuck_derive",
 ]
 
 [[package]]
 name = "bytemuck_derive"
-version = "1.10.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
+version = "1.6.0"
+source = "git+https://github.com/Lokathor/bytemuck.git?tag=v1.16.0#4c46b919e2cccae67b3ef2648b1f746d0638afb3"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2561,3 +2561,13 @@ dependencies = [
 name = "zmij"
 version = "1.0.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[patch.unused]]
+name = "hashbrown"
+version = "0.14.3"
+source = "git+https://github.com/rust-lang/hashbrown.git?tag=v0.14.3#f2e62124cd947b5e2309dd6a24c7e422932aae97"
+
+[[patch.unused]]
+name = "indexmap"
+version = "2.2.6"
+source = "git+https://github.com/indexmap-rs/indexmap.git?tag=2.2.6#3f0fffb85b99a2a37bbee363703f8509dd03e2d7"

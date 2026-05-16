@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.71.0"
 name = "lock_api"
 version = "0.4.14"
 authors = ["Amanieu d'Antras <amanieu@gmail.com>"]

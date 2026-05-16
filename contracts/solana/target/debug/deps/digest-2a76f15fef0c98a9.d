@@ -1,0 +1,12 @@
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\digest-2a76f15fef0c98a9.d: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\ct_variable.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\rt_variable.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\wrapper.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\xof_reader.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\digest.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\mac.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libdigest-2a76f15fef0c98a9.rmeta: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\ct_variable.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\rt_variable.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\wrapper.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\xof_reader.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\digest.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\mac.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\lib.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\ct_variable.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\rt_variable.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\wrapper.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\core_api\xof_reader.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\digest.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\digest\src\mac.rs:

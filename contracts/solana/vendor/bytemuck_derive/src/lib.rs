@@ -114,26 +114,14 @@ pub fn derive_anybitpattern(
   proc_macro::TokenStream::from(expanded)
 }
 
-/// Derive the `Zeroable` trait for a type.
+/// Derive the `Zeroable` trait for a struct
 ///
-/// The macro ensures that the type follows all the the safety requirements
+/// The macro ensures that the struct follows all the the safety requirements
 /// for the `Zeroable` trait.
 ///
-/// The following constraints need to be satisfied for the macro to succeed on a
-/// struct:
+/// The following constraints need to be satisfied for the macro to succeed
 ///
-/// - All fields in the struct must implement `Zeroable`
-///
-/// The following constraints need to be satisfied for the macro to succeed on
-/// an enum:
-///
-/// - The enum has an explicit `#[repr(Int)]`, `#[repr(C)]`, or `#[repr(C,
-///   Int)]`.
-/// - The enum has a variant with discriminant 0 (explicitly or implicitly).
-/// - All fields in the variant with discriminant 0 (if any) must implement
-///   `Zeroable`
-///
-/// The macro always succeeds on unions.
+/// - All fields in the struct must to implement `Zeroable`
 ///
 /// ## Example
 ///
@@ -144,23 +132,6 @@ pub fn derive_anybitpattern(
 /// struct Test {
 ///   a: u16,
 ///   b: u16,
-/// }
-/// ```
-/// ```rust
-/// # use bytemuck_derive::{Zeroable};
-/// #[derive(Copy, Clone, Zeroable)]
-/// #[repr(i32)]
-/// enum Values {
-///   A = 0,
-///   B = 1,
-///   C = 2,
-/// }
-/// #[derive(Clone, Zeroable)]
-/// #[repr(C)]
-/// enum Implicit {
-///   A(bool, u8, char),
-///   B(String),
-///   C(std::num::NonZeroU8),
 /// }
 /// ```
 ///
@@ -185,18 +156,6 @@ pub fn derive_anybitpattern(
 /// }
 ///
 /// AlwaysZeroable::<std::num::NonZeroU8>::zeroed();
-/// ```
-/// ```rust
-/// # use bytemuck::{Zeroable};
-/// #[derive(Copy, Clone, Zeroable)]
-/// #[repr(u8)]
-/// #[zeroable(bound = "")]
-/// enum MyOption<T> {
-///   None,
-///   Some(T),
-/// }
-///
-/// assert!(matches!(MyOption::<std::num::NonZeroU8>::zeroed(), MyOption::None));
 /// ```
 ///
 /// ```rust,compile_fail
@@ -260,14 +219,9 @@ pub fn derive_zeroable(
 ///
 /// If applied to an enum:
 /// - The enum must be explicit `#[repr(Int)]`, `#[repr(C)]`, or both
-/// - If the enum has fields:
-///   - All fields must implement `NoUninit`
-///   - All variants must not contain any padding bytes
-///   - All variants must be of the the same size
-///   - There must be no padding bytes between the discriminant and any of the
-///     variant fields
+/// - All variants must be fieldless
 /// - The enum must contain no generic parameters
-#[proc_macro_derive(NoUninit, attributes(bytemuck))]
+#[proc_macro_derive(NoUninit)]
 pub fn derive_no_uninit(
   input: proc_macro::TokenStream,
 ) -> proc_macro::TokenStream {
@@ -318,10 +272,7 @@ pub fn derive_maybe_pod(
 ///
 /// If the struct only contains a single field, the `Wrapped` type will
 /// automatically be determined. If there is more then one field in the struct,
-/// you need to specify the `Wrapped` type using `#[transparent(T)]`. Due to
-/// technical limitations, the type in the `#[transparent(Type)]` needs to be
-/// the exact same token sequence as the corresponding type in the struct
-/// definition.
+/// you need to specify the `Wrapped` type using `#[transparent(T)]`
 ///
 /// ## Examples
 ///
@@ -426,7 +377,7 @@ pub fn derive_contiguous(
 /// also does not implement `StructuralPartialEq` / `StructuralEq` like
 /// `PartialEq` / `Eq` would. This means you can't pattern match on the values.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```rust
 /// # use bytemuck_derive::{ByteEq, NoUninit};
@@ -438,17 +389,6 @@ pub fn derive_contiguous(
 ///   c: f32,
 /// }
 /// ```
-///
-/// ```rust
-/// # use bytemuck_derive::ByteEq;
-/// # use bytemuck::NoUninit;
-/// #[derive(Copy, Clone, ByteEq)]
-/// #[repr(C)]
-/// struct Test<const N: usize> {
-///   a: [u32; N],
-/// }
-/// unsafe impl<const N: usize> NoUninit for Test<N> {}
-/// ```
 #[proc_macro_derive(ByteEq)]
 pub fn derive_byte_eq(
   input: proc_macro::TokenStream,
@@ -456,18 +396,16 @@ pub fn derive_byte_eq(
   let input = parse_macro_input!(input as DeriveInput);
   let crate_name = bytemuck_crate_name(&input);
   let ident = input.ident;
-  let (impl_generics, ty_generics, where_clause) =
-    input.generics.split_for_impl();
 
   proc_macro::TokenStream::from(quote! {
-    impl #impl_generics ::core::cmp::PartialEq for #ident #ty_generics #where_clause {
+    impl ::core::cmp::PartialEq for #ident {
       #[inline]
       #[must_use]
       fn eq(&self, other: &Self) -> bool {
         #crate_name::bytes_of(self) == #crate_name::bytes_of(other)
       }
     }
-    impl #impl_generics ::core::cmp::Eq for #ident #ty_generics #where_clause { }
+    impl ::core::cmp::Eq for #ident { }
   })
 }
 
@@ -480,7 +418,7 @@ pub fn derive_byte_eq(
 ///
 /// The hash does not match the standard library's `Hash` derive.
 ///
-/// ## Examples
+/// ## Example
 ///
 /// ```rust
 /// # use bytemuck_derive::{ByteHash, NoUninit};
@@ -492,17 +430,6 @@ pub fn derive_byte_eq(
 ///   c: f32,
 /// }
 /// ```
-///
-/// ```rust
-/// # use bytemuck_derive::ByteHash;
-/// # use bytemuck::NoUninit;
-/// #[derive(Copy, Clone, ByteHash)]
-/// #[repr(C)]
-/// struct Test<const N: usize> {
-///   a: [u32; N],
-/// }
-/// unsafe impl<const N: usize> NoUninit for Test<N> {}
-/// ```
 #[proc_macro_derive(ByteHash)]
 pub fn derive_byte_hash(
   input: proc_macro::TokenStream,
@@ -510,11 +437,9 @@ pub fn derive_byte_hash(
   let input = parse_macro_input!(input as DeriveInput);
   let crate_name = bytemuck_crate_name(&input);
   let ident = input.ident;
-  let (impl_generics, ty_generics, where_clause) =
-    input.generics.split_for_impl();
 
   proc_macro::TokenStream::from(quote! {
-    impl #impl_generics ::core::hash::Hash for #ident #ty_generics #where_clause {
+    impl ::core::hash::Hash for #ident {
       #[inline]
       fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
         ::core::hash::Hash::hash_slice(#crate_name::bytes_of(self), state)
@@ -620,28 +545,25 @@ fn derive_marker_trait_inner<Trait: Derivable>(
         .flatten()
         .collect::<Vec<syn::WherePredicate>>();
 
-      let fields = match (Trait::perfect_derive_fields(&input), &input.data) {
-        (Some(fields), _) => fields,
-        (None, syn::Data::Struct(syn::DataStruct { fields, .. })) => {
-          fields.clone()
-        }
-        (None, syn::Data::Union(_)) => {
+      let predicates = &mut input.generics.make_where_clause().predicates;
+
+      predicates.extend(explicit_bounds);
+
+      let fields = match &input.data {
+        syn::Data::Struct(syn::DataStruct { fields, .. }) => fields.clone(),
+        syn::Data::Union(_) => {
           return Err(syn::Error::new_spanned(
             trait_,
             &"perfect derive is not supported for unions",
           ));
         }
-        (None, syn::Data::Enum(_)) => {
+        syn::Data::Enum(_) => {
           return Err(syn::Error::new_spanned(
             trait_,
             &"perfect derive is not supported for enums",
           ));
         }
       };
-
-      let predicates = &mut input.generics.make_where_clause().predicates;
-
-      predicates.extend(explicit_bounds);
 
       for field in fields {
         let ty = field.ty;

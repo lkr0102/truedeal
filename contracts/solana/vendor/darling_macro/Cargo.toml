@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.56"
 name = "darling_macro"
 version = "0.20.11"
 authors = ["Ted Driggs <ted.driggs@outlook.com>"]

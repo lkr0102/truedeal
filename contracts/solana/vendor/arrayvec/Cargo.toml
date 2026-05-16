@@ -11,6 +11,7 @@
 
 [package]
 edition = "2018"
+rust-version = "1.51"
 name = "arrayvec"
 version = "0.7.6"
 authors = ["bluss"]

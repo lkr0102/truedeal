@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.63"
 name = "ark-ec"
 version = "0.4.2"
 authors = ["arkworks contributors"]

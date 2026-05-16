@@ -11,6 +11,7 @@
 
 [package]
 edition = "2018"
+rust-version = "1.85.0"
 name = "unicode-segmentation"
 version = "1.13.2"
 authors = [

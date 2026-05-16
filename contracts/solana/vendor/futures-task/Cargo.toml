@@ -11,6 +11,7 @@
 
 [package]
 edition = "2018"
+rust-version = "1.71"
 name = "futures-task"
 version = "0.3.32"
 build = false

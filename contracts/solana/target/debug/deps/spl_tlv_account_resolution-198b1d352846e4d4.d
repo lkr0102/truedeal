@@ -1,0 +1,9 @@
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\spl_tlv_account_resolution-198b1d352846e4d4.d: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\account.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\error.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\seeds.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\state.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libspl_tlv_account_resolution-198b1d352846e4d4.rmeta: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\account.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\error.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\seeds.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\state.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\lib.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\account.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\error.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\seeds.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\spl-tlv-account-resolution\src\state.rs:

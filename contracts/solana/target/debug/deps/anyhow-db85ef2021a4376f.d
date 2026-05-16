@@ -1,0 +1,15 @@
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\anyhow-db85ef2021a4376f.d: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\backtrace.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\chain.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\context.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\ensure.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\error.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\fmt.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\kind.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\macros.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\ptr.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\wrapper.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\target\debug\deps\libanyhow-db85ef2021a4376f.rmeta: C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\lib.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\backtrace.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\chain.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\context.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\ensure.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\error.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\fmt.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\kind.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\macros.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\ptr.rs C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\wrapper.rs
+
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\lib.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\backtrace.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\chain.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\context.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\ensure.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\error.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\fmt.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\kind.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\macros.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\ptr.rs:
+C:\Users\João\Desktop\Hackertons\TrueDeal\contracts\solana\vendor\anyhow\src\wrapper.rs:

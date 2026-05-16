@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.56.0"
 name = "num_enum"
 version = "0.6.1"
 authors = [
@@ -66,4 +67,3 @@ status = "passively-maintained"
 [badges.travis-ci]
 branch = "master"
 repository = "illicitonion/num_enum"
-

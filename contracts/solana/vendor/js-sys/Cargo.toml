@@ -11,6 +11,7 @@
 
 [package]
 edition = "2021"
+rust-version = "1.77"
 name = "js-sys"
 version = "0.3.98"
 authors = ["The wasm-bindgen Developers"]

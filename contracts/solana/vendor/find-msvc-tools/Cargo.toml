@@ -11,6 +11,7 @@
 
 [package]
 edition = "2018"
+rust-version = "1.63"
 name = "find-msvc-tools"
 version = "0.1.9"
 build = false
