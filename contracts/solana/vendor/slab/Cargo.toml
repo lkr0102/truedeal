@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.51"
+rust-version = "1.75.0"
 name = "slab"
 version = "0.4.12"
 authors = ["Carl Lerche <me@carllerche.com>"]

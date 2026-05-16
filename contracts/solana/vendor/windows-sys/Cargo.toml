@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.71"
+rust-version = "1.75.0"
 name = "windows-sys"
 version = "0.61.2"
 build = false
@@ -290,10 +290,4 @@ doctest = false
 version = "0.2.1"
 default-features = false
 
-[lints.rust]
-missing_unsafe_on_extern = "warn"
-
-[lints.rust.unexpected_cfgs]
-level = "warn"
-priority = 0
-check-cfg = ["cfg(windows_raw_dylib, windows_slim_errors)"]
+["cfg(windows_raw_dylib, windows_slim_errors)"]

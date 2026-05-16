@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.75.0"
 name = "darling"
 version = "0.20.11"
 authors = ["Ted Driggs <ted.driggs@outlook.com>"]
@@ -228,7 +228,4 @@ version = "1.0.89"
 [badges.maintenance]
 status = "actively-developed"
 
-[lints.rust.unexpected_cfgs]
-level = "warn"
-priority = 0
-check-cfg = ["cfg(compiletests)"]
+["cfg(compiletests)"]

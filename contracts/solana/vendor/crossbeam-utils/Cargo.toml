@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.60"
+rust-version = "1.75.0"
 name = "crossbeam-utils"
 version = "0.8.21"
 build = "build.rs"
@@ -84,18 +84,7 @@ std = []
 version = "0.7.1"
 optional = true
 
-[lints.clippy.declare_interior_mutable_const]
-level = "allow"
-priority = 1
-
-[lints.clippy.lint_groups_priority]
-level = "allow"
-priority = 1
-
-[lints.rust.unexpected_cfgs]
-level = "warn"
-priority = 0
-check-cfg = [
+[
     "cfg(crossbeam_loom)",
     "cfg(crossbeam_sanitize)",
 ]

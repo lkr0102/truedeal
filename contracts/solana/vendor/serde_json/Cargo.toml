@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.68"
+rust-version = "1.75.0"
 name = "serde_json"
 version = "1.0.149"
 authors = [

@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.65"
+rust-version = "1.75.0"
 name = "regex"
 version = "1.12.3"
 authors = [
@@ -195,10 +195,7 @@ default-features = false
 [dev-dependencies.regex-test]
 version = "0.1.0"
 
-[lints.rust.unexpected_cfgs]
-level = "allow"
-priority = 0
-check-cfg = ["cfg(docsrs_regex)"]
+["cfg(docsrs_regex)"]
 
 [profile.bench]
 debug = 2

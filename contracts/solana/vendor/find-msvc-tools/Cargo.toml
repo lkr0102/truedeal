@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.63"
+rust-version = "1.75.0"
 name = "find-msvc-tools"
 version = "0.1.9"
 build = false
@@ -34,7 +34,4 @@ path = "src/lib.rs"
 
 [dependencies]
 
-[lints.rust.unexpected_cfgs]
-level = "allow"
-priority = 0
-check-cfg = ["cfg(disable_clang_cl_tests)"]
+["cfg(disable_clang_cl_tests)"]

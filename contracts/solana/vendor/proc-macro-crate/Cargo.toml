@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.82.0"
+rust-version = "1.75.0"
 name = "proc-macro-crate"
 version = "3.5.0"
 authors = ["Bastian Köcher <git@kchr.de>"]

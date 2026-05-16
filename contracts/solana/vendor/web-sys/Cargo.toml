@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.77"
+rust-version = "1.75.0"
 name = "web-sys"
 version = "0.3.98"
 authors = ["The wasm-bindgen Developers"]
@@ -2810,14 +2810,4 @@ default-features = false
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies.futures]
 version = "0.3"
 
-[lints.clippy]
-large_enum_variant = "allow"
-new_without_default = "allow"
-overly_complex_bool_expr = "allow"
-too_many_arguments = "allow"
-type_complexity = "allow"
-
-[lints.rust.unexpected_cfgs]
-level = "warn"
-priority = 0
-check-cfg = ["cfg(web_sys_unstable_apis)"]
+["cfg(web_sys_unstable_apis)"]

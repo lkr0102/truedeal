@@ -11,7 +11,7 @@
 
 [package]
 edition = "2018"
-rust-version = "1.31"
+rust-version = "1.75.0"
 name = "rustversion"
 version = "1.0.22"
 authors = ["David Tolnay <dtolnay@gmail.com>"]

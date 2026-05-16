@@ -4,8 +4,34 @@ import re
 def brute_patch(directory):
     for root, dirs, files in os.walk(directory):
         for file in files:
+            path = os.path.join(root, file)
+            
+            # Patch Cargo.toml files
+            if file == "Cargo.toml":
+                try:
+                    with open(path, "r", encoding="utf-8", errors="ignore") as f:
+                        content = f.read()
+                    
+                    new_content = content
+                    # Force edition 2021
+                    new_content = new_content.replace("edition = \"2024\"", "edition = \"2021\"")
+                    # Force rust-version 1.75.0
+                    new_content = re.sub(r'rust-version\s*=\s*"1\.[0-9.]+"', 'rust-version = "1.75.0"', new_content)
+                    
+                    # Remove lints section (unsupported in old cargo parsing often)
+                    if "[lints." in new_content:
+                        # Simple way: just comment out or remove sections
+                        new_content = re.sub(r'\[lints\.[^\]]+\][^\[]*', '', new_content)
+
+                    if new_content != content:
+                        print(f"Patched Manifest: {path}")
+                        with open(path, "w", encoding="utf-8") as f:
+                            f.write(new_content)
+                except Exception as e:
+                    print(f"Error Manifest: {e}")
+
+            # Patch Rust files
             if file.endswith(".rs"):
-                path = os.path.join(root, file)
                 try:
                     with open(path, "r", encoding="utf-8", errors="ignore") as f:
                         content = f.read()
@@ -20,7 +46,6 @@ def brute_patch(directory):
                     new_content = re.sub(r'&raw\s+mut\s+([a-zA-Z0-9._]+)', r'(&mut \1 as *mut _)', new_content)
                     
                     # Replace + use<...> syntax (Precise Capturing) with nothing
-                    # impl Trait + use<'a, T> -> impl Trait
                     new_content = re.sub(r'\+\s*use<[^>]*>', '', new_content)
                     
                     # Fix indexmap imports
@@ -36,11 +61,11 @@ def brute_patch(directory):
                         new_content = new_content.replace("#[cfg(all(feature = \"impl_core_error\", not(feature = \"extern_crate_std\")))]", "")
 
                     if new_content != content:
-                        print(f"Patched {path}")
+                        print(f"Patched Code: {path}")
                         with open(path, "w", encoding="utf-8") as f:
                             f.write(new_content)
                 except Exception as e:
-                    print(f"Error: {e}")
+                    print(f"Error Code: {e}")
 
 if __name__ == "__main__":
     brute_patch("vendor")

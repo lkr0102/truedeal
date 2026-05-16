@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.61"
+rust-version = "1.75.0"
 name = "ppv-lite86"
 version = "0.2.21"
 authors = ["The CryptoCorrosion Contributors"]

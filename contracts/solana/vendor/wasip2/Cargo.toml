@@ -11,7 +11,7 @@
 
 [package]
 edition = "2021"
-rust-version = "1.87.0"
+rust-version = "1.75.0"
 name = "wasip2"
 version = "1.0.3+wasi-0.2.9"
 build = false
