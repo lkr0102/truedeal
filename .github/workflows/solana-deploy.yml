@@ -119,6 +119,7 @@ jobs:
           solana program show $PROGRAM_ID --url devnet
 
       - name: Upload Build Artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: truedeal-sovereign-build
