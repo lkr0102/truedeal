@@ -3,28 +3,27 @@
 Este documento fornece o contexto técnico imediato para agentes de IA operando no repositório TrueDeal.
 
 ## 1. Estado Atual da Infraestrutura (Build & Deploy)
-- **Toolchain:** Solana 1.17.31 / Anchor 0.30.1 / Rust Edition 2021 (SBF Legacy).
-- **Build System:** Sistema de **Vendoring Total** patcheado cirurgicamente em `contracts/solana/vendor/`.
-- **Status:** Estabilização v5 (Build #39). O lockfile foi sanitizado de blocos órfãos e as dependências Edition 2024 (toml_edit 0.25) foram neutralizadas.
-- **Lockfile:** Fixado na **Versão 3** e limpo via script para parsing determinístico.
-
+- **Toolchain:** Solana 1.18.26 / Anchor 0.29.0 / Rust Edition 2021 (SBF Legacy).
+- **Build System:** **Sovereign Build Pipeline** estável. Dependências transitivas (`indexmap`, `hashbrown`, `toml_datetime`) patcheadas cirurgicamente no `vendor/` para compatibilidade com o compilador SBF (Rust 1.75/1.79).
+- **Deploy:** Sistema de **ID Dinâmico Autônomo**. O CI gera uma chave nova, injeta o ID no código e faz o deploy.
+- **Release Oficial:** `v0.1.0-alpha.1` (Contém o binário `.so` e o `idl.json` auditáveis).
+- **Program ID Atual:** `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp` (Devnet).
 
 ## 2. Componentes Principais e Localização
 - **Smart Contract:** `contracts/solana/programs/truedeal/src/lib.rs` (Lógica de Escrow e Liquidação).
 - **Frontend Core:** `app/` e `components/` (Interface Next.js).
-- **Relatório de Auditoria:** `docs/audit-kit/00_DELIVERY_REPORT.md` (Resumo executivo do que foi entregue).
-- **Mapas de Interface:** `docs/audit-kit/03_UI_UX_MAP.md` (Fluxos de tela e lógica de estados).
+- **Escopo Técnico:** `task_master_scope.md` (O guia definitivo de regras e intervenções institucionais).
 
-## 3. Comandos de Verificação
-- **Build do Contrato:** `cd contracts/solana && anchor build -- --offline`
-- **Deploy Manual (Se necessário):** `solana program deploy target/deploy/truedeal.so`
+## 3. Comandos de Verificação e Sincronia
+- **Build do Contrato:** `cd contracts/solana && anchor build` (Use o script `zero_checksums.py` se alterar o vendor).
+- **Sincronia de ID:** Sempre verifique o ID mais recente no último GitHub Release antes de atualizar o frontend.
+- **Saldo da Carteira:** A carteira pagadora `1ZixuegY1EPvDeybLLGXW29aM2WuC4kA8dcfXbSNoNW` deve estar abastecida na Devnet.
 
-## 4. Próximos Passos Imediatos
-1. **Monitoramento de CI:** Validar a conclusão do Build #34 no GitHub Actions.
-2. **Entrega Final:** Utilizar o script em `docs/audit-kit/DEMO_SCRIPT.md` para a apresentação final.
-3. **Handover de UI:** Garantir que o componente `SentinelShield` esteja exibindo corretamente os dados on-chain após o deploy.
+## 4. Handover para Lukas (Frontend Engineer)
+1. **Blockchain Integration:** Use o `idl.json` anexado ao Release `v0.1.0-alpha.1` para regenerar os tipos se necessário.
+2. **Program ID:** O ID oficial para o frontend é `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp`.
+3. **Settle Hook:** Lukas deve garantir que a chamada para `settleDealProtocol` no frontend aponte para este ID e use os oráculos corretos definidos no contrato.
 
 > [!IMPORTANT]
-> **NÃO** execute `cargo update` sem necessidade, pois isso pode corromper o vendoring sanitizado. O ambiente está em "congelamento técnico" para garantir a entrega.
-
-
+> **Soberania de ID:** O ID do programa no repositório local é temporário. O **ID Verdadeiro** é o que o CI gera e injeta. **NUNCA** tente fixar um ID manualmente sem sincronizar com o workflow de deploy.
+> **Manutenção:** Mantenha a Fee Payer Wallet abastecida para evitar falhas de deploy por "insufficient funds".
