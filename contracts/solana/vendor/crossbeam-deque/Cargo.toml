@@ -75,7 +75,3 @@ std = [
     "crossbeam-utils/std",
 ]
 
-[
-    "cfg(crossbeam_loom)",
-    "cfg(crossbeam_sanitize)",
-]

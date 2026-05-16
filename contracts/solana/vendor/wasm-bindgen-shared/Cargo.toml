@@ -44,8 +44,3 @@ path = "src/lib.rs"
 [dependencies.unicode-ident]
 version = "1.0.5"
 
-[
-    "cfg(wasm_bindgen_unstable_test_coverage)",
-    "cfg(wasm_bindgen_use_js_sys)",
-    "cfg(xxx_debug_only_print_generated_code)",
-]

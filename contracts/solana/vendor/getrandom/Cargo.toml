@@ -120,11 +120,3 @@ default-features = false
 version = "0.2.154"
 default-features = false
 
-[
-    'cfg(getrandom_backend, values("custom", "efi_rng", "rdrand", "rndr", "linux_getrandom", "linux_raw", "wasm_js", "windows_legacy", "unsupported"))',
-    "cfg(getrandom_msan)",
-    "cfg(getrandom_test_linux_fallback)",
-    "cfg(getrandom_test_linux_without_fallback)",
-    "cfg(getrandom_test_netbsd_fallback)",
-    'cfg(target_os, values("cygwin"))',
-]

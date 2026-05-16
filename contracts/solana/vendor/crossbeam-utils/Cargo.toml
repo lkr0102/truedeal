@@ -84,7 +84,3 @@ std = []
 version = "0.7.1"
 optional = true
 
-[
-    "cfg(crossbeam_loom)",
-    "cfg(crossbeam_sanitize)",
-]
