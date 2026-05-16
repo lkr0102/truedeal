@@ -1,39 +1,37 @@
-# 🚀 Relatório de Entrega: TrueDeal MVP (Hackathon Ready)
+# 🚀 Relatório de Entrega: TrueDeal Alpha (On-Chain Ready)
 
-Este documento consolida todo o trabalho realizado na estabilização, mapeamento e finalização do **TrueDeal**. O projeto agora se encontra em estado de maturidade para auditoria técnica e demonstração pública.
+Este documento consolida o marco final da estabilização e deploy do **TrueDeal**. O projeto agora se encontra em estado de maturidade total para auditoria técnica e demonstração pública na Solana Devnet.
 
 ---
 
 ## 1. Arquitetura e Engenharia de Confiança
-Implementamos uma arquitetura de **quatro camadas** que garante a soberania dos acordos e a integridade financeira:
+Implementamos uma arquitetura de alta fidelidade que garante a soberania dos acordos e a integridade financeira:
 
-- **Camada de Liquidação (Solana/Anchor)**: Smart Contract robusto que gerencia cofres isolados (PDAs), stakes em SOL e a distribuição automatizada de prêmios.
+- **Camada de Liquidação (Solana/Anchor)**: Smart Contract estabilizado e deployed no ID `HdMnEf...7mp`. Gerencia cofres isolados (PDAs) e a distribuição automatizada de prêmios.
 - **DealGuard Engine (Consenso)**: Sistema de oráculos multi-sig que valida a performance off-chain antes de autorizar o payout on-chain.
-- **Risk Guardian (Sentinel AI)**: Módulo de monitoramento que detecta fraudes (GPS spoofing, bot activity) para garantir que apenas performance real seja recompensada.
-- **Sovereign Escrow**: O capital dos usuários nunca é tocado por chaves privadas humanas; a liberação exige o consenso dos oráculos e prova forense (proof_hash).
+- **Sovereign Escrow**: O capital dos usuários é protegido por lógica programática; a liberação exige o consenso dos oráculos e prova forense (`proof_hash`).
 
-## 2. Smart Contract & Lógica Econômica
-- **"Slacker Tax"**: Implementação de uma taxa de 3% sobre o pool de perdedores, destinada à tesouraria do protocolo, enquanto o restante é distribuído entre os ganhadores.
-- **Máquina de Estados**: Ciclo de vida completo do acordo (`formacao -> ativo -> liquidando -> encerrado/cancelado`).
-- **Prova Forense**: Cada liquidação armazena um hash SHA-256 das provas de auditoria na blockchain para verificação posterior.
+## 2. Sovereign Build & Deploy Pipeline (Destaque Técnico)
+Resolvemos o maior gargalo técnico do projeto: a volatilidade das ferramentas SBF da Solana.
+- **Surgical Patching Strategy**: Implementamos overrides manuais no diretório `vendor/` para neutralizar incompatibilidades de dependências transitivas (`indexmap`, `toml_datetime`).
+- **Autonomous Deploy**: Pipeline de CI/CD que gera identidades únicas por build e injeta o Program ID dinamicamente no código-fonte, garantindo deploys sem conflitos de autoridade.
+- **Lockfile Fixation**: Sincronização estrita da toolchain (Solana 1.18.26 / Anchor 0.29.0) para builds determinísticas.
 
-## 3. Excelência em UI/UX (Linguagem Lukas)
-Mapeamos e polimos a interface premium baseada em **Glassmorphism**:
-- **User Journey**: Fluxo fluido desde o Dashboard ("The Hook") até a criação modular de regras e o monitoramento em tempo real.
-- **Economia de Shakes (🤝)**: Sistema de reputação e gamificação que incentiva a disciplina diária e retenção através do Hall of Fame.
-- **Financeiro Soberano**: Wallet com conversão de moedas (SOL/USD/BRL) e controles de privacidade.
+## 3. Smart Contract & Lógica Econômica
+- **"Slacker Tax"**: Taxa de 3% sobre o pool de perdedores para sustentabilidade do protocolo.
+- **Máquina de Estados**: Ciclo de vida completo (`formacao -> ativo -> liquidando -> encerrado`).
+- **Prova Forense**: Cada liquidação armazena um hash SHA-256 das provas de auditoria on-chain.
 
-## 4. DevOps e Estabilização Crítica
-Resolvemos o maior gargalo técnico do projeto: a instabilidade do ecossistema Rust (Edition 2024).
-- **Nuclear Fix Strategy**: Implementamos uma pinagem agressiva de toolchain (Solana 1.17.17 / Anchor 0.29.0) e patches globais (`toml_datetime`, `blake3`, `crypto-common`) para garantir que o projeto compile sem erros de dependências transitivas no GitHub Actions.
-- **Pipeline Automatizado**: Deploy contínuo para a Devnet com preservação de lockfile para builds determinísticas.
+## 4. Excelência em UI/UX (Linguagem Lukas)
+- **User Journey**: Fluxo fluido desde o Dashboard até a criação modular de regras.
+- **Economia de Shakes (🤝)**: Sistema de reputação e gamificação integrado.
+- **Financeiro Soberano**: Wallet com suporte a multi-moedas e controles de privacidade.
 
-## 5. Audit-Kit e Documentação
-Organizamos o repositório para ser "Audit-Ready":
-- **Novo Diretório `docs/audit-kit/`**: Contém o mapa mestre do sistema, guia do design system e diagramas de estado de contrato.
-- **Documentação Sequencial**: Renumeramos todos os documentos de docs (01 a 06) para uma navegação profissional.
-- **Demo Script**: Roteiro detalhado para a gravação do vídeo de apresentação, destacando os diferenciais tecnológicos.
+## 5. Audit-Kit e Prontidão de Entrega
+- **Release Oficial**: `v0.1.0-alpha.1` com binários e IDL auditáveis.
+- **Manual de Auditoria**: Diretório `docs/audit-kit/` com mapas de sistema e guias de design.
+- **Demo Ready**: Script de apresentação atualizado com provas reais on-chain na Devnet.
 
 ---
-**Status Final: Pronto para Deploy e Demonstração.**
-**AETHEL CORE - Integridade codificada, soberania alcançada.** 🖖
+**Status Final: Estabilizado, Deployed e Pronto para Apresentação.**
+**TrueDeal Protocol - Integridade codificada, soberania alcançada.** 🖖

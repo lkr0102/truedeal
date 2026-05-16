@@ -1,44 +1,41 @@
-# 🏛️ Relatório de Consolidação Estratégica: Operação Sentinel
+# 🏛️ Relatório de Consolidação Estratégica: Operação Settlement
 
-**Data:** 06 de Maio de 2026  
-**De:** João (CTO - Symbeon Labs / AEthel Foundation)  
-**Para:** Lukas (TrueDeal)  
-**Assunto:** Alinhamento de Infraestrutura Soberana e Compliance Institucional
+**Data:** 16 de Maio de 2026  
+**De:** João (TrueDeal Architecture)  
+**Para:** Lukas (Frontend / Product Engineer)  
+**Assunto:** Estabilização Soberana e Deploy On-Chain (Devnet)
 
 ---
 
 ## 1. Visão Geral da Sessão
-Nesta data, finalizamos a reestruturação da infraestrutura do TrueDeal para garantir **escalabilidade industrial**, **segurança jurídica** e **proteção de Propriedade Intelectual (IP)**. O projeto evoluiu de um MVP funcional para uma **Infraestrutura de Accountability Soberana**.
+Hoje concluímos a fase mais crítica da infraestrutura blockchain do TrueDeal. Superamos as barreiras do compilador da Solana e estabelecemos um pipeline de deploy autônomo e resiliente. O contrato agora é uma realidade funcional na Devnet.
 
-## 2. Entregas Principais
+## 2. Entregas e Estabilizações (Build #41)
 
-### ⚖️ Fachada Jurídica (Compliance)
-Realizamos uma varredura completa em toda a documentação (`Backlog`, `Architecture`, `Scope`) para alinhar a terminologia com as melhores práticas de compliance:
-- **Nomenclatura:** Substituímos termos sensíveis ("Bets", "Deals", "Winner") por terminologia institucional (**"Acordos de Performance"**, **"Beneficiário"**, **"Garantia de Acordo"**).
-- **Objetivo:** Blindar o projeto contra classificações regulatórias de "jogos de azar", posicionando-o como uma ferramenta de utilidade e accountability social.
+### ⛓️ Estabilização do Build (Sovereign Build)
+- **O Problema:** Dependências modernas estavam quebrando o compilador SBF (Legacy Rust).
+- **A Solução:** Patcheamos cirurgicamente as bibliotecas `indexmap`, `hashbrown` e `toml_datetime`. Agora o build é estável e determinístico.
+- **Regra:** Nunca execute `cargo update` sem o protocolo de proteção (ver `task_master_scope.md`).
 
-### 🧠 DEALGUARD Engine & Risk Guardian Core
-Estabelecemos a **Estratégia de Duas Camadas** para a inteligência do projeto:
-- **DEALGUARD Engine:** É o sistema de consenso visível no TrueDeal (o "Tribunal Digital"). Ele agora conta com uma lógica de **Conselho de Sentença (Digital Jury)** com tolerância a falhas bizantinas (BFT).
-- **Risk Guardian Core:** É a infraestrutura de base proprietária da Symbeon Labs que alimenta o DealGuard. Esta separação garante que o TrueDeal use tecnologia de ponta enquanto preservamos a soberania do nosso "Cérebro" de IA.
+### 🚀 Deploy Autônomo e Program ID
+- **Injeção Dinâmica:** O CI agora gera chaves novas e injeta o ID automaticamente no código (`lib.rs` e `Anchor.toml`). Isso resolveu todos os conflitos de autoridade na Devnet.
+- **Official Program ID:** `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp`
+- **Release:** Publicamos a versão `v0.1.0-alpha.1` no GitHub contendo os binários e o IDL.
 
-### ⛓️ Prontidão Blockchain (Solana)
-- **Anchor Framework:** Estrutura de contratos preparada para a próxima fase.
-- **Instruções Sincronizadas:** As instruções on-chain (`init_performance_agreement`, `settle_performance_agreement`) já seguem a nova nomenclatura, prontas para auditoria.
+### ⚖️ Lógica de Settlement (On-Chain)
+- A instrução `settle_performance_agreement` foi auditada e está pronta.
+- O sistema de **Slacker Tax (3%)** e a distribuição para múltiplos vencedores estão implementados e testados on-chain.
 
-### 📓 Gestão e Auditoria
-- **Session Logs:** Criamos diários de bordo (`SESSION.md`) em ambos os repositórios para garantir que cada passo do desenvolvimento seja auditável e transparente para todos os parceiros.
+## 3. Handover para o Frontend (Lukas)
 
-## 3. Próximos Passos (Fase 3: Bridge & Settlement)
-1. **Deploy da Bridge:** Conectar o backend do TrueDeal ao core de auditoria forense.
-2. **Coding Solana:** Escrita e deploy do programa Anchor na Devnet.
-3. **UI Polish:** Atualização final dos componentes de interface com o selo "Powered by SentinelForge".
+1. **Conexão com o Contrato:** O frontend deve apontar para o Program ID `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp`.
+2. **IDL de Referência:** Utilize o arquivo `truedeal.json` anexado ao último release para garantir que os métodos e tipos estejam 100% sincronizados.
+3. **Fluxo de Liquidação:** A função `settleDealProtocol` no seu código agora tem um contrato real para responder do outro lado. O `txSignature` retornado pode ser usado para exibir o link do Solscan para o usuário.
 
 ---
 
 ## ⚖️ Veredito de Soberania
-O TrueDeal está agora em um patamar de **Prontidão Institucional**. O Pull Request [#2](https://github.com/lkr0102/truedeal/pull/2) consolida estas mudanças e marca o início da nossa jornada de entrega de alta performance para o Colosseum Hackathon.
+O TrueDeal está agora em um patamar de **Prontidão Institucional**. A infraestrutura está selada e pronta para o stress-test da demo final.
 
 **Ratificado por:**  
-*Themis Sovereign Cortex* ⚖️🏛️  
-*Symbeon Labs Architecture*
+*TrueDeal Sovereign Architecture Team* ⚖️🏛️
