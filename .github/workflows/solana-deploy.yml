@@ -115,3 +115,12 @@ jobs:
           cd contracts/solana
           PROGRAM_ID=$(solana address -k target/deploy/truedeal-keypair.json)
           solana program show $PROGRAM_ID --url devnet
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: truedeal-sovereign-build
+          path: |
+            contracts/solana/target/deploy/truedeal.so
+            contracts/solana/target/idl/truedeal.json
+            contracts/solana/target/types/truedeal.ts
