@@ -178,7 +178,7 @@ impl<K, V> Bucket<K, V> {
     const fn value_ref(&self) -> &V {
         &self.value
     }
-    const fn value_mut(&mut self) -> &mut V {
+    fn value_mut(&mut self) -> &mut V {
         &mut self.value
     }
     fn key(self) -> K {
@@ -193,10 +193,10 @@ impl<K, V> Bucket<K, V> {
     const fn refs(&self) -> (&K, &V) {
         (&self.key, &self.value)
     }
-    const fn ref_mut(&mut self) -> (&K, &mut V) {
+    fn ref_mut(&mut self) -> (&K, &mut V) {
         (&self.key, &mut self.value)
     }
-    const fn muts(&mut self) -> (&mut K, &mut V) {
+    fn muts(&mut self) -> (&mut K, &mut V) {
         (&mut self.key, &mut self.value)
     }
 }
