@@ -15,15 +15,11 @@ jobs:
         uses: actions/checkout@v4
 
       # 1.79.0 → instala o Anchor CLI (evita regressão do `time v0.3.29` no Rust 1.80+)
-      - name: Install Rust 1.79.0 (for anchor-cli compilation)
+      - name: Install Rust 1.79.0 (for anchor-cli and build compatibility)
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.79.0
-
-      - name: Install Rust 1.85.0 (default — handles edition2024)
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: "1.85.0"
+          default: true
 
       - name: Install Solana CLI
         run: |
