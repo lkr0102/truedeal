@@ -206,7 +206,7 @@ ast_enum_of_structs! {
         /// A range expression: `1..2`, `1..`, `..2`, `1..=2`, `..=2`.
         Range(ExprRange),
 
-        /// Address-of operation: `&raw const place` or `&raw mut place`.
+        /// Address-of operation: `(&place as *const _)` or `(&mut place as *mut _)`.
         RawAddr(ExprRawAddr),
 
         /// A referencing operation: `&a` or `&mut a`.
@@ -582,7 +582,7 @@ ast_struct! {
 }
 
 ast_struct! {
-    /// Address-of operation: `&raw const place` or `&raw mut place`.
+    /// Address-of operation: `(&place as *const _)` or `(&mut place as *mut _)`.
     #[cfg_attr(docsrs, doc(cfg(feature = "full")))]
     pub struct ExprRawAddr #full {
         pub attrs: Vec<Attribute>,

@@ -18,7 +18,7 @@ use syn::{Block, Stmt};
 
 #[test]
 fn test_raw_operator() {
-    let stmt = syn::parse_str::<Stmt>("let _ = &raw const x;").unwrap();
+    let stmt = syn::parse_str::<Stmt>("let _ = (&x as *const _);").unwrap();
 
     snapshot!(stmt, @r#"
     Stmt::Local {

@@ -193,10 +193,10 @@ fn test_unary() {
 #[test]
 fn test_raw_addr() {
     let mut x = 1;
-    let test = || Ok(ensure!(S + &raw const x != S + &raw mut x));
+    let test = || Ok(ensure!(S + (&x as *const _) != S + (&mut x as *mut _)));
     assert_err(
         test,
-        "Condition failed: `S + &raw const x != S + &raw mut x` (false vs false)",
+        "Condition failed: `S + (&x as *const _) != S + (&mut x as *mut _)` (false vs false)",
     );
 }
 
