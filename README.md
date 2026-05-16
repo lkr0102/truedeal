@@ -4,6 +4,11 @@
 <div align="center">
   <img src="public/brand/app-icon-logo.png" width="80" height="80" alt="True Deal Logo" />
   <p><strong>"Don't trust. Make a Deal."</strong></p>
+  <p>
+    <a href="https://truedeal.vercel.app">
+      <img src="https://img.shields.io/badge/Demo-Vercel-black?style=for-the-badge&logo=vercel" alt="TrueDeal Demo" />
+    </a>
+  </p>
 </div>
 
 Most goals die in group chats. You promise to run, study, or work out — and weeks later, no one remembers. **TrueDeal** is the accountability layer the world was missing.
