@@ -12,7 +12,7 @@ Este documento fornece o contexto técnico imediato para agentes de IA operando 
 ## 2. Componentes Principais e Localização
 - **Smart Contract:** `contracts/solana/programs/truedeal/src/lib.rs` (Lógica de Escrow e Liquidação).
 - **Frontend Core:** `app/` e `components/` (Interface Next.js).
-- **Escopo Técnico:** `task_master_scope.md` (O guia definitivo de regras e intervenções institucionais).
+- **Escopo Técnico:** `.agents/task_master_scope.md` (O guia definitivo de regras e intervenções institucionais).
 
 ## 3. Comandos de Verificação e Sincronia
 - **Build do Contrato:** `cd contracts/solana && anchor build` (Use o script `zero_checksums.py` se alterar o vendor).
