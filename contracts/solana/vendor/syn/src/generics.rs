@@ -450,11 +450,11 @@ ast_enum! {
     #[non_exhaustive]
     pub enum CapturedParam {
         /// A lifetime parameter in precise capturing bound: `fn f<'a>() -> impl
-        /// Trait + use<'a>`.
+        /// Trait `.
         Lifetime(Lifetime),
         /// A type parameter or const generic parameter in precise capturing
-        /// bound: `fn f<T>() -> impl Trait + use<T>` or `fn f<const K: T>() ->
-        /// impl Trait + use<K>`.
+        /// bound: `fn f<T>() -> impl Trait ` or `fn f<const K: T>() ->
+        /// impl Trait `.
         Ident(Ident),
     }
 }

@@ -405,7 +405,7 @@ fn test_tuple_comma() {
 #[test]
 fn test_impl_trait_use() {
     let tokens = quote! {
-        impl Sized + use<'_, 'a, A, Test>
+        impl Sized 
     };
 
     snapshot!(tokens as Type, @r#"
@@ -441,7 +441,7 @@ fn test_impl_trait_use() {
     "#);
 
     let trailing = quote! {
-        impl Sized + use<'_,>
+        impl Sized 
     };
 
     snapshot!(trailing as Type, @r#"

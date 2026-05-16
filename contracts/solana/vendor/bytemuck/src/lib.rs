@@ -269,7 +269,7 @@ impl core::fmt::Display for PodCastError {
 impl std::error::Error for PodCastError {}
 
 // Rust 1.81+
-#[cfg(all(feature = "impl_core_error", not(feature = "extern_crate_std")))]
+
 
 
 /// Re-interprets `&T` as `&[u8]`.

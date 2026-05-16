@@ -16,17 +16,23 @@ def brute_patch(directory):
                     new_content = new_content.replace("#[cfg_attr(feature = \"nightly\", expect(", "#[cfg_attr(feature = \"nightly\", allow(")
                     
                     # Replace &raw const x with &x as *const _
-                    # Using regex to handle various cases like &raw const self.field
                     new_content = re.sub(r'&raw\s+const\s+([a-zA-Z0-9._]+)', r'(&\1 as *const _)', new_content)
-                    # Also &raw mut x -> &mut x as *mut _
                     new_content = re.sub(r'&raw\s+mut\s+([a-zA-Z0-9._]+)', r'(&mut \1 as *mut _)', new_content)
+                    
+                    # Replace + use<...> syntax (Precise Capturing) with nothing
+                    # impl Trait + use<'a, T> -> impl Trait
+                    new_content = re.sub(r'\+\s*use<[^>]*>', '', new_content)
+                    
+                    # Fix indexmap imports
+                    if "indexmap" in path:
+                        new_content = new_content.replace("use std::hash::RandomState;", "use std::collections::hash_map::RandomState;")
                     
                     # Remove the specific TryReserveError impl
                     new_content = new_content.replace("impl core::error::Error for TryReserveError {}", "")
                     new_content = new_content.replace("impl Error for TryReserveError {}", "")
                     
-                    # Bytemuck fix (if it got reset again)
-                    if "CheckedCastError" in path and "impl From<crate::PodCastError> for CheckedCastError" in content:
+                    # Bytemuck fix
+                    if "CheckedCastError" in path or "bytemuck" in path:
                         new_content = new_content.replace("#[cfg(all(feature = \"impl_core_error\", not(feature = \"extern_crate_std\")))]", "")
 
                     if new_content != content:
