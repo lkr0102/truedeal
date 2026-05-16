@@ -20,8 +20,8 @@ This script is designed for the final demonstration of the TrueDeal platform, hi
 ## Part 3: Live Tracking & Proof (1:30 - 2:15)
 - **Visual**: Open an active Deal page. Show the **RULE_SUBRULES** panel and the strict-window warning banner.
 - **Action**: Point to the red alert: *"1 janela perdida = eliminação permanente."*
-- **Action**: Click on "Ver prova on-chain". Show the Solana Explorer link.
-- **Narrative**: *"Transparency is at our core. Every participant sees exactly what will be audited—and exactly what the consequences are. One missed window means elimination, regardless of any other week's performance. This strict model, enforced by the DealGuard Engine, is what separates TrueDeal from a casual bet."*
+- **Action**: Click on "Ver prova on-chain". **Highlight the redirection to Solscan showing the actual Program ID: `HdMnEf...7mp`.**
+- **Narrative**: *"Transparency is at our core. Every participant sees exactly what will be audited—and exactly what the consequences are. Notice the 'Sovereign Proof' link: this takes you directly to the Solana Devnet, where the TrueDeal program manages the escrow and the settlement proof. This isn't a simulation—it's high-fidelity, on-chain accountability."*
 
 ## Part 4: The Wallet (2:15 - 2:45)
 - **Visual**: Go to the Wallet tab. Toggle BRL/USD/SOL.
@@ -34,4 +34,4 @@ This script is designed for the final demonstration of the TrueDeal platform, hi
 - **Narrative**: *"TrueDeal isn't just about the stake; it's about reputation. Earn 'Shakes' through daily discipline and climb the global Hall of Fame. Your reputation is your most valuable asset in the sovereign world."*
 
 ---
-**AETHEL CORE - Code is Law. Integrity is Sovereignty.**
+**TrueDeal Protocol - Code is Law. Integrity is Sovereignty.** 🖖

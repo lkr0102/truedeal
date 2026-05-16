@@ -2,7 +2,7 @@
 
 Este documento é o guia definitivo para desenvolvedores e auditores entenderem a anatomia do TrueDeal, desde a interface premium até a liquidação on-chain.
 
-> **Última atualização:** 2026-05-10 — Compliance Rules UI, ProfilePopover, countdown timer, correções de bugs.
+> **Última atualização:** 2026-05-16 — **Sovereign Build Stabilization**, Devnet Deployment, CI/CD Autônomo.
 
 ---
 
@@ -10,7 +10,7 @@ Este documento é o guia definitivo para desenvolvedores e auditores entenderem 
 - **Frontend**: Next.js 15 (App Router) + TypeScript.
 - **Styling**: Tailwind CSS + Glassmorphism Custom System (`td-ui.tsx`).
 - **Backend/Orquestração**: Supabase (PostgreSQL, Auth, Realtime).
-- **Blockchain**: Solana (Anchor Framework 0.30.1).
+- **Blockchain**: Solana (**Anchor Framework 0.29.0**).
 - **IA/Monitoramento**: Risk Guardian (Sentinel AI) + DealGuard Engine.
 
 ---
@@ -26,35 +26,11 @@ A interface foi desenhada por Lukas com foco em **fidelidade visual e confiança
 - `/styles/globals.css`: Variáveis de cor e efeitos de blur.
 
 ### Fluxos do Usuário (User Journey):
-1. **The Hook (Dashboard)**: `page.tsx` (Home) -> Uso de **Hero Banners** saturados, **Live Status Dots** e **Countdown Timer** (regressivo até 00h GMT-3) para criar urgência e FOMO.
-2. **The Rule Engine (Creation)**: `/create` -> Configuração modular de regras (Fitness/Social) com conectores lógicos (E/OU) + **VERIFICATION_SUBRULES** checklist por tipo de verificação + banner GMT-3.
-3. **Engagement Loop (Explore)**: `/explore` -> Sistema de **Shakes (🤝)** (Pontos de engajamento) + **Hall of Fame** (Podium visual) para retenção.
-4. **Live Accountability**: `/deal/[id]` -> Timeline visual da jornada + **RULE_SUBRULES** panel + aviso de janela estrita + links de evidência auditáveis.
-5. **Sovereign Finance**: `/wallet` -> Gestão de saldo multi-moeda (SOL/USD/BRL) com foco em privacidade (Hide Balance).
-
-### Novo Componente: ProfilePopover
-Substituiu o balloon de configurações no header. Localizado em `app/home-client.tsx`.
-
-| Funcionalidade | Implementação |
-|:---|:---|
-| Link para `/profile` | Navegação direta |
-| Referral copy | `truedeal.app/invite/[userId]` + guard null |
-| Language toggle | PT ↔ EN via `localStorage` |
-| Dark Mode toggle | Animação sol/lua, persiste em `localStorage` |
-
-### Sistema de Compliance Rules UI (2026-05-10)
-
-O mapa de sub-regras (`RULE_SUBRULES` / `VERIFICATION_SUBRULES`) é uma estrutura de dados front-end que espelha as regras de negócio definidas em `docs/06_REGRAS_FLUXO_COMPLETO.md §5.2`. Está presente em três telas:
-
-| Tela | Arquivo | Propósito |
-|:-----|:--------|:----------|
-| Criação | `app/create/page.tsx` | Mostrar ao criador o que será auditado |
-| Detalhe do deal | `app/deal/[id]/deal-client.tsx` | Lembrar participantes das regras vigentes |
-| Tracking | `app/tracking/tracking-client.tsx` | Visibilidade contínua durante o período ativo |
-
-**Tipos cobertos (10 total):**
-`post_feito`, `seguidores_recebidos`, `impressoes`, `reposts_recebidos`, `comentarios`, `km_corridos`, `horas_exercicio`, `pace`, `checkins`, `ambientes_diferentes`
-
+1. **The Hook (Dashboard)**: `page.tsx` (Home) -> Uso de **Hero Banners** saturados, **Live Status Dots** e **Countdown Timer** para criar urgência.
+2. **The Rule Engine (Creation)**: `/create` -> Configuração modular de regras com conectores lógicos + checklist de verificação.
+3. **Engagement Loop (Explore)**: `/explore` -> Sistema de **Shakes (🤝)** + **Hall of Fame** visual.
+4. **Live Accountability**: `/deal/[id]` -> Timeline visual da jornada + links de evidência auditáveis.
+5. **Sovereign Finance**: `/wallet` -> Gestão de saldo multi-moeda (SOL/USD/BRL).
 
 ---
 
@@ -62,16 +38,20 @@ O mapa de sub-regras (`RULE_SUBRULES` / `VERIFICATION_SUBRULES`) é uma estrutur
 
 O contrato `truedeal` na Solana gerencia o estado financeiro e a verdade dos acordos.
 
+### Deployment (Devnet):
+- **Program ID:** `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp`
+- **Audit Info:** [Solscan Link](https://solscan.io/account/HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp?cluster=devnet)
+
 ### Máquina de Estados (AgreementStatus):
 - `Formation`: Deal aberto para entrada de participantes.
 - `Active`: Deal em andamento (pós-quórum).
 - `Settled`: Deal encerrado e fundos distribuídos.
 - `Cancelled`: Deal falhou no quórum e fundos foram devolvidos.
 
-### Security Primitives:
-- **PDA Vaults**: Cada acordo tem seu próprio cofre isolado.
-- **Dual-Oracle Multi-Sig**: A liquidação exige assinaturas do `DealGuard Node 1` e `Node 2`.
-- **Rule/Proof Hashing**: O contrato guarda hashes (SHA-256) das regras e das provas de auditoria, permitindo verificação offline.
+### Sovereign Build Pipeline (CI/CD):
+O projeto utiliza um pipeline de deploy autônomo que:
+1. Aplica patches cirúrgicos no diretório `vendor/` para compatibilidade com o compilador SBF (Legacy Rust).
+2. Gera uma identidade única (Keypair) por build, injetando o ID dinamicamente no código-fonte.
 
 ---
 
@@ -88,17 +68,15 @@ Localizado em `contracts/solana/programs/truedeal/src/lib.rs`:
 ## 5. Gamificação e Retenção (A Economia de Shakes)
 
 O TrueDeal utiliza o conceito de **Sovereign Reputation**:
-- **Daily Check-ins**: Recompensas progressivas (Dia 1 -> Dia 7) em Shakes.
-- **Streak Repair**: Mecanismo de retenção via queima de pontos acumulados.
-- **Social Proof**: O Hall of Fame utiliza deltas de ranking para incentivar a competitividade saudável.
+- **Daily Check-ins**: Recompensas progressivas em Shakes.
+- **Social Proof**: O Hall of Fame utiliza deltas de ranking para incentivar a competitividade.
 
 ---
 
 ## 6. Manutenção e Extensibilidade
 
-
 - **Para novos desenvolvedores**: Sempre utilize os componentes de `td-ui.tsx` para manter a estética de vidro.
-- **Para novos contratos**: Siga o `Sovereign Rule Engine Framework` localizado na pasta de templates.
+- **Sincronia de ID**: O ID do contrato no repositório local é gerenciado pelo CI. Consulte sempre o último Release para o ID real de produção.
 
 ---
-**AETHEL CORE - Mantendo a integridade do código e a soberania dos acordos.** 🖖
+**TrueDeal Protocol - Mantendo a integridade do código e a soberania dos acordos.** 🖖
