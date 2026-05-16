@@ -60,13 +60,13 @@ jobs:
           solana config set --keypair ~/.config/solana/id.json --url devnet
           solana balance
 
-      - name: Setup Program Keypair
-        env:
-          TRUEDEAL_DEPLOY_KEY: ${{ secrets.TRUEDEAL_DEPLOY_KEY }}
-        run: |
-          mkdir -p contracts/solana/target/deploy
-          echo "$TRUEDEAL_DEPLOY_KEY" > contracts/solana/target/deploy/truedeal-keypair.json
-          chmod 600 contracts/solana/target/deploy/truedeal-keypair.json
+      # - name: Setup Program Keypair
+      #   env:
+      #     TRUEDEAL_DEPLOY_KEY: ${{ secrets.TRUEDEAL_DEPLOY_KEY }}
+      #   run: |
+      #     mkdir -p contracts/solana/target/deploy
+      #     echo "$TRUEDEAL_DEPLOY_KEY" > contracts/solana/target/deploy/truedeal-keypair.json
+      #     chmod 600 contracts/solana/target/deploy/truedeal-keypair.json
 
       # - name: Remove vendor override
       #   run: rm -f contracts/solana/.cargo/config.toml
@@ -79,6 +79,22 @@ jobs:
           # cargo update -p toml -p toml_edit -p toml_datetime -p winnow -p indexmap -p serde -p serde_json -p proc-macro2 -p blake3 || true
           sed -i 's/version = 4/version = 3/' Cargo.lock
 
+      - name: Generate and Inject Fresh Program ID
+        working-directory: contracts/solana
+        run: |
+          mkdir -p target/deploy
+          solana-keygen new --no-passphrase -o target/deploy/truedeal-keypair.json
+          NEW_ID=$(solana address -k target/deploy/truedeal-keypair.json)
+          echo "Generated New Program ID: $NEW_ID"
+          
+          # Inject into lib.rs
+          sed -i "s/declare_id!(\".*\")/declare_id!(\"$NEW_ID\")/g" programs/truedeal/src/lib.rs
+          
+          # Inject into Anchor.toml
+          sed -i "s/truedeal = \".*\"/truedeal = \"$NEW_ID\"/g" Anchor.toml
+          
+          echo "ID Injected successfully into source and config."
+
       - name: Build Program
         run: |
           cd contracts/solana
@@ -87,11 +103,15 @@ jobs:
       - name: Deploy to Devnet
         run: |
           cd contracts/solana
+          # Anchor will generate a fresh keypair since we commented out the setup step
           anchor deploy --provider.cluster devnet
+          PROGRAM_ID=$(solana address -k target/deploy/truedeal-keypair.json)
           echo "✅ Deploy concluído!"
-          echo "🔗 https://solscan.io/account/885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ?cluster=devnet"
-          echo "🔗 https://explorer.solana.com/address/885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ?cluster=devnet"
+          echo "🔗 Program ID: $PROGRAM_ID"
+          echo "🔗 https://solscan.io/account/$PROGRAM_ID?cluster=devnet"
 
       - name: Verify Deployment
         run: |
-          solana program show 885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ --url devnet
+          cd contracts/solana
+          PROGRAM_ID=$(solana address -k target/deploy/truedeal-keypair.json)
+          solana program show $PROGRAM_ID --url devnet
