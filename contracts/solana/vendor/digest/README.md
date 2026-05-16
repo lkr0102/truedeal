@@ -12,6 +12,20 @@ digest algorithms.
 
 See [RustCrypto/hashes][1] for implementations which use this trait.
 
+[Documentation][docs-link]
+
+## Minimum Supported Rust Version
+
+Rust **1.41** or higher.
+
+Minimum supported Rust version can be changed in the future, but it will be
+done with a minor version bump.
+
+## SemVer Policy
+
+- All on-by-default features of this library are covered by SemVer
+- MSRV is considered exempt from SemVer as noted above
+
 ## Usage
 
 Let us demonstrate how to use crates in this repository using Sha256 as an
@@ -21,7 +35,7 @@ First add the `sha2` crate to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-sha2 = "0.11"
+sha2 = "0.10"
 ```
 
 `sha2` and other crates re-export `digest` crate and `Digest` trait for
@@ -39,33 +53,48 @@ hasher.update(data);
 hasher.update("String data");
 // Note that calling `finalize()` consumes hasher
 let hash = hasher.finalize();
-println!("Result: {:?}", hash);
+println!("Result: {:x}", hash);
 ```
 
-In this example `hash` has type [`Array<u8, U32>`][2], which is a generic
-alternative to `[u8; 32]`.
+In this example `hash` has type [`GenericArray<u8, U64>`][2], which is a generic
+alternative to `[u8; 64]`.
 
 Alternatively you can use chained approach, which is equivalent to the previous
 example:
 
 ```rust
-use sha2::{Sha256, Digest};
-
 let hash = Sha256::new()
     .chain_update(b"Hello world!")
     .chain_update("String data")
     .finalize();
 
-println!("Result: {:?}", hash);
+println!("Result: {:x}", hash);
 ```
 
 If the whole message is available you also can use convenience `digest` method:
 
 ```rust
-use sha2::{Sha256, Digest};
-
 let hash = Sha256::digest(b"my message");
-println!("Result: {:?}", hash);
+println!("Result: {:x}", hash);
+```
+
+### Hashing `Read`-able objects
+
+If you want to hash data from [`Read`][3] trait (e.g. from file) you can rely on
+implementation of [`Write`][4] trait (requires enabled-by-default `std` feature):
+
+```rust
+use sha2::{Sha256, Digest};
+use std::{fs, io};
+
+let mut file = fs::File::open(&path)?;
+let mut hasher = Sha256::new();
+let n = io::copy(&mut file, &mut hasher)?;
+let hash = hasher.finalize();
+
+println!("Path: {}", path);
+println!("Bytes processed: {}", n);
+println!("Hash value: {:x}", hash);
 ```
 
 ### Generic code
@@ -118,17 +147,17 @@ dual licensed as above, without any additional terms or conditions.
 [docs-image]: https://docs.rs/digest/badge.svg
 [docs-link]: https://docs.rs/digest/
 [license-image]: https://img.shields.io/badge/license-Apache2.0/MIT-blue.svg
-[rustc-image]: https://img.shields.io/badge/rustc-1.85+-blue.svg
+[rustc-image]: https://img.shields.io/badge/rustc-1.41+-blue.svg
 [chat-image]: https://img.shields.io/badge/zulip-join_chat-blue.svg
 [chat-link]: https://rustcrypto.zulipchat.com/#narrow/stream/260041-hashes
-[build-image]: https://github.com/RustCrypto/traits/actions/workflows/digest.yml/badge.svg?branch=master
-[build-link]: https://github.com/RustCrypto/traits/actions/workflows/digest.yml?query=branch:master
+[build-image]: https://github.com/RustCrypto/traits/workflows/digest/badge.svg?branch=master&event=push
+[build-link]: https://github.com/RustCrypto/traits/actions?query=workflow%3Adigest
 
 [//]: # (general links)
 
 [0]: https://en.wikipedia.org/wiki/Cryptographic_hash_function
 [1]: https://github.com/RustCrypto/hashes
-[2]: https://docs.rs/hybrid-array
+[2]: https://docs.rs/generic-array
 [3]: https://doc.rust-lang.org/std/io/trait.Read.html
 [4]: https://doc.rust-lang.org/std/io/trait.Write.html
 [5]: https://en.wikipedia.org/wiki/Hash-based_message_authentication_code

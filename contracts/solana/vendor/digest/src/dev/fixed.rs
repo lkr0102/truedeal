@@ -1,22 +1,24 @@
-use crate::{Digest, FixedOutput, FixedOutputReset, HashMarker, dev::TestVector};
+use crate::{Digest, FixedOutput, FixedOutputReset, HashMarker, Update};
+use core::fmt::Debug;
 
 /// Fixed-output resettable digest test via the `Digest` trait
-pub fn fixed_reset_test<D: FixedOutputReset + Clone + Default + HashMarker>(
-    &TestVector { input, output }: &TestVector,
-) -> Result<(), &'static str> {
+pub fn fixed_reset_test<D>(input: &[u8], output: &[u8]) -> Option<&'static str>
+where
+    D: FixedOutputReset + Debug + Clone + Default + Update + HashMarker,
+{
     let mut hasher = D::new();
     // Test that it works when accepting the message all at once
     hasher.update(input);
     let mut hasher2 = hasher.clone();
     if hasher.finalize()[..] != output[..] {
-        return Err("whole message");
+        return Some("whole message");
     }
 
     // Test if reset works correctly
     hasher2.reset();
     hasher2.update(input);
     if hasher2.finalize_reset()[..] != output[..] {
-        return Err("whole message after reset");
+        return Some("whole message after reset");
     }
 
     // Test that it works when accepting the message in chunks
@@ -27,25 +29,26 @@ pub fn fixed_reset_test<D: FixedOutputReset + Clone + Default + HashMarker>(
             hasher2.update(chunk);
         }
         if hasher.finalize()[..] != output[..] {
-            return Err("message in chunks");
+            return Some("message in chunks");
         }
         if hasher2.finalize_reset()[..] != output[..] {
-            return Err("message in chunks");
+            return Some("message in chunks");
         }
     }
 
-    Ok(())
+    None
 }
 
 /// Variable-output resettable digest test
-pub fn fixed_test<D: FixedOutput + Default + HashMarker>(
-    &TestVector { input, output }: &TestVector,
-) -> Result<(), &'static str> {
+pub fn fixed_test<D>(input: &[u8], output: &[u8]) -> Option<&'static str>
+where
+    D: FixedOutput + Default + Debug + Clone,
+{
     let mut hasher = D::default();
     // Test that it works when accepting the message all at once
     hasher.update(input);
     if hasher.finalize_fixed()[..] != output[..] {
-        return Err("whole message");
+        return Some("whole message");
     }
 
     // Test that it works when accepting the message in chunks
@@ -55,8 +58,8 @@ pub fn fixed_test<D: FixedOutput + Default + HashMarker>(
             hasher.update(chunk);
         }
         if hasher.finalize_fixed()[..] != output[..] {
-            return Err("message in chunks");
+            return Some("message in chunks");
         }
     }
-    Ok(())
+    None
 }

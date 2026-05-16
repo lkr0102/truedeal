@@ -10,17 +10,11 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-edition = "2021"
+edition = "2018"
 name = "crypto-common"
-version = "0.2.1"
+version = "0.1.6"
 authors = ["RustCrypto Developers"]
-build = false
-autolib = false
-autobins = false
-autoexamples = false
-autotests = false
-autobenches = false
-description = "Common traits used by cryptographic algorithms"
+description = "Common cryptographic traits"
 documentation = "https://docs.rs/crypto-common"
 readme = "README.md"
 keywords = [
@@ -36,30 +30,22 @@ repository = "https://github.com/RustCrypto/traits"
 
 [package.metadata.docs.rs]
 all-features = true
-
-[features]
-getrandom = [
-    "rand_core",
-    "dep:getrandom",
+rustdoc-args = [
+    "--cfg",
+    "docsrs",
 ]
-rand_core = ["dep:rand_core"]
-zeroize = ["hybrid-array/zeroize"]
 
-[lib]
-name = "crypto_common"
-path = "src/lib.rs"
-
-[dependencies.getrandom]
-version = "0.4"
-features = ["sys_rng"]
-optional = true
-
-[dependencies.hybrid-array]
-version = "0.4.7"
+[dependencies.generic-array]
+version = "0.14.4"
+features = ["more_lengths"]
 
 [dependencies.rand_core]
-version = "0.10"
+version = "0.6"
 optional = true
 
+[dependencies.typenum]
+version = "1.14"
 
-
+[features]
+getrandom = ["rand_core/getrandom"]
+std = []

@@ -191,6 +191,12 @@ where
     R: io::Read,
 {
     /// Create a JSON input source to read from a std::io input stream.
+    ///
+    /// When reading from a source against which short reads are not efficient, such
+    /// as a [`File`], you will want to apply your own buffering because serde_json
+    /// will not buffer the input. See [`std::io::BufReader`].
+    ///
+    /// [`File`]: std::fs::File
     pub fn new(reader: R) -> Self {
         IoRead {
             iter: LineColIterator::new(reader.bytes()),
@@ -751,9 +757,9 @@ impl<'a> Read<'a> for StrRead<'a> {
 
 //////////////////////////////////////////////////////////////////////////////
 
-impl<'a, 'de, R> private::Sealed for &'a mut R where R: Read<'de> {}
+impl<'de, R> private::Sealed for &mut R where R: Read<'de> {}
 
-impl<'a, 'de, R> Read<'de> for &'a mut R
+impl<'de, R> Read<'de> for &mut R
 where
     R: Read<'de>,
 {
@@ -960,7 +966,7 @@ fn parse_unicode_escape<'de, R: Read<'de>>(
 
         // This value is in range U+10000..=U+10FFFF, which is always a valid
         // codepoint.
-        let n = (((n1 - 0xD800) as u32) << 10 | (n2 - 0xDC00) as u32) + 0x1_0000;
+        let n = ((((n1 - 0xD800) as u32) << 10) | (n2 - 0xDC00) as u32) + 0x1_0000;
         push_wtf8_codepoint(n, scratch);
         return Ok(());
     }
@@ -977,25 +983,32 @@ fn push_wtf8_codepoint(n: u32, scratch: &mut Vec<u8>) {
 
     scratch.reserve(4);
 
+    // SAFETY: After the `reserve` call, `scratch` has at least 4 bytes of
+    // allocated but uninitialized memory after its last initialized byte, which
+    // is where `ptr` points. All reachable match arms write `encoded_len` bytes
+    // to that region and update the length accordingly, and `encoded_len` is
+    // always <= 4.
     unsafe {
         let ptr = scratch.as_mut_ptr().add(scratch.len());
 
         let encoded_len = match n {
             0..=0x7F => unreachable!(),
             0x80..=0x7FF => {
-                ptr.write((n >> 6 & 0b0001_1111) as u8 | 0b1100_0000);
+                ptr.write(((n >> 6) & 0b0001_1111) as u8 | 0b1100_0000);
                 2
             }
             0x800..=0xFFFF => {
-                ptr.write((n >> 12 & 0b0000_1111) as u8 | 0b1110_0000);
-                ptr.add(1).write((n >> 6 & 0b0011_1111) as u8 | 0b1000_0000);
+                ptr.write(((n >> 12) & 0b0000_1111) as u8 | 0b1110_0000);
+                ptr.add(1)
+                    .write(((n >> 6) & 0b0011_1111) as u8 | 0b1000_0000);
                 3
             }
             0x1_0000..=0x10_FFFF => {
-                ptr.write((n >> 18 & 0b0000_0111) as u8 | 0b1111_0000);
+                ptr.write(((n >> 18) & 0b0000_0111) as u8 | 0b1111_0000);
                 ptr.add(1)
-                    .write((n >> 12 & 0b0011_1111) as u8 | 0b1000_0000);
-                ptr.add(2).write((n >> 6 & 0b0011_1111) as u8 | 0b1000_0000);
+                    .write(((n >> 12) & 0b0011_1111) as u8 | 0b1000_0000);
+                ptr.add(2)
+                    .write(((n >> 6) & 0b0011_1111) as u8 | 0b1000_0000);
                 4
             }
             0x11_0000.. => unreachable!(),

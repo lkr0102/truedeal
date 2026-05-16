@@ -10,17 +10,11 @@
 # See Cargo.toml.orig for the original contents.
 
 [package]
-edition = "2021"
+edition = "2018"
 name = "block-buffer"
-version = "0.12.0"
+version = "0.10.4"
 authors = ["RustCrypto Developers"]
-build = false
-autolib = false
-autobins = false
-autoexamples = false
-autotests = false
-autobenches = false
-description = "Buffer types for block processing of data"
+description = "Buffer type for block processing of data"
 documentation = "https://docs.rs/block-buffer"
 readme = "README.md"
 keywords = [
@@ -34,24 +28,5 @@ categories = [
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/RustCrypto/utils"
 
-[lib]
-name = "block_buffer"
-path = "src/lib.rs"
-
-[[test]]
-name = "mod"
-path = "tests/mod.rs"
-
-[dependencies.hybrid-array]
-version = "0.4"
-
-[dependencies.zeroize]
-version = "1.4"
-optional = true
-default-features = false
-
-[dev-dependencies.hex-literal]
-version = "1"
-
-
-
+[dependencies.generic-array]
+version = "0.14"

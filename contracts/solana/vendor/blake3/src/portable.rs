@@ -1,6 +1,6 @@
 use crate::{
-    BLOCK_LEN, CVBytes, CVWords, IV, IncrementCounter, MSG_SCHEDULE, OUT_LEN, counter_high,
-    counter_low,
+    counter_high, counter_low, CVBytes, CVWords, IncrementCounter, BLOCK_LEN, IV, MSG_SCHEDULE,
+    OUT_LEN,
 };
 use arrayref::{array_mut_ref, array_ref};
 

@@ -1,13 +1,13 @@
 [package]
 name = "blake3"
-version = "1.8.5"
+version = "1.5.0"
 authors = ["Jack O'Connor <oconnor663@gmail.com>", "Samuel Neves"]
 description = "the BLAKE3 hash function"
 repository = "https://github.com/BLAKE3-team/BLAKE3"
-license = "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"
+license = "CC0-1.0 OR Apache-2.0"
 documentation = "https://docs.rs/blake3"
 readme = "README.md"
-edition = "2024"
+edition = "2021"
 
 [features]
 default = ["std"]
@@ -18,29 +18,18 @@ default = ["std"]
 # implementation uses C intrinsics and requires a C compiler.
 neon = []
 
-# The Wasm SIMD implementation does not participate in dynamic feature detection,
-# which is currently x86-only. If "wasm_simd" is on, Wasm SIMD support is assumed.
-# Note that not all Wasm implementations support the Wasm SIMD specification.
-# This may become the default in the future.
-wasm32_simd = []
-
-# Enables std::io traits, including impl Write for Hasher, impl Read and Seek
-# for OutputReader, and the Hasher::update_reader method. This feature is
-# enabled by default. (Previously this also controlled runtime CPU feature
-# detection on x86, but now we use the no-std-compatible `cpufeatures` crate
-# for that.)
-# Also enables the `std` feature of the `constant_time_eq` dependency, which
-# toggles a runtime feature check on 64-bit ARM targets.
-std = ["constant_time_eq/std"]
+# This crate uses libstd for std::io trait implementations, and also for
+# runtime CPU feature detection. This feature is enabled by default. If you use
+# --no-default-features, the only way to use the SIMD implementations in this
+# crate is to enable the corresponding instruction sets statically for the
+# entire build, with e.g. RUSTFLAGS="-C target-cpu=native".
+std = []
 
 # The `rayon` feature (disabled by default, but enabled for docs.rs) adds the
 # `update_rayon` and (in combination with `mmap` below) `update_mmap_rayon`
 # methods, for multithreaded hashing. However, even if this feature is enabled,
 # all other APIs remain single-threaded.
-#
-# Implementation detail: We take a dependency on rayon-core instead of rayon,
-# because it builds faster and still includes all the APIs we need.
-rayon = ["dep:rayon-core"]
+rayon = ["dep:rayon", "std"]
 
 # The `mmap` feature (disabled by default, but enabled for docs.rs) adds the
 # `update_mmap` and (in combination with `rayon` above) `update_mmap_rayon`
@@ -57,20 +46,11 @@ zeroize = ["dep:zeroize", "arrayvec/zeroize"]
 # who use it should expect breaking changes between patch versions of this
 # crate. (The "*-preview" feature name follows the conventions of the RustCrypto
 # "signature" crate.)
-traits-preview = ["dep:digest"]
+traits-preview = ["digest"]
 
 # ---------- Features below this line are undocumented and unstable. ----------
 # The following features are mainly intended for testing and benchmarking, and
 # they might change or disappear at any time without a major version bump.
-
-# It wasn't originally intended to expose "digest" as its own feature, but the
-# traits-preview feature above predated the "dep:" syntax in Cargo. Version
-# 1.5.2 of this crate started using "dep:" syntax, but that broke some callers
-# in the wild (https://solana.stackexchange.com/q/17787/29050). This feature
-# unbreaks those callers. When Cargo gains the ability to deprecate features,
-# this feature will be deprecated. Note that the relevant trait implementations
-# are still gated by "traits-preview".
-digest = ["dep:digest"]
 
 # By default on x86_64, this crate uses Samuel Neves' hand-written assembly
 # implementations for SSE4.1, AVX2, and AVX512. (These provide both the best
@@ -114,27 +94,23 @@ features = ["mmap", "rayon", "serde", "zeroize"]
 [dependencies]
 arrayref = "0.3.5"
 arrayvec = { version = "0.7.4", default-features = false }
-constant_time_eq = { version = "0.4.2", default-features = false }
+constant_time_eq = "0.3.0"
 cfg-if = "1.0.0"
-digest = { version = "0.11.2", features = ["mac"], optional = true }
-memmap2 = { version = "0.9", optional = true }
-rayon-core = { version = "1.12.1", optional = true }
+digest = { version = "0.10.1", features = [ "mac" ], optional = true }
+memmap2 = { version = "0.7.1", optional = true }
+rayon = { version = "1.2.1", optional = true }
 serde = { version = "1.0", default-features = false, features = ["derive"], optional = true }
-zeroize = { version = "1", default-features = false, optional = true }
-
-[target.'cfg(any(target_arch = "x86", target_arch = "x86_64"))'.dependencies]
-cpufeatures = "0.3.0"
+zeroize = { version = "1", default-features = false, features = ["zeroize_derive"], optional = true }
 
 [dev-dependencies]
-hmac = "0.13.0"
+hmac = "0.12.0"
 hex = "0.4.2"
 page_size = "0.6.0"
-rand = "0.10.0"
-chacha20 = "0.10.0"
+rand = "0.8.0"
+rand_chacha = "0.3.0"
 reference_impl = { path = "./reference_impl" }
 tempfile = "3.8.0"
 serde_json = "1.0.107"
-ciborium = "0.2.2"
 
 [build-dependencies]
-cc = "1.1.12"
+cc = "1.0.4"

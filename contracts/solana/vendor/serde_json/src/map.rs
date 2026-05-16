@@ -3,9 +3,10 @@
 //! By default the map is backed by a [`BTreeMap`]. Enable the `preserve_order`
 //! feature of serde_json to use [`IndexMap`] instead.
 //!
-//! [`BTreeMap`]: https://doc.rust-lang.org/std/collections/struct.BTreeMap.html
-//! [`IndexMap`]: https://docs.rs/indexmap/*/indexmap/map/struct.IndexMap.html
+//! [`BTreeMap`]: std::collections::BTreeMap
+//! [`IndexMap`]: indexmap::IndexMap
 
+use crate::error::Error;
 use crate::value::Value;
 use alloc::string::String;
 #[cfg(feature = "preserve_order")]
@@ -337,6 +338,14 @@ impl Map<String, Value> {
         }
     }
 
+    /// Gets an iterator over the values of the map.
+    #[inline]
+    pub fn into_values(self) -> IntoValues {
+        IntoValues {
+            iter: self.map.into_values(),
+        }
+    }
+
     /// Retains only the elements specified by the predicate.
     ///
     /// In other words, remove all pairs `(k, v)` such that `f(&k, &mut v)`
@@ -347,6 +356,29 @@ impl Map<String, Value> {
         F: FnMut(&String, &mut Value) -> bool,
     {
         self.map.retain(f);
+    }
+
+    /// Sorts this map's entries in-place using `str`'s usual ordering.
+    ///
+    /// If serde_json's "preserve_order" feature is not enabled, this method
+    /// does no work because all JSON maps are always kept in a sorted state.
+    ///
+    /// If serde_json's "preserve_order" feature is enabled, this method
+    /// destroys the original source order or insertion order of this map in
+    /// favor of an alphanumerical order that matches how a BTreeMap with the
+    /// same contents would be ordered. This takes **O(n log n + c)** time where
+    /// _n_ is the length of the map and _c_ is the capacity.
+    ///
+    /// Other maps nested within the values of this map are not sorted. If you
+    /// need the entire data structure to be sorted at all levels, you must also
+    /// call
+    /// <code>map.[values_mut]\().for_each([Value::sort_all_objects])</code>.
+    ///
+    /// [values_mut]: Map::values_mut
+    #[inline]
+    pub fn sort_keys(&mut self) {
+        #[cfg(feature = "preserve_order")]
+        self.map.sort_unstable_keys();
     }
 }
 
@@ -415,7 +447,7 @@ impl Hash for Map<String, Value> {
 /// }
 /// # ;
 /// ```
-impl<'a, Q> ops::Index<&'a Q> for Map<String, Value>
+impl<Q> ops::Index<&Q> for Map<String, Value>
 where
     String: Borrow<Q>,
     Q: ?Sized + Ord + Eq + Hash,
@@ -438,7 +470,7 @@ where
 /// #
 /// map["key"] = json!("value");
 /// ```
-impl<'a, Q> ops::IndexMut<&'a Q> for Map<String, Value>
+impl<Q> ops::IndexMut<&Q> for Map<String, Value>
 where
     String: Borrow<Q>,
     Q: ?Sized + Ord + Eq + Hash,
@@ -566,13 +598,28 @@ macro_rules! delegate_iterator {
     }
 }
 
+impl<'de> de::IntoDeserializer<'de, Error> for Map<String, Value> {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
+impl<'de> de::IntoDeserializer<'de, Error> for &'de Map<String, Value> {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self::Deserializer {
+        self
+    }
+}
+
 //////////////////////////////////////////////////////////////////////////////
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
 /// This enum is constructed from the [`entry`] method on [`Map`].
 ///
-/// [`entry`]: struct.Map.html#method.entry
-/// [`Map`]: struct.Map.html
+/// [`entry`]: Map::entry
 pub enum Entry<'a> {
     /// A vacant Entry.
     Vacant(VacantEntry<'a>),
@@ -581,15 +628,11 @@ pub enum Entry<'a> {
 }
 
 /// A vacant Entry. It is part of the [`Entry`] enum.
-///
-/// [`Entry`]: enum.Entry.html
 pub struct VacantEntry<'a> {
     vacant: VacantEntryImpl<'a>,
 }
 
 /// An occupied Entry. It is part of the [`Entry`] enum.
-///
-/// [`Entry`]: enum.Entry.html
 pub struct OccupiedEntry<'a> {
     occupied: OccupiedEntryImpl<'a>,
 }
@@ -1013,6 +1056,7 @@ impl<'a> IntoIterator for &'a Map<String, Value> {
 }
 
 /// An iterator over a serde_json::Map's entries.
+#[derive(Clone, Debug)]
 pub struct Iter<'a> {
     iter: IterImpl<'a>,
 }
@@ -1038,6 +1082,7 @@ impl<'a> IntoIterator for &'a mut Map<String, Value> {
 }
 
 /// A mutable iterator over a serde_json::Map's entries.
+#[derive(Debug)]
 pub struct IterMut<'a> {
     iter: IterMutImpl<'a>,
 }
@@ -1063,6 +1108,7 @@ impl IntoIterator for Map<String, Value> {
 }
 
 /// An owning iterator over a serde_json::Map's entries.
+#[derive(Debug)]
 pub struct IntoIter {
     iter: IntoIterImpl,
 }
@@ -1077,6 +1123,7 @@ delegate_iterator!((IntoIter) => (String, Value));
 //////////////////////////////////////////////////////////////////////////////
 
 /// An iterator over a serde_json::Map's keys.
+#[derive(Clone, Debug)]
 pub struct Keys<'a> {
     iter: KeysImpl<'a>,
 }
@@ -1091,6 +1138,7 @@ delegate_iterator!((Keys<'a>) => &'a String);
 //////////////////////////////////////////////////////////////////////////////
 
 /// An iterator over a serde_json::Map's values.
+#[derive(Clone, Debug)]
 pub struct Values<'a> {
     iter: ValuesImpl<'a>,
 }
@@ -1105,6 +1153,7 @@ delegate_iterator!((Values<'a>) => &'a Value);
 //////////////////////////////////////////////////////////////////////////////
 
 /// A mutable iterator over a serde_json::Map's values.
+#[derive(Debug)]
 pub struct ValuesMut<'a> {
     iter: ValuesMutImpl<'a>,
 }
@@ -1115,3 +1164,18 @@ type ValuesMutImpl<'a> = btree_map::ValuesMut<'a, String, Value>;
 type ValuesMutImpl<'a> = indexmap::map::ValuesMut<'a, String, Value>;
 
 delegate_iterator!((ValuesMut<'a>) => &'a mut Value);
+
+//////////////////////////////////////////////////////////////////////////////
+
+/// An owning iterator over a serde_json::Map's values.
+#[derive(Debug)]
+pub struct IntoValues {
+    iter: IntoValuesImpl,
+}
+
+#[cfg(not(feature = "preserve_order"))]
+type IntoValuesImpl = btree_map::IntoValues<String, Value>;
+#[cfg(feature = "preserve_order")]
+type IntoValuesImpl = indexmap::map::IntoValues<String, Value>;
+
+delegate_iterator!((IntoValues) => Value);
