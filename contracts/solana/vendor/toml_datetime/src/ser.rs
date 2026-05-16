@@ -33,7 +33,7 @@ impl core::fmt::Display for SerializerError {
     }
 }
 
-impl core::error::Error for SerializerError {}
+
 
 /// Serializer / format support for emitting [`Datetime`][crate::Datetime]
 #[derive(Default)]

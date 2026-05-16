@@ -240,7 +240,7 @@ pub struct ParseWeekdayError {
 }
 
 #[cfg(all(not(feature = "std"), feature = "core-error"))]
-impl core::error::Error for ParseWeekdayError {}
+
 
 #[cfg(feature = "std")]
 impl std::error::Error for ParseWeekdayError {}
