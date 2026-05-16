@@ -34,6 +34,11 @@
    - **Persistence:** Implemented `zero_checksums.py` and `clean_manifests.py` to bypass Cargo integrity checks and sanitize corrupted TOML fragments.
    - **Agent Rule:** *NEVER run `cargo update` or `cargo vendor` without re-applying the stability scripts (`brute_patch.py`, etc.). The local vendor source is the ONLY source of truth for the SBF compiler.*
 4. **DOCSYNC Legal Alignment:** `contracts/solana/programs/truedeal/src/lib.rs` was audited. `settle_performance_agreement` now explicitly checks for `DealGuardConsensusFailed`, bridging the legal thesis to the code.
+5. **Dynamic Sovereign Deploy (CI/CD Failsafe):**
+   - **Context:** Hardcoded Program IDs and missing keypair authority in GitHub Secrets often break automated deployments on Devnet.
+   - **Action Taken:** Implemented a self-healing workflow that generates a fresh keypair, extracts the ID, and injects it into `lib.rs` and `Anchor.toml` via `sed` before building.
+   - **Persistence:** The CI now uploads `truedeal.so` and `idl.json` as artifacts regardless of deploy success.
+   - **Agent Rule:** *Always check the latest GitHub Release or Action artifacts for the current Program ID. Do not trust the hardcoded ID in the local repository as it is dynamically managed by the Sovereign Pipeline.*
 
 </current_mesh_state>
 
@@ -42,8 +47,10 @@
 1. **Node 1 (Verification) ✅:** Run `pnpm dev`, click "Protocol Override", verify Dashboard loads with mock user.
 2. **Node 2 (Blockchain Integration) ✅ DONE:** `anchor-client.ts` now has full typed methods. `settlement.ts` runs a real 5-step pipeline ending with an on-chain Anchor transaction on Devnet (auto-bypassed in demo mode).
 3. **Node 2b (Frontend Hook — Lukas):** The Lukas frontend must call `settleDealProtocol(dealId, beneficiaryWalletAddress)` from the Deal Detail page when a judge/admin clicks "Finalizar Acordo". The function returns `{ txSignature, explorerUrl }` — the `explorerUrl` should be rendered as a link for auditability.
-4. **Node 3 (UI Polish) ✅ DONE:** Render the DealGuard verification status chip (e.g. `risk_score`, `fraud_reason`) per participant in the active agreements list.
-5. **Node 5 (Internationalization - i18n):** Implement a centralized dictionary system. Default the entire app to **English** (strategic for global judges) with a high-fidelity **Language Toggle** (PT/EN) in the Profile or Navbar.
+4. **Node 2c (Infrastructure Maintenance):** Ensure the Fee Payer Wallet (`1ZixuegY1EPvDeybLLGXW29aM2WuC4kA8dcfXbSNoNW`) is funded with at least 5 SOL on Devnet to avoid deploy interruptions.
+   - **Task:** Request airdrops or transfer SOL manually if CI faucet calls fail.
+5. **Node 3 (UI Polish) ✅ DONE:** Render the DealGuard verification status chip (e.g. `risk_score`, `fraud_reason`) per participant in the active agreements list.
+6. **Node 5 (Internationalization - i18n):** Implement a centralized dictionary system. Default the entire app to **English** (strategic for global judges) with a high-fidelity **Language Toggle** (PT/EN) in the Profile or Navbar.
    - **Key Action:** Replace hardcoded strings with `t('key')` helpers mapped in `lib/i18n.ts`.
 
 **[ACKNOWLEDGE]**
