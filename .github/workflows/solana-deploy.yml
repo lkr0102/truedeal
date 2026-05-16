@@ -58,6 +58,8 @@ jobs:
           echo "$SOLANA_PAYER_KEY" > ~/.config/solana/id.json
           chmod 600 ~/.config/solana/id.json
           solana config set --keypair ~/.config/solana/id.json --url devnet
+          # Request airdrop for deploy rent
+          solana airdrop 2 || true
           solana balance
 
       # - name: Setup Program Keypair
