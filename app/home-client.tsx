@@ -271,7 +271,7 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
 
       <div className="grid grid-cols-2 gap-1.5 mb-2.5">
         {[
-          { label: t("create_entry_fee", lang), value: `R$${deal.valuePerPerson}/${lang === "pt" ? "pessoa" : "person"}` },
+          { label: t("create_entry_fee", lang), value: `$${deal.valuePerPerson.toLocaleString("en-US", { minimumFractionDigits: 2 })}/${lang === "pt" ? "pessoa" : "person"}` },
           { label: lang === "pt" ? "Regra" : "Rule", value: ruleDisplay, green: true },
           { label: lang === "pt" ? "Participantes" : "Participants", value: `${deal.participants} players` },
           {
@@ -312,7 +312,7 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
               <div className="flex items-center gap-1">
                 {isWinning && <Trophy className="w-3 h-3 text-yellow-500" />}
                 <span className={`text-[10px] font-bold ${isWinning ? "text-green-600" : "text-gray-400"}`}>
-                  {deal.myRank}º{isWinning ? ` · R$${deal.potentialWin?.toLocaleString(lang === "pt" ? "pt-BR" : "en-US")}` : (lang === "pt" ? " lugar" : " place")}
+                  {deal.myRank}º{isWinning ? ` · $${deal.potentialWin?.toLocaleString("en-US")}` : (lang === "pt" ? " lugar" : " place")}
                 </span>
               </div>
             )}
@@ -371,8 +371,8 @@ const FEATURED_DEALS = [
     titleEn: "Strava Week",
     desc: "5 km/dia · Verificado via Strava",
     descEn: "5 km/day · Verified via Strava",
-    pot: "R$ 5.000",
-    entry: "R$ 50",
+    pot: "$5,000",
+    entry: "$50",
     players: 98,
     daysLeft: 4,
     progress: 0.72,
@@ -388,8 +388,8 @@ const FEATURED_DEALS = [
     titleEn: "30-Day Gym",
     desc: "Check-in diário · Verificado via Wellhub",
     descEn: "Daily check-in · Verified via Wellhub",
-    pot: "R$ 1.200",
-    entry: "R$ 25",
+    pot: "$1,200",
+    entry: "$25",
     players: 48,
     daysLeft: 12,
     progress: 0.60,
@@ -984,13 +984,13 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <p className="text-[10px] text-gray-500 mb-0.5">{t("dash_total_at_stake", language)}</p>
-                      <p className="text-xl font-bold text-gray-800">R${footerAtStake.toLocaleString(language === "pt" ? "pt-BR" : "en-US")}</p>
+                      <p className="text-xl font-bold text-gray-800">${footerAtStake.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
                       <p className="text-[10px] text-gray-400">{myActiveDeals.length} deal(s) {t("status_active", language).toLowerCase()}</p>
                     </div>
                     <div>
                       <p className="text-[10px] text-gray-500 mb-0.5">{t("dash_potential_win", language)}</p>
                       <p className="text-xl font-bold" style={{ color: footerPotential > 0 ? "#3DBF6A" : "#9CA3AF" }}>
-                        R${footerPotential.toLocaleString(language === "pt" ? "pt-BR" : "en-US")}
+                        ${footerPotential.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                       </p>
                       <p className="text-[10px] text-gray-400">{t("dash_in_current_pos", language)}</p>
                     </div>

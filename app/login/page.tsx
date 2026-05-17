@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, X } from "lucide-react"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { createClient } from "@/lib/supabase/client"
@@ -52,7 +52,8 @@ const WALLET_INSTALL = {
 } as const
 
 export default function LoginPage() {
-  const router = useRouter()
+  const router       = useRouter()
+  const searchParams = useSearchParams()
 
   // ── Supabase auth state ──
   const [email,        setEmail]        = useState("")
@@ -60,7 +61,9 @@ export default function LoginPage() {
   const [showPwd,      setShowPwd]      = useState(false)
   const [isSignUp,     setIsSignUp]     = useState(false)
   const [isLoading,    setIsLoading]    = useState(false)
-  const [authError,    setAuthError]    = useState<string | null>(null)
+  const [authError,    setAuthError]    = useState<string | null>(
+    searchParams.get("error") ? "Falha na autenticação. Tente novamente." : null
+  )
 
   // ── Wallet state ──
   const [showWallets,  setShowWallets]  = useState(false)
@@ -223,7 +226,7 @@ export default function LoginPage() {
             <TrueDealAppIcon size={80} />
           </div>
           <h1 className="text-2xl font-bold text-gray-800">True Deal</h1>
-          <p className="text-gray-600 text-sm mt-1 font-medium">Don&apos;t trust, make a True Deal</p>
+          <p className="text-gray-600 text-sm mt-1 font-medium">Set your goals. Honor your word. Get paid for it.</p>
         </div>
 
         {/* ── E-mail / senha ── */}

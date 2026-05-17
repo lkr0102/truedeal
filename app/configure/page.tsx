@@ -270,7 +270,7 @@ export default function ConfigureDealPage() {
           >
             <p className="text-[10px] font-bold text-gray-500 tracking-widest mb-1">SEU DEPÓSITO</p>
             <p className="text-3xl font-bold" style={{ color: "#16A34A" }}>
-              R$ {effectiveAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              ${effectiveAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </p>
             <p className="text-xs text-gray-500 mt-1">
               O pote cresce com cada participante que entrar

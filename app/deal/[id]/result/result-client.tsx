@@ -118,7 +118,7 @@ export default function DealResultClient({
         initials: getInitials(name),
         name,
         metric:   snapVal > 0 ? snapVal.toLocaleString("pt-BR") : "—",
-        reward:   `R$${reward.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+        reward:   `$${reward.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
         color:    PLAYER_COLORS[i % PLAYER_COLORS.length],
         isMe:     p.user_id === userId,
         isWinner: p.user_id === deal.winner_id,
@@ -157,8 +157,8 @@ export default function DealResultClient({
   function handleShare(platform: string) {
     const winText = isWinner
       ? (language === "pt" 
-          ? `Acabei de vencer "${deal.title}"! 🏆 Ganhei R$${myReward.toLocaleString("pt-BR")} na True Deal. Quer participar?`
-          : `I just won "${deal.title}"! 🏆 I earned R$${myReward.toLocaleString("pt-BR")} on True Deal. Want to join?`)
+          ? `Acabei de vencer "${deal.title}"! 🏆 Ganhei $${myReward.toLocaleString("en-US", { minimumFractionDigits: 2 })} na True Deal. Quer participar?`
+          : `I just won "${deal.title}"! 🏆 I earned $${myReward.toLocaleString("en-US", { minimumFractionDigits: 2 })} on True Deal. Want to join?`)
       : (language === "pt"
           ? `Confira o resultado do deal "${deal.title}" na True Deal!`
           : `Check out the result of deal "${deal.title}" on True Deal!`)
@@ -231,7 +231,7 @@ export default function DealResultClient({
             <p className="text-sm font-semibold opacity-90 mb-1">{language === "pt" ? "Vencedor do Deal" : "Deal Winner"}</p>
             <h1 className="text-2xl font-black mb-3">{winnerPlayer?.name ?? "—"}</h1>
             <div className="text-4xl font-bold mb-1">
-              R${rewardForRank(deal.distribution, deal.net_pot, 1).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              ${rewardForRank(deal.distribution, deal.net_pot, 1).toLocaleString("en-US", { minimumFractionDigits: 2 })}
             </div>
             <p className="text-xs opacity-70 mb-4">{language === "pt" ? `Após fee True Deal (${deal.fee_pct}%)` : `After True Deal fee (${deal.fee_pct}%)`}</p>
             <div className="pt-4 border-t border-white/20 text-xs opacity-80 space-y-1">
@@ -252,7 +252,7 @@ export default function DealResultClient({
             <div>
               <p className="text-xs font-bold text-[#16A34A] uppercase tracking-wide">{language === "pt" ? "Pagamento confirmado" : "Payment confirmed"}</p>
               <p className="text-sm font-semibold text-gray-800 mt-0.5">
-                R${myReward.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} — {language === "pt" ? "parabéns!" : "congratulations!"}
+                ${myReward.toLocaleString("en-US", { minimumFractionDigits: 2 })} — {language === "pt" ? "parabéns!" : "congratulations!"}
               </p>
             </div>
           </div>
@@ -273,7 +273,7 @@ export default function DealResultClient({
               </div>
               <div className="text-right">
                 <p className="text-base font-black text-[#16A34A]">
-                  R${myReward.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  ${myReward.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                 </p>
                 {myPlayer.metric !== "—" && <p className="text-xs text-gray-500">{myPlayer.metric} pts</p>}
               </div>
@@ -285,7 +285,7 @@ export default function DealResultClient({
         <div className="grid grid-cols-3 gap-3">
           {[
             { Icon: Clock,  value: `${durationDays}d`, label: language === "pt" ? "Duração" : "Duration" },
-            { Icon: Wallet, value: `R$${deal.entry_amount.toLocaleString("pt-BR")}`, label: language === "pt" ? "Entrada" : "Entry" },
+            { Icon: Wallet, value: `$${deal.entry_amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, label: language === "pt" ? "Entrada" : "Entry" },
             { Icon: Shield, value: channel.toUpperCase(), label: language === "pt" ? "Verificado" : "Verified" },
           ].map(stat => {
             const Icon = stat.Icon
@@ -304,7 +304,7 @@ export default function DealResultClient({
         <div className="rounded-2xl p-4"
           style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(30px)", border: "1px solid rgba(255,255,255,0.6)" }}>
           <p className="text-xs font-bold text-gray-500 mb-3 uppercase tracking-wide">
-            {language === "pt" ? "Distribuição" : "Distribution"} (R${deal.pot_total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })})
+            {language === "pt" ? "Distribuição" : "Distribution"} ($${deal.pot_total.toLocaleString("en-US", { minimumFractionDigits: 2 })})
           </p>
           <div className="space-y-3">
             {payoutRows.map((row, i) => (
@@ -312,7 +312,7 @@ export default function DealResultClient({
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-sm font-semibold text-gray-800">{row.position}</span>
                   <span className="text-sm font-bold text-gray-800">
-                    {row.pct}% · R${row.amount.toLocaleString("pt-BR")}
+                    {row.pct}% · ${row.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                   </span>
                 </div>
                 <div className="h-2 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.06)" }}>
@@ -392,7 +392,7 @@ export default function DealResultClient({
           <div className="relative z-10">
             <p className="text-xs opacity-70 mb-1">{language === "pt" ? "Compartilhe sua vitória" : "Share your victory"}</p>
             <p className="text-base font-bold mb-2">{deal.title}</p>
-            {myPlayer && <p className="text-3xl font-black mb-1">R${myReward.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>}
+            {myPlayer && <p className="text-3xl font-black mb-1">${myReward.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>}
             <p className="text-xs opacity-70">{myPlayer?.rank ?? 1}{language === "pt" ? "º" : (myPlayer?.rank === 1 ? "st" : myPlayer?.rank === 2 ? "nd" : myPlayer?.rank === 3 ? "rd" : "th")} {language === "pt" ? "lugar" : "place"}</p>
           </div>
         </div>

@@ -50,6 +50,21 @@ export async function proxy(request: NextRequest) {
   const isPublic      = PUBLIC_ROUTES.some(r => pathname.startsWith(r))
   const isOnboarding  = ONBOARDING_ROUTES.some(r => pathname.startsWith(r))
 
+  // Supabase OAuth error: redireciona /?error_code=... → /login com mensagem
+  if (pathname === "/" && request.nextUrl.searchParams.has("error_code")) {
+    const url = request.nextUrl.clone()
+    url.pathname = "/login"
+    url.searchParams.set(
+      "error",
+      request.nextUrl.searchParams.get("error_description") ??
+        request.nextUrl.searchParams.get("error_code") ??
+        "auth_error",
+    )
+    url.searchParams.delete("error_code")
+    url.searchParams.delete("error_description")
+    return NextResponse.redirect(url)
+  }
+
   // Não autenticado → login
   if (!user && !isPublic) {
     const url = request.nextUrl.clone()

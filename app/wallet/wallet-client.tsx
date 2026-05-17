@@ -74,7 +74,7 @@ function formatDate(isoString: string): string {
   return `${String(date.getDate()).padStart(2, "0")} ${MONTHS[date.getMonth()]}`
 }
 
-type Currency = "usd" | "sol" | "brl"
+type Currency = "usd" | "sol"
 type ModalType = "deposit" | "withdraw" | null
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ type ModalType = "deposit" | "withdraw" | null
 interface WalletClientProps {
   profile:          Profile | null
   tdpHistory:       TdpTransaction[]
-  activeDealsValue: number           // sum of entry amounts in BRL
+  activeDealsValue: number           // sum of entry amounts in USDC
   managedPublicKey: string | null
   solBalance:       number
   solUsdPrice:      number
@@ -115,19 +115,16 @@ export default function WalletClient({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  // ── Currency conversion
-  const BRL_RATE  = 5.85 // approximate USD → BRL
-
+  // ── Currency helpers
   const totalUsd     = solBalance * solUsdPrice
-  const frozenUsd    = activeDealsValue / BRL_RATE
+  const frozenUsd    = activeDealsValue   // entry_amount is already in USDC (USD)
   const availableUsd = Math.max(0, totalUsd - frozenUsd)
 
   function fmtAmount(usdAmount: number, hide = false): string {
     if (hide) return "••••"
     switch (currency) {
-      case "usd": return `$ ${usdAmount.toFixed(2)}`
+      case "usd": return `$${usdAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
       case "sol": return `${(solUsdPrice > 0 ? usdAmount / solUsdPrice : 0).toFixed(4)} SOL`
-      case "brl": return (usdAmount * BRL_RATE).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
     }
   }
 
@@ -139,8 +136,8 @@ export default function WalletClient({
   // ── Deal-only history
   const dealHistory = tdpHistory.filter(tx => DEAL_REASONS.includes(tx.reason))
 
-  const CURRENCY_LABELS: Record<Currency, string> = { usd: "USD", sol: "SOL", brl: "BRL" }
-  const CURRENCY_CYCLE: Currency[] = ["usd", "sol", "brl"]
+  const CURRENCY_LABELS: Record<Currency, string> = { usd: "USD", sol: "SOL" }
+  const CURRENCY_CYCLE: Currency[] = ["usd", "sol"]
   function cycleCurrency() {
     const idx = CURRENCY_CYCLE.indexOf(currency)
     setCurrency(CURRENCY_CYCLE[(idx + 1) % 3])

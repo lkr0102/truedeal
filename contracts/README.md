@@ -187,6 +187,6 @@ Antes de usar em produção, recomenda-se:
 
 <div align="center">
 
-*Don't trust. Make a Deal.*
+*Set your goals. Honor your word. Get paid for it.*
 
 </div>

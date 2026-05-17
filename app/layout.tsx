@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://truedeal.app"),
-  title: "True Deal — Don't trust. Make a Deal.",
+  title: "True Deal — Set your goals. Honor your word. Get paid for it.",
   description: "Acordos digitais com stake e verificação automática. Árbitro neutro entre pessoas.",
   icons: {
     icon: [
@@ -27,14 +27,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: "True Deal",
-    description: "Don't trust. Make a Deal.",
+    description: "Set your goals. Honor your word. Get paid for it.",
     images: [{ url: "/brand/og-banner-1200x630.svg", width: 1200, height: 630 }],
     siteName: "True Deal",
   },
   twitter: {
     card: "summary_large_image",
     title: "True Deal",
-    description: "Don't trust. Make a Deal.",
+    description: "Set your goals. Honor your word. Get paid for it.",
     images: ["/brand/og-banner-1200x630.svg"],
   },
   other: {

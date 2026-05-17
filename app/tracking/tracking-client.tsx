@@ -245,8 +245,8 @@ export default function TrackingClient({
     })
     .sort((a, b) => a.rank - b.rank)
 
-  const pot      = `R$${deal.pot_total.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
-  const perPerson = `R$${deal.entry_amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+  const pot      = `$${deal.pot_total.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+  const perPerson = `$${deal.entry_amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
   const subtitle  = `${deal.participant_count} participante${deal.participant_count !== 1 ? "s" : ""}`
   const rules     = deal.description
     ? deal.description.split("\n").map(l => l.trim()).filter(Boolean)

@@ -42,20 +42,26 @@ const CHANNEL_ICONS: Record<string, string> = {
   discord: "D", youtube: "▶", strava: "S", wellhub: "W", totalpass: "T",
 }
 
-const RULES: Record<string, { id: string; label: string; desc: string; descEn: string; available: boolean }[]> = {
+const RULES: Record<string, { id: string; label: string; labelEn: string; desc: string; descEn: string; available: boolean }[]> = {
   x: [
-    { id: "post",       label: "Post diário",  desc: "Postar qualquer conteúdo no X uma vez por dia", descEn: "Post any content on X once a day",   available: true  },
-    { id: "engagement", label: "Engagement",   desc: "Atingir meta de curtidas/reposts",              descEn: "Reach likes/reposts goal",            available: false },
+    { id: "post",             label: "Post diário",           labelEn: "Daily post",           desc: "Publicar pelo menos N posts por janela de frequência",            descEn: "Publish at least N posts per frequency window",         available: true  },
+    { id: "follower_gained",  label: "Seguidores recebidos",  labelEn: "Followers gained",     desc: "Ganhar N seguidores líquidos por janela (novos − perdidos)",      descEn: "Gain N net followers per window (new − lost)",          available: false },
+    { id: "impressions",      label: "Impressões",            labelEn: "Impressions",          desc: "Atingir N impressões totais nas publicações da janela",           descEn: "Reach N total impressions on posts within the window",  available: true  },
+    { id: "repost_received",  label: "Reposts recebidos",     labelEn: "Reposts received",     desc: "Receber N reposts nas publicações da janela",                     descEn: "Receive N reposts on posts within the window",          available: false },
+    { id: "comment_received", label: "Comentários recebidos", labelEn: "Comments received",    desc: "Receber N comentários nas publicações da janela",                 descEn: "Receive N comments on posts within the window",         available: false },
   ],
   strava: [
-    { id: "km_run",   label: "Distância acumulada", desc: "Correr X km durante o período",               descEn: "Run X km during the period",               available: true  },
-    { id: "activity", label: "Frequência",           desc: "Registrar X atividades na semana",             descEn: "Register X activities per week",            available: false },
+    { id: "km_run",        label: "Kms corridos",       labelEn: "Km run",            desc: "Correr pelo menos N km durante a janela (apenas atividades Run)",    descEn: "Run at least N km during the window (Run activities only)",     available: true  },
+    { id: "pace",          label: "Pace médio",          labelEn: "Average pace",      desc: "Manter pace médio ≤ ao configurado pelo criador por janela",        descEn: "Keep average pace ≤ configured by creator per window",          available: false },
+    { id: "workout_hours", label: "Horas de exercício", labelEn: "Workout hours",     desc: "Registrar N horas de atividade no Strava por janela",               descEn: "Log N hours of activity in Strava per window",                  available: false },
   ],
   wellhub: [
-    { id: "checkin", label: "Check-in diário", desc: "Fazer check-in na academia via Wellhub",   descEn: "Check-in at the gym via Wellhub",   available: true },
+    { id: "checkin",          label: "Check-in diário",     labelEn: "Daily check-in",       desc: "Fazer N check-ins em academia parceira Wellhub por janela",  descEn: "Do N check-ins at a Wellhub partner gym per window",    available: true  },
+    { id: "different_venues", label: "Ambientes diferentes", labelEn: "Different venues",    desc: "Visitar N academias distintas via Wellhub por janela",       descEn: "Visit N different Wellhub gyms per window",             available: false },
   ],
   totalpass: [
-    { id: "checkin", label: "Check-in diário", desc: "Fazer check-in na academia via TotalPass", descEn: "Check-in at the gym via TotalPass", available: true },
+    { id: "checkin",          label: "Check-in diário",     labelEn: "Daily check-in",       desc: "Fazer N check-ins em academia parceira TotalPass por janela", descEn: "Do N check-ins at a TotalPass partner gym per window",  available: true  },
+    { id: "different_venues", label: "Ambientes diferentes", labelEn: "Different venues",    desc: "Visitar N academias distintas via TotalPass por janela",     descEn: "Visit N different TotalPass gyms per window",           available: false },
   ],
 }
 
@@ -260,12 +266,12 @@ function calendarCells(year: number, month: number): (Date | null)[] {
   while (cells.length % 7 !== 0) cells.push(null)
   return cells
 }
-function getSharedRules(ids: string[], lang: Language): { id: string; label: string; desc: string; descEn: string; available: boolean }[] {
+function getSharedRules(ids: string[], lang: Language): { id: string; label: string; labelEn: string; desc: string; descEn: string; available: boolean }[] {
   if (ids.length === 0) return []
   if (ids.length === 1) return RULES[ids[0]] ?? []
   // Multiple channels: union of all rules (no duplicate ids)
   const seen = new Set<string>()
-  const result: { id: string; label: string; desc: string; descEn: string; available: boolean }[] = []
+  const result: { id: string; label: string; labelEn: string; desc: string; descEn: string; available: boolean }[] = []
   for (const id of ids) {
     for (const r of RULES[id] ?? []) {
       if (!seen.has(r.id)) { seen.add(r.id); result.push(r) }
@@ -335,6 +341,7 @@ export default function CreateDealPage() {
   const [complianceOpen,  setComplianceOpen]  = useState(false)
   const [showInfo,        setShowInfo]        = useState(false)
   const [showPrivacyInfo, setShowPrivacyInfo] = useState<"private" | "public" | null>(null)
+  const [ruleInfoId,      setRuleInfoId]      = useState<string | null>(null)
   const [isSubmitting,  setIsSubmitting]  = useState(false)
   const [submitError,   setSubmitError]   = useState<string | null>(null)
   const [missingSocial, setMissingSocial] = useState<string[] | null>(null)
@@ -352,7 +359,7 @@ export default function CreateDealPage() {
     ? selectedChannels.map(id => channels.find(c => c.id === id)?.label ?? id).join(` ${fitnessConnector.toUpperCase()} `)
     : null
 
-  const ruleLabel  = rule      ? (availableRules.find(r => r.id === rule)?.label ?? rule) : null
+  const ruleLabel  = rule      ? (availableRules.find(r => r.id === rule)?.[language === "pt" ? "label" : "labelEn"] ?? rule) : null
   const freqLabel  = frequency ? (FREQUENCIES.find(f => f.id === frequency)?.[language === "pt" ? "label" : "labelEn"] ?? frequency) : null
 
   const isValid =
@@ -464,7 +471,7 @@ export default function CreateDealPage() {
     {
       icon: "💰", iconBg: "rgba(22,163,74,0.1)",
       key: language === "pt" ? "Financeiro" : "Financial",
-      val: effectiveAmount > 0 ? `R$${effectiveAmount}/${language === "pt" ? "pessoa" : "person"} · ${DISTRIBUTION_TYPES.find(d => d.id === distribution)?.[language === "pt" ? "label" : "labelEn"]}` : "—",
+      val: effectiveAmount > 0 ? `$${effectiveAmount}/${language === "pt" ? "pessoa" : "person"} · ${DISTRIBUTION_TYPES.find(d => d.id === distribution)?.[language === "pt" ? "label" : "labelEn"]}` : "—",
     },
   ]
 
@@ -576,69 +583,90 @@ export default function CreateDealPage() {
               title={t("create_channel_title", language)}
               sub={category === "fitness" ? (language === "pt" ? "Selecione um ou mais canais" : "Select one or more channels") : (language === "pt" ? "Plataforma de verificação" : "Verification platform")}
             >
-              <div className="space-y-2">
-                {channels.map((ch, idx) => {
-                  const isSelected   = selectedChannels.includes(ch.id)
-                  const prevCh       = channels[idx - 1]
-                  const prevSelected = prevCh && selectedChannels.includes(prevCh.id)
-                  const showConnector = category === "fitness" && idx > 0 && isSelected && prevSelected
+              {/* Available channels */}
+              {(() => {
+                const availableChannels = channels.filter(ch => ch.available)
+                return (
+                  <div className="space-y-2">
+                    {availableChannels.map((ch, idx) => {
+                      const isSelected    = selectedChannels.includes(ch.id)
+                      const prevCh        = availableChannels[idx - 1]
+                      const prevSelected  = prevCh && selectedChannels.includes(prevCh.id)
+                      const showConnector = category === "fitness" && idx > 0 && isSelected && prevSelected
+                      return (
+                        <div key={ch.id}>
+                          {showConnector && (
+                            <div className="flex items-center gap-2 my-1 mx-1">
+                              <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
+                              <div
+                                className="flex overflow-hidden"
+                                style={{ borderRadius: 100, border: "1.5px solid rgba(22,163,74,0.25)", background: "rgba(255,255,255,0.6)" }}>
+                                {(["e", "ou"] as const).map(opt => (
+                                  <button key={opt}
+                                    onClick={() => setFitnessConnector(opt)}
+                                    className="px-4 py-1 text-[10px] font-bold uppercase tracking-wide"
+                                    style={{
+                                      background: fitnessConnector === opt ? "#16A34A" : "transparent",
+                                      color: fitnessConnector === opt ? "white" : "#9CA3AF",
+                                      border: "none", cursor: "pointer",
+                                    }}>
+                                    {opt === "e" ? (language === "pt" ? "E" : "AND") : (language === "pt" ? "OU" : "OR")}
+                                  </button>
+                                ))}
+                              </div>
+                              <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
+                            </div>
+                          )}
+                          <button
+                            onClick={() => toggleChannel(ch.id)}
+                            className="w-full flex items-center gap-3 p-3 rounded-xl transition-all"
+                            style={{
+                              background: isSelected ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.5)",
+                              border: isSelected ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
+                            }}>
+                            <div
+                              className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0"
+                              style={{ background: ch.color }}>
+                              <span className="text-white text-[10px] font-bold">{CHANNEL_ICONS[ch.id]}</span>
+                            </div>
+                            <p className="text-sm font-semibold text-gray-800 flex-1 text-left">{ch.label}</p>
+                            <div
+                              className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
+                              style={{
+                                background: isSelected ? "#16A34A" : "transparent",
+                                border: isSelected ? "none" : "1.5px solid rgba(0,0,0,0.12)",
+                              }}>
+                              {isSelected && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })()}
 
-                  return (
-                    <div key={ch.id}>
-                      {showConnector && (
-                        <div className="flex items-center gap-2 my-1 mx-1">
-                          <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
-                          <div
-                            className="flex overflow-hidden"
-                            style={{ borderRadius: 100, border: "1.5px solid rgba(22,163,74,0.25)", background: "rgba(255,255,255,0.6)" }}>
-                            {(["e", "ou"] as const).map(opt => (
-                              <button key={opt}
-                                onClick={() => setFitnessConnector(opt)}
-                                className="px-4 py-1 text-[10px] font-bold uppercase tracking-wide"
-                                style={{
-                                  background: fitnessConnector === opt ? "#16A34A" : "transparent",
-                                  color: fitnessConnector === opt ? "white" : "#9CA3AF",
-                                  border: "none", cursor: "pointer",
-                                }}>
-                                {opt === "e" ? (language === "pt" ? "E" : "AND") : (language === "pt" ? "OU" : "OR")}
-                              </button>
-                            ))}
-                          </div>
-                          <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
+              {/* Inactive channels — compact chips */}
+              {channels.some(ch => !ch.available) && (
+                <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                    {language === "pt" ? "Em breve" : "Coming soon"}
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {channels.filter(ch => !ch.available).map(ch => (
+                      <div key={ch.id}
+                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                        style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}>
+                        <div className="w-3.5 h-3.5 rounded-[4px] flex items-center justify-center flex-shrink-0"
+                          style={{ background: ch.color + "33" }}>
+                          <span style={{ fontSize: 6, fontWeight: 700, color: ch.color }}>{CHANNEL_ICONS[ch.id]}</span>
                         </div>
-                      )}
-                      <button
-                        onClick={() => ch.available && toggleChannel(ch.id)}
-                        disabled={!ch.available}
-                        className="w-full flex items-center gap-3 p-3.5 rounded-xl transition-all"
-                        style={{
-                          background: isSelected ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.5)",
-                          border: isSelected ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
-                          opacity: !ch.available ? 0.5 : 1,
-                          cursor: !ch.available ? "default" : "pointer",
-                        }}>
-                        <div
-                          className="w-8 h-8 rounded-[9px] flex items-center justify-center flex-shrink-0"
-                          style={{ background: ch.color }}>
-                          <span className="text-white text-[11px] font-bold">{CHANNEL_ICONS[ch.id]}</span>
-                        </div>
-                        <div className="flex-1 text-left">
-                          <p className="text-sm font-semibold text-gray-800">{ch.label}</p>
-                          {!ch.available && <p className="text-[10px] text-gray-400">Em breve</p>}
-                        </div>
-                        <div
-                          className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
-                          style={{
-                            background: isSelected ? "#16A34A" : "transparent",
-                            border: isSelected ? "none" : "1.5px solid rgba(0,0,0,0.12)",
-                          }}>
-                          {isSelected && <Check className="w-3 h-3 text-white" />}
-                        </div>
-                      </button>
-                    </div>
-                  )
-                })}
-              </div>
+                        <span className="text-[11px] font-medium text-gray-400">{ch.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </SectionBlock>
           )}
 
@@ -647,30 +675,44 @@ export default function CreateDealPage() {
             <SectionBlock icon={<span className="text-base">📋</span>} iconBg="rgba(168,85,247,0.1)" title={language === "pt" ? "Regra" : "Rule"} sub={language === "pt" ? "O que será medido e verificado" : "What will be measured and verified"}>
               <div className="space-y-1.5">
                 {availableRules.map(r => (
-                  <button key={r.id}
-                    onClick={() => r.available && setRule(r.id)}
-                    disabled={!r.available}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl transition-all"
-                    style={{
-                      background: rule === r.id ? "rgba(22,163,74,0.07)" : "rgba(255,255,255,0.5)",
-                      border: rule === r.id ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
-                      opacity: !r.available ? 0.55 : 1,
-                      cursor: !r.available ? "default" : "pointer",
-                    }}>
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-gray-800">{r.label}</p>
-                        {!r.available && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                            style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
-                            {t("badge_soon", language)}
-                          </span>
-                        )}
+                  <div key={r.id} className="flex items-stretch gap-2">
+                    <button
+                      onClick={() => r.available && setRule(r.id)}
+                      disabled={!r.available}
+                      className="flex-1 flex items-center gap-3 p-3 rounded-xl transition-all"
+                      style={{
+                        background: rule === r.id ? "rgba(22,163,74,0.07)" : "rgba(255,255,255,0.5)",
+                        border: rule === r.id ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
+                        opacity: !r.available ? 0.55 : 1,
+                        cursor: !r.available ? "default" : "pointer",
+                      }}>
+                      <div className="flex-1 text-left">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-gray-800">{language === "pt" ? r.label : r.labelEn}</p>
+                          {!r.available && (
+                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
+                              style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
+                              {t("badge_soon", language)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-gray-500 font-medium">{language === "pt" ? r.desc : r.descEn}</p>
                       </div>
-                      <p className="text-[10px] text-gray-500 font-medium">{language === "pt" ? r.desc : r.descEn}</p>
-                    </div>
-                    {r.available && rule === r.id && <Check className="w-4 h-4 text-[#16A34A] flex-shrink-0" />}
-                  </button>
+                      {r.available && rule === r.id && <Check className="w-4 h-4 text-[#16A34A] flex-shrink-0" />}
+                    </button>
+                    {/* Info balloon */}
+                    {getRuleSubrules(language)[r.id] && (
+                      <button
+                        onClick={() => setRuleInfoId(prev => prev === r.id ? null : r.id)}
+                        className="w-9 flex-shrink-0 rounded-xl flex items-center justify-center transition-all"
+                        style={{
+                          background: ruleInfoId === r.id ? "rgba(59,130,246,0.9)" : "rgba(59,130,246,0.08)",
+                          border: ruleInfoId === r.id ? "1px solid rgba(59,130,246,0.5)" : "1px solid rgba(59,130,246,0.18)",
+                        }}>
+                        <Info className="w-3.5 h-3.5" style={{ color: ruleInfoId === r.id ? "white" : "#60A5FA" }} />
+                      </button>
+                    )}
+                  </div>
                 ))}
               </div>
             </SectionBlock>
@@ -796,7 +838,7 @@ export default function CreateDealPage() {
                   }}>
                   <p className="text-[18px] font-black"
                     style={{ color: !isCustomAmt && amount === v ? "#16A34A" : "#1f2937" }}>
-                    R${v}
+                    ${v}
                   </p>
                   <p className="text-[9px] text-gray-400">{t("pay_per_person", language)}</p>
                 </button>
@@ -815,7 +857,7 @@ export default function CreateDealPage() {
 
             {isCustomAmt && (
               <div className="mb-4 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold text-sm">R$</span>
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold text-sm">$</span>
                 <input
                   type="number" value={customAmtStr} placeholder="0,00"
                   onChange={e => setCustomAmtStr(e.target.value)}
@@ -846,7 +888,7 @@ export default function CreateDealPage() {
                 <div>
                   <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{t("pay_pot_estimate", language)}</p>
                   <p className="text-xl font-black text-[#16A34A]">
-                    R${(effectiveAmount * 10).toLocaleString("pt-BR")}
+                    ${(effectiveAmount * 10).toLocaleString("en-US")}
                   </p>
                 </div>
               </div>
@@ -986,7 +1028,7 @@ export default function CreateDealPage() {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: t("stat_entry", language),    value: effectiveAmount > 0 ? `R$${effectiveAmount}` : "—" },
+                  { label: t("stat_entry", language),    value: effectiveAmount > 0 ? `$${effectiveAmount}` : "—" },
                   { label: language === "pt" ? "Regra" : "Rule", value: ruleWithFreqLabel || "—" },
                   { label: t("stat_duration", language),  value: t("date_days", language, { count: diffDays }) },
                   { label: t("stat_prize", language),     value: DISTRIBUTION_TYPES.find(d => d.id === distribution)?.label ?? "—" },
@@ -1451,6 +1493,54 @@ export default function CreateDealPage() {
           </div>
         </div>
       )}
+
+      {/* ── Rule info balloon ─────────────────────────────────────────────────── */}
+      {ruleInfoId && (() => {
+        const subrules = getRuleSubrules(language)[ruleInfoId]
+        if (!subrules) return null
+        return (
+          <div className="fixed inset-0 z-50 flex items-end"
+            style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
+            onClick={() => setRuleInfoId(null)}>
+            <div className="w-full rounded-t-3xl px-5 pt-5 pb-8"
+              style={{ background: "rgba(255,255,255,0.98)" }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "rgba(59,130,246,0.1)" }}>
+                    <Info className="w-4 h-4 text-blue-500" />
+                  </div>
+                  <h3 className="text-sm font-bold text-gray-800">{subrules.title}</h3>
+                </div>
+                <button onClick={() => setRuleInfoId(null)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center"
+                  style={{ background: "rgba(0,0,0,0.06)" }}>
+                  <X className="w-4 h-4 text-gray-500" />
+                </button>
+              </div>
+              <ul className="space-y-2.5">
+                {subrules.items.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2.5 leading-relaxed">
+                    <span className="text-blue-400 mt-0.5 flex-shrink-0 font-bold text-sm">✓</span>
+                    <span className="text-sm text-gray-700">{item}</span>
+                  </li>
+                ))}
+              </ul>
+              {subrules.hint && (
+                <div className="mt-4 p-3 rounded-xl"
+                  style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                  <p className="text-sm text-amber-600 font-semibold leading-relaxed">{subrules.hint}</p>
+                </div>
+              )}
+              <button onClick={() => setRuleInfoId(null)}
+                className="w-full mt-5 py-3 rounded-2xl font-semibold text-sm"
+                style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.15)", color: "#3B82F6" }}>
+                {language === "pt" ? "Fechar" : "Close"}
+              </button>
+            </div>
+          </div>
+        )
+      })()}
 
     </div>
   )

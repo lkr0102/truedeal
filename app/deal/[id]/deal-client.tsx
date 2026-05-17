@@ -460,7 +460,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
   const freqLabel    = dealData.rule_frequency ? frequencyMap[dealData.rule_frequency] ?? dealData.rule_frequency : null
   const targetPrefix = dealData.rule_target != null ? `${dealData.rule_target} × ` : ""
   const ruleWithFreq = [(targetPrefix + ruleLabel).trim(), freqLabel].filter(Boolean).join(" · ")
-  const potTotal     = `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+  const potTotal     = `$${deal.pot.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
 
   const confirmRows = [
     {
@@ -476,7 +476,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
     {
       icon: "💰", iconBg: "rgba(22,163,74,0.1)",
       key: language === "pt" ? "Financeiro" : "Financial",
-      val: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}/${language === "pt" ? "pessoa" : "person"} · ${deal.participants} ${language === "pt" ? "participantes" : "participants"} · ${potTotal}`,
+      val: `$${deal.valuePerPerson.toLocaleString("en-US", { minimumFractionDigits: 2 })}/${language === "pt" ? "pessoa" : "person"} · ${deal.participants} ${language === "pt" ? "participantes" : "participants"} · ${potTotal}`,
     },
   ]
 
@@ -510,7 +510,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
           </div>
           <div className="grid grid-cols-2 gap-2">
             {[
-              { label: language === "pt" ? "Entrada" : "Entry",   value: `R$${deal.valuePerPerson.toLocaleString("pt-BR")}` },
+              { label: language === "pt" ? "Entrada" : "Entry",   value: `$${deal.valuePerPerson.toLocaleString("en-US", { minimumFractionDigits: 2 })}` },
               { label: language === "pt" ? "Regra" : "Rule",      value: ruleWithFreq || "—" },
               { label: language === "pt" ? "Duração" : "Duration", value: `${diffDays} ${language === "pt" ? "dias" : "days"}` },
               { label: language === "pt" ? "Premiação" : "Prize",  value: distMeta.label },
@@ -975,7 +975,7 @@ export default function DealClient({
                 {deal.potentialWin != null && deal.potentialWin > 0 && (
                   <div className="text-right">
                     <p className="text-[10px] text-gray-400">{language === "pt" ? "Ganho potencial" : "Potential gain"}</p>
-                    <p className="font-bold" style={{ color: "#16A34A" }}>R${deal.potentialWin.toLocaleString("pt-BR")}</p>
+                    <p className="font-bold" style={{ color: "#16A34A" }}>${deal.potentialWin.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
                   </div>
                 )}
                 {isWinning && <Trophy className="w-5 h-5 text-yellow-500 ml-2" />}
@@ -1017,8 +1017,8 @@ export default function DealClient({
             {/* Entrada + Pote total */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
               {[
-                { label: language === "pt" ? "Entrada" : "Entry",      value: `R$${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`, color: "#374151" },
-                { label: language === "pt" ? "Pote total" : "Total pot", value: `R$${deal.pot.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,   color: "#16A34A" },
+                { label: language === "pt" ? "Entrada" : "Entry",      value: `$${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, color: "#374151" },
+                { label: language === "pt" ? "Pote total" : "Total pot", value: `$${deal.pot.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,   color: "#16A34A" },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ borderRadius: 12, padding: "10px 8px", textAlign: "center", background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
                   <p style={{ fontSize: 17, fontWeight: 900, color, lineHeight: 1 }}>{value}</p>
@@ -1073,7 +1073,7 @@ export default function DealClient({
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 12, color: "#6B7280" }}>{language === "pt" ? "Entrada paga" : "Entry paid"}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
-                      R${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      ${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   {eliminatedCount > 0 && (
@@ -1083,7 +1083,7 @@ export default function DealClient({
                           {language === "pt" ? `Pote dos eliminados (${eliminatedCount}×)` : `Losers pool (${eliminatedCount}×)`}
                         </span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
-                          R${loserPool.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          ${loserPool.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1091,7 +1091,7 @@ export default function DealClient({
                           {language === "pt" ? `Taxa da plataforma (${feePct}%)` : `Platform fee (${feePct}%)`}
                         </span>
                         <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-                          −R${(loserPool * feePct / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          −${(loserPool * feePct / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1099,7 +1099,7 @@ export default function DealClient({
                           {language === "pt" ? `Distribuído entre ${aliveCount} ativos` : `Distributed among ${aliveCount} active`}
                         </span>
                         <span style={{ fontSize: 12, fontWeight: 700, color: "#16A34A" }}>
-                          +R${extraPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          +${extraPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                         </span>
                       </div>
                       <div style={{ height: 1, background: "rgba(0,0,0,0.07)", margin: "4px 0" }} />
@@ -1108,7 +1108,7 @@ export default function DealClient({
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{language === "pt" ? "Total estimado por ativo" : "Estimated total per active"}</span>
                     <span style={{ fontSize: 18, fontWeight: 900, color: "#16A34A" }}>
-                      R${totalPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      ${totalPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                 </div>
@@ -1117,16 +1117,16 @@ export default function DealClient({
                   <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)" }}>
                     <p style={{ fontSize: 12, color: "#3B82F6", fontWeight: 600, lineHeight: 1.5 }}>
                       🤝 {language === "pt"
-                        ? `Todos ainda no jogo! Se isso se mantiver, cada participante recupera os R$${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} integralmente.`
-                        : `Everyone still in the game! If this continues, each participant recovers their R$${entryAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} in full.`}
+                        ? `Todos ainda no jogo! Se isso se mantiver, cada participante recupera os $${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })} integralmente.`
+                        : `Everyone still in the game! If this continues, each participant recovers their $${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })} in full.`}
                     </p>
                   </div>
                 ) : isAlive ? (
                   <div style={{ padding: "10px 12px", borderRadius: 12, background: "linear-gradient(135deg,rgba(22,163,74,0.1),rgba(34,197,94,0.06))", border: "1px solid rgba(22,163,74,0.25)" }}>
                     <p style={{ fontSize: 12, color: "#16A34A", fontWeight: 700, lineHeight: 1.5 }}>
                       ✅ {language === "pt"
-                        ? `Cumprir sua palavra está te fazendo ganhar R$${extraPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} a mais. Continue assim!`
-                        : `Keeping your word is earning you R$${extraPerWinner.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} more. Keep it up!`}
+                        ? `Cumprir sua palavra está te fazendo ganhar $${extraPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })} a mais. Continue assim!`
+                        : `Keeping your word is earning you $${extraPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })} more. Keep it up!`}
                     </p>
                   </div>
                 ) : (
