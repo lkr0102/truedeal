@@ -1,4 +1,4 @@
-import { getMyProfile, getHallOfFame } from "@/lib/actions/profile"
+import { getMyProfile, getLeaderboard } from "@/lib/actions/profile"
 import { createClient } from "@/lib/supabase/server"
 import ExploreClient from "./explore-client"
 
@@ -8,9 +8,9 @@ export default async function ExplorePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ profile }, { profiles: hofProfiles = [] }] = await Promise.all([
+  const [{ profile }, { users: hofUsers }] = await Promise.all([
     getMyProfile(),
-    getHallOfFame(20),
+    getLeaderboard(50),
   ])
 
   let totalCheckins = 0
@@ -25,7 +25,7 @@ export default async function ExplorePage() {
     <ExploreClient
       profile={profile}
       totalCheckins={totalCheckins}
-      hofProfiles={hofProfiles as any}
+      hofUsers={hofUsers}
       userId={user?.id ?? null}
     />
   )

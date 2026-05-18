@@ -3,37 +3,46 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
-  ArrowLeft, Lock, Globe, ChevronLeft, ChevronRight, ChevronDown,
-  Plus, Minus, Check, Info, X, AlertCircle, ShieldCheck,
+  ChevronLeft, ChevronRight, ChevronDown,
+  Plus, Minus, Check, Info, X, AlertCircle, ShieldCheck, Lock, Globe,
 } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
 import type { DealCategory, DealType } from "@/lib/supabase/types"
 import { useLanguageStore, t, type Language } from "@/lib/i18n"
 
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg: "#F0F3F0", surface: "#FFFFFF", surface2: "#E8EDE8",
+  border: "#D8E0D8", border2: "#E6EEE6",
+  text: "#0B1309", mid: "#4E614E", dim: "#8BA09A",
+  brand: "#00B852", brandDark: "#008C3E", forming: "#E8620A",
+  activeLight: "rgba(0,184,82,0.08)", activeBorder: "rgba(0,184,82,0.2)",
+} as const
+
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { id: "social",   label: "cat_social",   icon: "📣", available: true  },
-  { id: "fitness",  label: "cat_fitness",  icon: "🏃", available: true  },
-  { id: "gaming",   label: "cat_gaming",   icon: "🎮", available: false },
-  { id: "learning", label: "cat_learning", icon: "📚", available: false },
-  { id: "onchain",  label: "cat_onchain",  icon: "⛓", available: false },
-  { id: "free",     label: "cat_free",     icon: "✨", available: false },
+  { id: "social",   label: "cat_social",   desc: "Consistência em redes sociais",   descEn: "Consistency on social media",  icon: "📱", available: true  },
+  { id: "fitness",  label: "cat_fitness",  desc: "Atividades físicas e corridas",   descEn: "Fitness activities and runs",  icon: "🏃", available: true  },
+  { id: "gaming",   label: "cat_gaming",   desc: "Conquistas e rankings",           descEn: "Achievements and rankings",    icon: "🎮", available: false },
+  { id: "learning", label: "cat_learning", desc: "Streaks de aprendizado",          descEn: "Learning streaks",             icon: "📚", available: false },
+  { id: "onchain",  label: "cat_onchain",  desc: "Atividade na blockchain",         descEn: "On-chain activity",            icon: "⛓", available: false },
+  { id: "free",     label: "cat_free",     desc: "Personalizado com prova digital", descEn: "Custom with digital proof",    icon: "✨", available: false },
 ]
 
-const CHANNELS: Record<string, { id: string; label: string; available: boolean; color: string }[]> = {
+const CHANNELS: Record<string, { id: string; label: string; desc: string; descEn: string; available: boolean; color: string }[]> = {
   social: [
-    { id: "x",         label: "X",        available: true,  color: "#000000" },
-    { id: "instagram", label: "Instagram", available: false, color: "#E1306C" },
-    { id: "tiktok",    label: "TikTok",    available: false, color: "#ff0050" },
-    { id: "linkedin",  label: "LinkedIn",  available: false, color: "#0077B5" },
-    { id: "discord",   label: "Discord",   available: false, color: "#5865F2" },
-    { id: "youtube",   label: "YouTube",   available: false, color: "#FF0000" },
+    { id: "x",         label: "X (Twitter)", desc: "Posts e crescimento de seguidores",    descEn: "Posts and follower growth",          available: true,  color: "#000000" },
+    { id: "instagram", label: "Instagram",   desc: "Fotos, reels e alcance",               descEn: "Photos, reels and reach",            available: false, color: "#E1306C" },
+    { id: "tiktok",    label: "TikTok",      desc: "Vídeos e alcance",                     descEn: "Videos and reach",                   available: false, color: "#ff0050" },
+    { id: "linkedin",  label: "LinkedIn",    desc: "Posts e conexões profissionais",       descEn: "Posts and professional connections", available: false, color: "#0077B5" },
+    { id: "discord",   label: "Discord",     desc: "Mensagens e atividade em servidor",    descEn: "Server messages and activity",       available: false, color: "#5865F2" },
+    { id: "youtube",   label: "YouTube",     desc: "Vídeos e crescimento de inscritos",    descEn: "Videos and subscriber growth",       available: false, color: "#FF0000" },
   ],
   fitness: [
-    { id: "strava",    label: "Strava",    available: true,  color: "#FC4C02" },
-    { id: "wellhub",   label: "Wellhub",   available: true,  color: "#00A878" },
-    { id: "totalpass", label: "TotalPass", available: true,  color: "#FF6B35" },
+    { id: "strava",    label: "Strava",    desc: "Km corridos, horas de exercício e pace", descEn: "Km run, workout hours and pace",   available: true,  color: "#FC4C02" },
+    { id: "wellhub",   label: "Wellhub",   desc: "Check-ins em academias parceiras",       descEn: "Check-ins at partner gyms",        available: true,  color: "#00A878" },
+    { id: "totalpass", label: "TotalPass", desc: "Check-ins em academias parceiras",       descEn: "Check-ins at partner gyms",        available: true,  color: "#FF6B35" },
   ],
 }
 
@@ -44,24 +53,24 @@ const CHANNEL_ICONS: Record<string, string> = {
 
 const RULES: Record<string, { id: string; label: string; labelEn: string; desc: string; descEn: string; available: boolean }[]> = {
   x: [
-    { id: "post",             label: "Post diário",           labelEn: "Daily post",           desc: "Publicar pelo menos N posts por janela de frequência",            descEn: "Publish at least N posts per frequency window",         available: true  },
-    { id: "follower_gained",  label: "Seguidores recebidos",  labelEn: "Followers gained",     desc: "Ganhar N seguidores líquidos por janela (novos − perdidos)",      descEn: "Gain N net followers per window (new − lost)",          available: false },
-    { id: "impressions",      label: "Impressões",            labelEn: "Impressions",          desc: "Atingir N impressões totais nas publicações da janela",           descEn: "Reach N total impressions on posts within the window",  available: true  },
-    { id: "repost_received",  label: "Reposts recebidos",     labelEn: "Reposts received",     desc: "Receber N reposts nas publicações da janela",                     descEn: "Receive N reposts on posts within the window",          available: false },
-    { id: "comment_received", label: "Comentários recebidos", labelEn: "Comments received",    desc: "Receber N comentários nas publicações da janela",                 descEn: "Receive N comments on posts within the window",         available: false },
+    { id: "post",             label: "Quantidade de posts",       labelEn: "Post count",           desc: "Publicar pelo menos N posts por janela de frequência",            descEn: "Publish at least N posts per frequency window",         available: true  },
+    { id: "follower_gained",  label: "Seguidores recebidos",      labelEn: "Followers gained",     desc: "Ganhar N seguidores líquidos por janela (novos − perdidos)",      descEn: "Gain N net followers per window (new − lost)",          available: false },
+    { id: "impressions",      label: "Impressões",                labelEn: "Impressions",          desc: "Atingir N impressões totais nas publicações da janela",           descEn: "Reach N total impressions on posts within the window",  available: true  },
+    { id: "repost_received",  label: "Reposts recebidos",         labelEn: "Reposts received",     desc: "Receber N reposts nas publicações da janela",                     descEn: "Receive N reposts on posts within the window",          available: false },
+    { id: "comment_received", label: "Comentários recebidos",     labelEn: "Comments received",    desc: "Receber N comentários nas publicações da janela",                 descEn: "Receive N comments on posts within the window",         available: false },
   ],
   strava: [
-    { id: "km_run",        label: "Kms corridos",       labelEn: "Km run",            desc: "Correr pelo menos N km durante a janela (apenas atividades Run)",    descEn: "Run at least N km during the window (Run activities only)",     available: true  },
-    { id: "pace",          label: "Pace médio",          labelEn: "Average pace",      desc: "Manter pace médio ≤ ao configurado pelo criador por janela",        descEn: "Keep average pace ≤ configured by creator per window",          available: false },
-    { id: "workout_hours", label: "Horas de exercício", labelEn: "Workout hours",     desc: "Registrar N horas de atividade no Strava por janela",               descEn: "Log N hours of activity in Strava per window",                  available: false },
+    { id: "km_run",        label: "Kms corridos",       labelEn: "Km run",        desc: "Correr pelo menos N km durante a janela (apenas atividades Run)",  descEn: "Run at least N km during the window (Run activities only)",   available: true  },
+    { id: "pace",          label: "Pace médio",          labelEn: "Average pace",  desc: "Manter pace médio ≤ ao configurado pelo criador por janela",      descEn: "Keep average pace ≤ configured by creator per window",        available: false },
+    { id: "workout_hours", label: "Horas de exercício", labelEn: "Workout hours", desc: "Registrar N horas de atividade no Strava por janela",             descEn: "Log N hours of activity in Strava per window",               available: false },
   ],
   wellhub: [
-    { id: "checkin",          label: "Check-in diário",     labelEn: "Daily check-in",       desc: "Fazer N check-ins em academia parceira Wellhub por janela",  descEn: "Do N check-ins at a Wellhub partner gym per window",    available: true  },
-    { id: "different_venues", label: "Ambientes diferentes", labelEn: "Different venues",    desc: "Visitar N academias distintas via Wellhub por janela",       descEn: "Visit N different Wellhub gyms per window",             available: false },
+    { id: "checkin",          label: "Check-in diário",      labelEn: "Daily check-in",   desc: "Fazer N check-ins em academia parceira Wellhub por janela",  descEn: "Do N check-ins at a Wellhub partner gym per window",   available: true  },
+    { id: "different_venues", label: "Ambientes diferentes", labelEn: "Different venues", desc: "Visitar N academias distintas via Wellhub por janela",       descEn: "Visit N different Wellhub gyms per window",           available: false },
   ],
   totalpass: [
-    { id: "checkin",          label: "Check-in diário",     labelEn: "Daily check-in",       desc: "Fazer N check-ins em academia parceira TotalPass por janela", descEn: "Do N check-ins at a TotalPass partner gym per window",  available: true  },
-    { id: "different_venues", label: "Ambientes diferentes", labelEn: "Different venues",    desc: "Visitar N academias distintas via TotalPass por janela",     descEn: "Visit N different TotalPass gyms per window",           available: false },
+    { id: "checkin",          label: "Check-in diário",      labelEn: "Daily check-in",   desc: "Fazer N check-ins em academia parceira TotalPass por janela", descEn: "Do N check-ins at a TotalPass partner gym per window",  available: true  },
+    { id: "different_venues", label: "Ambientes diferentes", labelEn: "Different venues", desc: "Visitar N academias distintas via TotalPass por janela",     descEn: "Visit N different TotalPass gyms per window",          available: false },
   ],
 }
 
@@ -80,34 +89,37 @@ const CHANNEL_LABELS: Record<string, string> = {
 }
 
 const DISTRIBUTION_TYPES = [
-  { id: "proportional", label: "Proporcional", labelEn: "Proportional", icon: "🤝", desc: "Pote final dividido entre todos que cumprirem o acordo.", descEn: "Final pot divided among all who comply.", available: true  },
-  { id: "top3",         label: "Ranking",       labelEn: "Ranking",      icon: "🏅", desc: "1º 60% · 2º 30% · 3º 10% do pote",                       descEn: "1st 60% · 2nd 30% · 3rd 10% of pot", available: false },
-  { id: "winner",       label: "1º Lugar",      labelEn: "1st Place",    icon: "👑", desc: "Winner takes all",                                        descEn: "Winner takes all", available: false },
+  { id: "proportional", label: "Proporcional", labelEn: "Proportional", desc: "Vencedores dividem igualmente o pool dos perdedores", descEn: "Winners split the losers' pool equally", available: true  },
+  { id: "top3",         label: "Top 3",        labelEn: "Top 3",        desc: "60% · 30% · 10% para o pódio",                       descEn: "60% · 30% · 10% for the podium",         available: false },
+  { id: "winner",       label: "Winner Takes All", labelEn: "Winner Takes All", desc: "100% para o melhor colocado",             descEn: "100% for the top performer",             available: false },
 ]
 
 const PERIOD_PRESETS = [
-  { id: "1w", label: "1 sem",    labelEn: "1 wk",  days: 7  },
-  { id: "2w", label: "2 sem",    labelEn: "2 wk",  days: 14 },
-  { id: "1m", label: "1 mês",    labelEn: "1 mo",  days: 30 },
-  { id: "2m", label: "2 meses",  labelEn: "2 mo",  days: 60 },
+  { id: "1w", label: "1 sem",   labelEn: "1 wk",  days: 7  },
+  { id: "2w", label: "2 sem",   labelEn: "2 wk",  days: 14 },
+  { id: "1m", label: "1 mês",   labelEn: "1 mo",  days: 30 },
+  { id: "2m", label: "2 meses", labelEn: "2 mo",  days: 60 },
 ]
 
 function getRuleSubrules(lang: Language): Record<string, { title: string; items: string[]; hint?: string }> {
   return {
     post: {
-      title: lang === "pt" ? "Regras do post verificado" : "Verified post rules",
+      title: lang === "pt" ? "Sub-regras automáticas · X posts" : "Automatic sub-rules · X posts",
       items: lang === "pt" ? [
-        "Conta pública no X no momento da verificação",
-        "Mínimo de 100 caracteres por post",
-        "Conteúdo original — o DealGuard usa análise semântica para rejeitar repetições",
-        "Posts deletados antes da verificação não são contabilizados",
+        "A conta X deve estar pública no momento da verificação",
+        "O post deve ter mais de 100 caracteres",
+        "Conteúdo único no período — sem posts idênticos ou semanticamente iguais (verificado por IA)",
+        "Reposts e quotes não contam como post válido",
+        "Posts publicados antes da data de início não são contados",
+        "Posts deletados antes da auditoria são considerados não publicados",
       ] : [
         "Public X account at the time of verification",
         "Minimum 100 characters per post",
-        "Original content — DealGuard uses semantic analysis to reject duplicates",
-        "Posts deleted before verification are not counted",
+        "Unique content per period — no identical or semantically similar posts (AI-verified)",
+        "Reposts and quotes do not count as valid posts",
+        "Posts published before the start date are not counted",
+        "Posts deleted before the audit are considered unpublished",
       ],
-      hint: lang === "pt" ? "🔍 Qualidade importa tanto quanto quantidade" : "🔍 Quality matters as much as quantity",
     },
     follower_gained: {
       title: lang === "pt" ? "Regras — Seguidores recebidos" : "Rules — Followers gained",
@@ -160,7 +172,7 @@ function getRuleSubrules(lang: Language): Record<string, { title: string; items:
       ],
     },
     km_run: {
-      title: lang === "pt" ? "Regras — Kms percorridos" : "Rules — Kms run",
+      title: lang === "pt" ? "Sub-regras · Kms percorridos" : "Sub-rules · Km run",
       items: lang === "pt" ? [
         "Apenas atividades com tipo Corrida (Run) são contabilizadas",
         "Distâncias de todas as corridas da janela são somadas",
@@ -204,7 +216,7 @@ function getRuleSubrules(lang: Language): Record<string, { title: string; items:
       ],
     },
     checkin: {
-      title: lang === "pt" ? "Como funciona — Check-in em Academia" : "How it works — Gym Check-in",
+      title: lang === "pt" ? "Sub-regras · Check-in em Academia" : "Sub-rules · Gym Check-in",
       items: lang === "pt" ? [
         "Check-in presencial em academia parceira Wellhub ou TotalPass",
         "Verificação automática via API — sem ação manual necessária",
@@ -266,10 +278,9 @@ function calendarCells(year: number, month: number): (Date | null)[] {
   while (cells.length % 7 !== 0) cells.push(null)
   return cells
 }
-function getSharedRules(ids: string[], lang: Language): { id: string; label: string; labelEn: string; desc: string; descEn: string; available: boolean }[] {
+function getSharedRules(ids: string[], _lang: Language): { id: string; label: string; labelEn: string; desc: string; descEn: string; available: boolean }[] {
   if (ids.length === 0) return []
   if (ids.length === 1) return RULES[ids[0]] ?? []
-  // Multiple channels: union of all rules (no duplicate ids)
   const seen = new Set<string>()
   const result: { id: string; label: string; labelEn: string; desc: string; descEn: string; available: boolean }[] = []
   for (const id of ids) {
@@ -280,28 +291,46 @@ function getSharedRules(ids: string[], lang: Language): { id: string; label: str
   return result
 }
 
-// ── Section block ─────────────────────────────────────────────────────────────
+// ── Step indicator ─────────────────────────────────────────────────────────────
 
-function SectionBlock({
-  icon, iconBg, title, sub, children,
-}: {
-  icon: React.ReactNode; iconBg: string; title: string; sub?: string; children: React.ReactNode
-}) {
+function Stepper({ step, lang }: { step: 1|2|3|4; lang: Language }) {
+  const labels = lang === "pt"
+    ? ["Tipo", "Canal", "Regras", "Revisão"]
+    : ["Type", "Channel", "Rules", "Review"]
   return (
-    <div className="mb-6">
-      <div className="flex items-center gap-2.5 mb-3">
-        <div
-          className="w-8 h-8 rounded-[9px] flex items-center justify-center flex-shrink-0"
-          style={{ background: iconBg }}
-        >
-          {icon}
-        </div>
-        <div>
-          <p className="text-[13px] font-bold text-gray-800">{title}</p>
-          {sub && <p className="text-[10px] text-gray-400 mt-0.5">{sub}</p>}
-        </div>
-      </div>
-      {children}
+    <div style={{ display: "flex", alignItems: "flex-start", padding: "0 20px 18px", gap: 0 }}>
+      {labels.map((label, i) => {
+        const n = (i + 1) as 1|2|3|4
+        const done   = n < step
+        const active = n === step
+        return (
+          <div key={n} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, flex: 1, position: "relative" }}>
+            {i < labels.length - 1 && (
+              <div style={{
+                position: "absolute", top: 13, left: "50%", width: "100%", height: 2, zIndex: 0,
+                background: done ? C.brand : active ? `linear-gradient(90deg,${C.brand},${C.border})` : C.border,
+              }} />
+            )}
+            <div style={{
+              width: 26, height: 26, borderRadius: "50%", display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: done ? 13 : 11, fontWeight: 700, position: "relative", zIndex: 1,
+              background: done ? C.brand : active ? C.text : C.bg,
+              border: `2px solid ${done ? C.brand : active ? C.text : C.border}`,
+              color: done || active ? "#fff" : C.dim,
+            }}>
+              {done ? "✓" : n}
+            </div>
+            <div style={{
+              fontSize: 8, fontFamily: "var(--font-dm-mono, monospace)", textTransform: "uppercase",
+              letterSpacing: "0.06em", textAlign: "center",
+              color: done ? C.brand : active ? C.text : C.dim,
+              fontWeight: active || done ? 700 : 400,
+            }}>
+              {label}
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -313,8 +342,9 @@ export default function CreateDealPage() {
   const { language } = useLanguageStore()
 
   // ── State ──
-  const [name,    setName]    = useState("")
-  const [privacy, setPrivacy] = useState<"private" | "public">("private")
+  const [screen,   setScreen]   = useState<1|2|3|4>(1)
+  const [name,     setName]     = useState("")
+  const [privacy,  setPrivacy]  = useState<"private" | "public">("public")
 
   const [category,         setCategory]         = useState<string | null>(null)
   const [selectedChannels, setSelectedChannels] = useState<string[]>([])
@@ -335,23 +365,19 @@ export default function CreateDealPage() {
   const [customAmtStr, setCustomAmtStr] = useState("")
   const [distribution, setDistribution] = useState("proportional")
 
-  const [screen,          setScreen]          = useState<1 | 2>(1)
-  const [subrulesOpen,    setSubrulesOpen]    = useState(true)
-  const [dealguardOpen,   setDealguardOpen]   = useState(false)
-  const [complianceOpen,  setComplianceOpen]  = useState(false)
-  const [showInfo,        setShowInfo]        = useState(false)
-  const [showPrivacyInfo, setShowPrivacyInfo] = useState<"private" | "public" | null>(null)
-  const [ruleInfoId,      setRuleInfoId]      = useState<string | null>(null)
-  const [isSubmitting,  setIsSubmitting]  = useState(false)
-  const [submitError,   setSubmitError]   = useState<string | null>(null)
-  const [missingSocial, setMissingSocial] = useState<string[] | null>(null)
+  const [dealguardOpen,  setDealguardOpen]  = useState(false)
+  const [showInfo,       setShowInfo]       = useState(false)
+  const [ruleInfoId,     setRuleInfoId]     = useState<string | null>(null)
+  const [isSubmitting,   setIsSubmitting]   = useState(false)
+  const [submitError,    setSubmitError]    = useState<string | null>(null)
+  const [missingSocial,  setMissingSocial]  = useState<string[] | null>(null)
 
   // ── Derived ──
-  const channels        = category ? (CHANNELS[category] ?? []) : []
-  const availableRules  = getSharedRules(selectedChannels, language)
+  const channels       = category ? (CHANNELS[category] ?? []) : []
+  const availableRules = getSharedRules(selectedChannels, language)
   const effectiveAmount = isCustomAmt ? (parseFloat(customAmtStr) || 0) : amount
-  const feeRate         = 3
-  const diffDays        = Math.round((endDate.getTime() - startDate.getTime()) / 86400000)
+  const feeRate        = 3
+  const diffDays       = Math.round((endDate.getTime() - startDate.getTime()) / 86400000)
 
   const channelLabel = selectedChannels.length === 1
     ? (channels.find(c => c.id === selectedChannels[0])?.label ?? null)
@@ -359,8 +385,16 @@ export default function CreateDealPage() {
     ? selectedChannels.map(id => channels.find(c => c.id === id)?.label ?? id).join(` ${fitnessConnector.toUpperCase()} `)
     : null
 
-  const ruleLabel  = rule      ? (availableRules.find(r => r.id === rule)?.[language === "pt" ? "label" : "labelEn"] ?? rule) : null
-  const freqLabel  = frequency ? (FREQUENCIES.find(f => f.id === frequency)?.[language === "pt" ? "label" : "labelEn"] ?? frequency) : null
+  const ruleObj   = rule ? availableRules.find(r => r.id === rule) : null
+  const ruleLabel = ruleObj ? (language === "pt" ? ruleObj.label : ruleObj.labelEn) : null
+  const freqLabel = frequency ? (FREQUENCIES.find(f => f.id === frequency)?.[language === "pt" ? "label" : "labelEn"] ?? frequency) : null
+
+  const reviewSubrules = rule ? getRuleSubrules(language)[rule] ?? null : null
+
+  const ruleWithFreqLabel = [
+    ruleLabel && quantity ? `${quantity} × ${ruleLabel}` : ruleLabel,
+    freqLabel,
+  ].filter(Boolean).join(" · ")
 
   const isValid =
     name.trim().length >= 3 &&
@@ -381,9 +415,7 @@ export default function CreateDealPage() {
   function toggleChannel(id: string) {
     const isFitness = category === "fitness"
     if (isFitness) {
-      setSelectedChannels(prev =>
-        prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
-      )
+      setSelectedChannels(prev => prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id])
     } else {
       setSelectedChannels(prev => (prev[0] === id ? [] : [id]))
     }
@@ -423,7 +455,7 @@ export default function CreateDealPage() {
     const privacyMap: Record<string, DealType> = { private: "privado", public: "publico" }
     const result = await createDeal({
       title:                 name.trim(),
-      type:                  privacyMap[privacy] ?? "privado",
+      type:                  privacyMap[privacy] ?? "publico",
       category:              category as DealCategory,
       verification_type:     rule ?? "",
       verification_channels: selectedChannels,
@@ -440,794 +472,695 @@ export default function CreateDealPage() {
     setIsSubmitting(false)
     if (result.error) {
       if (result.error.startsWith("MISSING_SOCIAL:")) {
-        const channels = result.error.replace("MISSING_SOCIAL:", "").split(",").filter(Boolean)
-        setMissingSocial(channels)
+        const chs = result.error.replace("MISSING_SOCIAL:", "").split(",").filter(Boolean)
+        setMissingSocial(chs)
         return
       }
       setSubmitError(result.error)
       return
     }
-    setScreen(1)
     router.push("/")
   }
 
-  // ── Confirmation rows ──
-  const ruleWithFreqLabel = [
-    ruleLabel && quantity ? `${quantity} × ${ruleLabel}` : ruleLabel,
-    freqLabel,
-  ].filter(Boolean).join(" · ")
-
-  const confirmRows = [
-    {
-      icon: "🛡️", iconBg: "rgba(22,163,74,0.1)",
-      key: language === "pt" ? "Regra" : "Rule",
-      val: channelLabel ? `${channelLabel} · ${ruleWithFreqLabel || "—"}` : ruleWithFreqLabel || "—",
-    },
-    {
-      icon: "📅", iconBg: "rgba(239,68,68,0.08)",
-      key: language === "pt" ? "Período" : "Period",
-      val: `${fmtShort(startDate)} 00h GMT-3 → ${fmtShort(endDate)} (${t("date_days", language, { count: diffDays })})`,
-    },
-    {
-      icon: "💰", iconBg: "rgba(22,163,74,0.1)",
-      key: language === "pt" ? "Financeiro" : "Financial",
-      val: effectiveAmount > 0 ? `$${effectiveAmount}/${language === "pt" ? "pessoa" : "person"} · ${DISTRIBUTION_TYPES.find(d => d.id === distribution)?.[language === "pt" ? "label" : "labelEn"]}` : "—",
-    },
-  ]
-
-  const reviewSubrules = rule ? getRuleSubrules(language)[rule] ?? null : null
-
   // ── Render ────────────────────────────────────────────────────────────────────
 
-  return (
-    <div
-      className="min-h-screen relative overflow-hidden"
-      style={{
-        backgroundImage: "url('/images/gradient-background.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
-      }}
-    >
-      {/* ── Screen 1 ─────────────────────────────────────────────────────────── */}
-      <div
-        className="absolute inset-0 flex flex-col overflow-y-auto"
-        style={{
-          transform: screen === 1 ? "translateX(0)" : "translateX(-100%)",
-          opacity: screen === 1 ? 1 : 0,
-          transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s",
-          pointerEvents: screen === 1 ? "auto" : "none",
-        }}
+  const mono = "var(--font-dm-mono, 'DM Mono', monospace)"
+
+  // Header shared across all steps
+  const pageHeader = (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "52px 20px 0" }}>
+      <button
+        onClick={() => screen === 1 ? router.back() : setScreen(s => (s - 1) as 1|2|3|4)}
+        style={{ fontSize: 18, fontWeight: 600, color: C.mid, background: "none", border: "none", cursor: "pointer", width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}
       >
-        {/* Header */}
-        <header className="px-5 pt-12 pb-3 flex items-center justify-between flex-shrink-0">
-          <button onClick={() => router.back()} className="flex items-center gap-2 text-gray-600">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">{language === "pt" ? "Voltar" : "Back"}</span>
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-              style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
-              <span className="text-xs font-bold text-[#16A34A]">{language === "pt" ? "Taxa" : "Fee"} · 3%</span>
-            </div>
-            <button
-              onClick={() => setShowInfo(true)}
-              className="w-9 h-9 rounded-xl flex items-center justify-center"
-              style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.2)", color: "#16A34A" }}
-            >
-              <Info className="w-4 h-4" />
-            </button>
+        {screen === 1 ? "✕" : "←"}
+      </button>
+      <span style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-.01em", color: C.text }}>
+        {language === "pt" ? "Criar acordo" : "Create deal"}
+      </span>
+      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+        <span style={{ fontSize: 10, color: C.dim, fontFamily: mono }}>
+          {language === "pt" ? `Taxa ${feeRate}%` : `Fee ${feeRate}%`}
+        </span>
+        <button
+          onClick={() => setShowInfo(true)}
+          style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.surface2, border: `1px solid ${C.border}`, cursor: "pointer" }}
+        >
+          <Info style={{ width: 14, height: 14, stroke: C.mid }} />
+        </button>
+      </div>
+    </div>
+  )
+
+  return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+
+      {/* ── STEP 1: Tipo + Privacidade ─────────────────────────────────────────── */}
+      {screen === 1 && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {pageHeader}
+          <div style={{ padding: "14px 0 0" }}>
+            <Stepper step={1} lang={language} />
           </div>
-        </header>
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 120px" }}>
+            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1.2, marginBottom: 5, color: C.text }}>
+              {language === "pt" ? "Que tipo de acordo você quer criar?" : "What type of deal do you want to create?"}
+            </div>
+            <div style={{ fontSize: 12, color: C.mid, marginBottom: 18, lineHeight: 1.5 }}>
+              {language === "pt" ? "Escolha a categoria do seu acordo e defina a privacidade." : "Choose your deal category and set privacy."}
+            </div>
 
-        {/* Content */}
-        <div className="flex-1 px-5 pb-32">
-          <h1 className="text-2xl font-bold text-gray-800 mb-1">{t("create_title", language)}</h1>
-          <p className="text-sm text-gray-500 mb-6">{t("create_subtitle", language)}</p>
-
-          {/* ── 1. Nome ── */}
-          <SectionBlock icon={<span className="text-base">✏️</span>} iconBg="rgba(22,163,74,0.1)" title={t("create_name_label", language)} sub={language === "pt" ? "Mínimo 3 caracteres" : "Minimum 3 characters"}>
-            <input
-              type="text" value={name}
-              onChange={e => setName(e.target.value)}
-              placeholder={t("create_name_placeholder", language)}
-              className="w-full p-4 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
-              style={{
-                background: "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)",
-                border: name.length === 0 ? "1px solid rgba(255,255,255,0.6)"
-                      : name.length < 3   ? "2px solid rgba(255,80,80,0.35)"
-                      : "2px solid rgba(22,163,74,0.35)",
-              }}
-            />
-            {name.length > 0 && name.length < 3 && (
-              <p className="text-xs text-red-400 mt-1 ml-1">{language === "pt" ? "Mínimo 3 caracteres" : "Minimum 3 characters"}</p>
-            )}
-          </SectionBlock>
-
-          {/* ── 2. Categoria ── */}
-          <SectionBlock icon={<span className="text-base">🗂️</span>} iconBg="rgba(22,163,74,0.1)" title={t("create_category_title", language)} sub={t("create_category_sub", language)}>
-            <div className="grid grid-cols-3 gap-2">
-              {CATEGORIES.map(cat => (
+            {/* Category grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginBottom: 10 }}>
+              {CATEGORIES.slice(0, 4).map(cat => (
                 <button key={cat.id}
                   onClick={() => cat.available && selectCategory(cat.id)}
                   disabled={!cat.available}
-                  className="relative py-3 px-2 rounded-xl text-center transition-all"
                   style={{
-                    background: category === cat.id ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.5)",
-                    border: category === cat.id ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
-                    opacity: !cat.available ? 0.5 : 1,
-                    cursor: !cat.available ? "default" : "pointer",
-                  }}>
+                    background: category === cat.id ? C.activeLight : C.surface,
+                    border: `2px solid ${category === cat.id ? C.brand : C.border}`,
+                    borderRadius: 18, padding: 14, cursor: cat.available ? "pointer" : "default",
+                    opacity: !cat.available ? 0.5 : 1, position: "relative", textAlign: "left",
+                  }}
+                >
                   {!cat.available && (
-                    <span
-                      className="absolute top-1 right-1.5 text-[7px] font-bold uppercase tracking-wide"
-                      style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF", padding: "1px 4px", borderRadius: 4 }}>
+                    <span style={{ position: "absolute", top: 9, right: 9, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 100, padding: "2px 6px", fontSize: 8, color: C.mid, fontFamily: mono }}>
                       {t("badge_soon", language)}
                     </span>
                   )}
-                  <div className="text-2xl mb-1">{cat.icon}</div>
-                  <p className="text-[11px] font-semibold" style={{ color: category === cat.id ? "#16A34A" : "#374151" }}>
-                    {t(cat.label, language)}
-                  </p>
+                  {cat.available && category === cat.id && (
+                    <div style={{ position: "absolute", top: 9, right: 9, width: 18, height: 18, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: "#fff" }}>✓</div>
+                  )}
+                  <div style={{ fontSize: 22, marginBottom: 7 }}>{cat.icon}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, color: category === cat.id ? C.brand : C.text }}>{t(cat.label, language)}</div>
+                  <div style={{ fontSize: 11, color: C.mid, lineHeight: 1.4 }}>{language === "pt" ? cat.desc : cat.descEn}</div>
                 </button>
               ))}
             </div>
-          </SectionBlock>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginBottom: 18 }}>
+              {CATEGORIES.slice(4).map(cat => (
+                <button key={cat.id}
+                  onClick={() => cat.available && selectCategory(cat.id)}
+                  disabled={!cat.available}
+                  style={{
+                    background: category === cat.id ? C.activeLight : C.surface,
+                    border: `2px solid ${category === cat.id ? C.brand : C.border}`,
+                    borderRadius: 18, padding: 14, cursor: cat.available ? "pointer" : "default",
+                    opacity: 0.5, position: "relative", textAlign: "left",
+                  }}
+                >
+                  <span style={{ position: "absolute", top: 9, right: 9, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 100, padding: "2px 6px", fontSize: 8, color: C.mid, fontFamily: mono }}>
+                    {t("badge_soon", language)}
+                  </span>
+                  <div style={{ fontSize: 22, marginBottom: 7 }}>{cat.icon}</div>
+                  <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 2, color: C.text }}>{t(cat.label, language)}</div>
+                  <div style={{ fontSize: 11, color: C.mid, lineHeight: 1.4 }}>{language === "pt" ? cat.desc : cat.descEn}</div>
+                </button>
+              ))}
+            </div>
 
-          {/* ── 4. Canal ── */}
-          {category && channels.length > 0 && (
-            <SectionBlock
-              icon={<span className="text-base">📡</span>}
-              iconBg="rgba(22,163,74,0.1)"
-              title={t("create_channel_title", language)}
-              sub={category === "fitness" ? (language === "pt" ? "Selecione um ou mais canais" : "Select one or more channels") : (language === "pt" ? "Plataforma de verificação" : "Verification platform")}
-            >
-              {/* Available channels */}
-              {(() => {
-                const availableChannels = channels.filter(ch => ch.available)
-                return (
-                  <div className="space-y-2">
-                    {availableChannels.map((ch, idx) => {
-                      const isSelected    = selectedChannels.includes(ch.id)
-                      const prevCh        = availableChannels[idx - 1]
-                      const prevSelected  = prevCh && selectedChannels.includes(prevCh.id)
-                      const showConnector = category === "fitness" && idx > 0 && isSelected && prevSelected
-                      return (
-                        <div key={ch.id}>
-                          {showConnector && (
-                            <div className="flex items-center gap-2 my-1 mx-1">
-                              <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
-                              <div
-                                className="flex overflow-hidden"
-                                style={{ borderRadius: 100, border: "1.5px solid rgba(22,163,74,0.25)", background: "rgba(255,255,255,0.6)" }}>
-                                {(["e", "ou"] as const).map(opt => (
-                                  <button key={opt}
-                                    onClick={() => setFitnessConnector(opt)}
-                                    className="px-4 py-1 text-[10px] font-bold uppercase tracking-wide"
-                                    style={{
-                                      background: fitnessConnector === opt ? "#16A34A" : "transparent",
-                                      color: fitnessConnector === opt ? "white" : "#9CA3AF",
-                                      border: "none", cursor: "pointer",
-                                    }}>
-                                    {opt === "e" ? (language === "pt" ? "E" : "AND") : (language === "pt" ? "OU" : "OR")}
-                                  </button>
-                                ))}
-                              </div>
-                              <div className="flex-1 h-px" style={{ background: "rgba(0,0,0,0.08)" }} />
-                            </div>
-                          )}
-                          <button
-                            onClick={() => toggleChannel(ch.id)}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl transition-all"
-                            style={{
-                              background: isSelected ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.5)",
-                              border: isSelected ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
-                            }}>
-                            <div
-                              className="w-7 h-7 rounded-[8px] flex items-center justify-center flex-shrink-0"
-                              style={{ background: ch.color }}>
-                              <span className="text-white text-[10px] font-bold">{CHANNEL_ICONS[ch.id]}</span>
-                            </div>
-                            <p className="text-sm font-semibold text-gray-800 flex-1 text-left">{ch.label}</p>
-                            <div
-                              className="w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0"
-                              style={{
-                                background: isSelected ? "#16A34A" : "transparent",
-                                border: isSelected ? "none" : "1.5px solid rgba(0,0,0,0.12)",
-                              }}>
-                              {isSelected && <Check className="w-3 h-3 text-white" />}
-                            </div>
-                          </button>
-                        </div>
-                      )
-                    })}
+            {/* Privacy */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: C.mid, marginBottom: 9, marginTop: 2 }}>
+              {language === "pt" ? "Privacidade" : "Privacy"}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {(["public", "private"] as const).map(opt => (
+                <button key={opt}
+                  onClick={() => setPrivacy(opt)}
+                  style={{
+                    background: privacy === opt ? C.activeLight : C.surface,
+                    border: `2px solid ${privacy === opt ? C.brand : C.border}`,
+                    borderRadius: 18, padding: 13, cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8, textAlign: "left",
+                  }}
+                >
+                  <div style={{ width: 32, height: 32, background: privacy === opt ? C.activeLight : C.surface2, border: privacy === opt ? `1px solid ${C.activeBorder}` : "none", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {opt === "public"
+                      ? <Globe style={{ width: 16, height: 16, stroke: privacy === opt ? C.brand : C.mid }} />
+                      : <Lock style={{ width: 16, height: 16, stroke: privacy === opt ? C.brand : C.mid }} />}
                   </div>
-                )
-              })()}
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 2, color: privacy === opt ? C.brand : C.text }}>
+                      {opt === "public" ? (language === "pt" ? "Público" : "Public") : (language === "pt" ? "Privado" : "Private")}
+                    </div>
+                    <div style={{ fontSize: 10, color: C.mid, lineHeight: 1.4 }}>
+                      {opt === "public"
+                        ? (language === "pt" ? "Qualquer um pode entrar sem aprovação" : "Anyone can join without approval")
+                        : (language === "pt" ? "Você aprova cada pedido de entrada" : "You approve each join request")}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
-              {/* Inactive channels — compact chips */}
-              {channels.some(ch => !ch.available) && (
-                <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
-                  <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                    {language === "pt" ? "Em breve" : "Coming soon"}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {channels.filter(ch => !ch.available).map(ch => (
-                      <div key={ch.id}
-                        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                        style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}>
-                        <div className="w-3.5 h-3.5 rounded-[4px] flex items-center justify-center flex-shrink-0"
-                          style={{ background: ch.color + "33" }}>
-                          <span style={{ fontSize: 6, fontWeight: 700, color: ch.color }}>{CHANNEL_ICONS[ch.id]}</span>
+          {/* Bottom nav */}
+          <div style={{ position: "sticky", bottom: 0, background: "rgba(240,243,240,0.96)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, padding: "11px 20px 34px" }}>
+            <button
+              onClick={() => { if (category) setScreen(2) }}
+              disabled={!category}
+              style={{ width: "100%", padding: 12, borderRadius: 100, fontSize: 13, fontWeight: 700, background: category ? C.brand : C.border, color: "#fff", border: "none", cursor: category ? "pointer" : "default" }}
+            >
+              {language === "pt" ? "Continuar" : "Continue"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP 2: Canal + Regra ──────────────────────────────────────────────── */}
+      {screen === 2 && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {pageHeader}
+          <div style={{ padding: "14px 0 0" }}>
+            <Stepper step={2} lang={language} />
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 120px" }}>
+            <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1.2, marginBottom: 5, color: C.text }}>
+              {language === "pt" ? "Por onde vamos verificar?" : "How will we verify?"}
+            </div>
+            <div style={{ fontSize: 12, color: C.mid, marginBottom: 18, lineHeight: 1.5 }}>
+              {language === "pt" ? "Escolha o canal e o tipo de atividade auditada." : "Choose the channel and the type of activity to audit."}
+            </div>
+
+            {/* Available channels */}
+            {channels.filter(ch => ch.available).length > 0 && (
+              <>
+                <div style={{ fontSize: 9, fontFamily: mono, color: C.dim, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2 }}>
+                  {language === "pt" ? "Disponíveis" : "Available"}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 14 }}>
+                  {channels.filter(ch => ch.available).map(ch => {
+                    const isSelected = selectedChannels.includes(ch.id)
+                    return (
+                      <button key={ch.id}
+                        onClick={() => toggleChannel(ch.id)}
+                        style={{
+                          background: isSelected ? C.activeLight : C.surface,
+                          border: `${isSelected ? 2 : 1}px solid ${isSelected ? C.activeBorder : C.border}`,
+                          borderRadius: 10, padding: "11px 13px", display: "flex", alignItems: "center", gap: 10, cursor: "pointer", textAlign: "left",
+                        }}
+                      >
+                        <div style={{ width: 34, height: 34, borderRadius: 10, background: ch.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+                          {CHANNEL_ICONS[ch.id]}
                         </div>
-                        <span className="text-[11px] font-medium text-gray-400">{ch.label}</span>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 1, color: C.text }}>{ch.label}</div>
+                          <div style={{ fontSize: 11, color: C.mid }}>{language === "pt" ? ch.desc : ch.descEn}</div>
+                        </div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: isSelected ? C.brand : C.brand }}>
+                          {isSelected ? (language === "pt" ? "Selecionado ✓" : "Selected ✓") : (language === "pt" ? "Conectar" : "Connect")}
+                        </div>
+                      </button>
+                    )
+                  })}
+
+                  {/* Fitness AND/OR connector */}
+                  {category === "fitness" && selectedChannels.length >= 2 && (() => {
+                    const sel = channels.filter(ch => selectedChannels.includes(ch.id))
+                    if (sel.length < 2) return null
+                    return (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "2px 2px" }}>
+                        <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }} />
+                        <div style={{ display: "flex", overflow: "hidden", borderRadius: 100, border: `1.5px solid ${C.activeBorder}`, background: C.surface }}>
+                          {(["e", "ou"] as const).map(opt => (
+                            <button key={opt}
+                              onClick={() => setFitnessConnector(opt)}
+                              style={{ padding: "4px 14px", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", background: fitnessConnector === opt ? C.brand : "transparent", color: fitnessConnector === opt ? "white" : C.dim, border: "none", cursor: "pointer" }}>
+                              {opt === "e" ? (language === "pt" ? "E" : "AND") : (language === "pt" ? "OU" : "OR")}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{ flex: 1, height: 1, background: "rgba(0,0,0,0.08)" }} />
                       </div>
+                    )
+                  })()}
+                </div>
+              </>
+            )}
+
+            {/* Unavailable channels */}
+            {channels.filter(ch => !ch.available).length > 0 && (
+              <>
+                <div style={{ fontSize: 9, fontFamily: mono, color: C.dim, textTransform: "uppercase", letterSpacing: "0.12em", fontWeight: 600, marginBottom: 6, paddingLeft: 2, marginTop: 12 }}>
+                  {language === "pt" ? "Em breve" : "Coming soon"}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 7, marginBottom: 18 }}>
+                  {channels.filter(ch => !ch.available).map(ch => (
+                    <div key={ch.id}
+                      style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 13px", display: "flex", alignItems: "center", gap: 10, opacity: 0.45 }}>
+                      <div style={{ width: 34, height: 34, borderRadius: 10, background: ch.color, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#fff", flexShrink: 0 }}>
+                        {CHANNEL_ICONS[ch.id]}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 13, fontWeight: 700, display: "block", marginBottom: 1, color: C.text }}>{ch.label}</div>
+                        <div style={{ fontSize: 11, color: C.mid }}>{language === "pt" ? ch.desc : ch.descEn}</div>
+                      </div>
+                      <span style={{ fontSize: 9, fontFamily: mono, color: C.dim, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 100, padding: "2px 7px" }}>
+                        {t("badge_soon", language)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Rule type */}
+            {selectedChannels.length > 0 && availableRules.length > 0 && (
+              <>
+                <div style={{ fontSize: 11, fontWeight: 600, color: C.mid, marginBottom: 8 }}>
+                  {language === "pt" ? "O que será verificado?" : "What will be verified?"}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {availableRules.map(r => (
+                    <div key={r.id} style={{ display: "flex", alignItems: "stretch", gap: 7 }}>
+                      <button
+                        onClick={() => r.available && setRule(r.id)}
+                        disabled={!r.available}
+                        style={{
+                          flex: 1, background: rule === r.id ? C.activeLight : C.surface,
+                          border: `2px solid ${rule === r.id ? C.brand : C.border}`,
+                          borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 9,
+                          opacity: !r.available ? 0.5 : 1, cursor: r.available ? "pointer" : "default", textAlign: "left",
+                        }}
+                      >
+                        <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${rule === r.id ? C.brand : C.border}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: rule === r.id ? C.brand : "transparent" }}>
+                          {rule === r.id && <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff" }} />}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>{language === "pt" ? r.label : r.labelEn}</span>
+                            {!r.available && <span style={{ fontSize: 9, fontFamily: mono, color: C.dim, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 100, padding: "1px 5px" }}>{t("badge_soon", language)}</span>}
+                          </div>
+                          <div style={{ fontSize: 10, color: C.mid, marginTop: 1 }}>{language === "pt" ? r.desc : r.descEn}</div>
+                        </div>
+                      </button>
+                      {getRuleSubrules(language)[r.id] && (
+                        <button
+                          onClick={() => setRuleInfoId(prev => prev === r.id ? null : r.id)}
+                          style={{ width: 36, flexShrink: 0, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: ruleInfoId === r.id ? "rgba(59,130,246,0.9)" : "rgba(59,130,246,0.08)", border: `1px solid ${ruleInfoId === r.id ? "rgba(59,130,246,0.5)" : "rgba(59,130,246,0.18)"}`, cursor: "pointer" }}>
+                          <Info style={{ width: 14, height: 14, stroke: ruleInfoId === r.id ? "white" : "#60A5FA" }} />
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div style={{ position: "sticky", bottom: 0, background: "rgba(240,243,240,0.96)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, padding: "11px 20px 34px", display: "flex", gap: 9 }}>
+            <button onClick={() => setScreen(1)} style={{ flexShrink: 0, padding: "12px 18px", borderRadius: 100, fontSize: 12, fontWeight: 600, background: C.surface, border: `1px solid ${C.border}`, color: C.mid, cursor: "pointer" }}>
+              {language === "pt" ? "Voltar" : "Back"}
+            </button>
+            <button
+              onClick={() => { if (selectedChannels.length > 0 && rule) setScreen(3) }}
+              disabled={selectedChannels.length === 0 || !rule}
+              style={{ flex: 1, padding: 12, borderRadius: 100, fontSize: 12, fontWeight: 700, background: (selectedChannels.length > 0 && rule) ? C.brand : C.border, color: "#fff", border: "none", cursor: (selectedChannels.length > 0 && rule) ? "pointer" : "default", textAlign: "center" }}
+            >
+              {language === "pt" ? "Continuar" : "Continue"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── STEP 3: Regras (Nome + Meta + Período) ────────────────────────────── */}
+      {screen === 3 && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {pageHeader}
+          <div style={{ padding: "14px 0 0" }}>
+            <Stepper step={3} lang={language} />
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 120px" }}>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1.2, marginBottom: 5, color: C.text }}>
+              {language === "pt" ? "Configure as regras" : "Configure the rules"}
+            </div>
+            <div style={{ fontSize: 12, color: C.mid, marginBottom: 18, lineHeight: 1.5 }}>
+              {language === "pt" ? "Defina o título, meta, frequência e período do acordo." : "Set the title, goal, frequency and period of the deal."}
+            </div>
+
+            {/* Title input */}
+            <div style={{ marginBottom: 13 }}>
+              <label style={{ display: "block", fontSize: 11, fontWeight: 600, marginBottom: 5, color: C.mid }}>
+                {language === "pt" ? "Título do acordo" : "Deal title"}
+                <span style={{ float: "right", fontFamily: mono, fontSize: 9, color: C.dim, fontWeight: 400 }}>{name.length}/60</span>
+              </label>
+              <input
+                type="text" value={name} maxLength={60}
+                onChange={e => setName(e.target.value)}
+                placeholder={t("create_name_placeholder", language)}
+                style={{
+                  width: "100%", padding: "11px 13px", fontSize: 13, fontFamily: "var(--font-dm-sans, DM Sans, sans-serif)", color: C.text, outline: "none",
+                  background: C.surface, border: `1px solid ${name.length === 0 ? C.border : name.length < 3 ? "rgba(255,80,80,0.35)" : C.activeBorder}`,
+                  borderRadius: 10, boxSizing: "border-box",
+                }}
+              />
+              {name.length > 0 && name.length < 3 && (
+                <p style={{ fontSize: 10, color: "#EF4444", marginTop: 4, marginLeft: 2 }}>{language === "pt" ? "Mínimo 3 caracteres" : "Minimum 3 characters"}</p>
+              )}
+            </div>
+
+            {/* Qty + Frequency */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: C.mid, marginBottom: 8 }}>
+              {language === "pt" ? "Meta e frequência" : "Goal and frequency"}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 9, marginBottom: 12 }}>
+              {/* Quantity */}
+              <div>
+                <label style={{ fontSize: 11, color: C.dim, marginBottom: 5, display: "block", fontWeight: 500 }}>
+                  {rule === "pace" ? t("meta_pace_label", language) : (language === "pt" ? "Quantidade" : "Quantity")}
+                </label>
+                <div style={{ display: "flex", alignItems: "center", gap: 5, background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "7px 11px" }}>
+                  <button
+                    onClick={() => { const n = Math.max(1, quantity - 1); setQuantity(n); setQtyStr(String(n)) }}
+                    style={{ width: 26, height: 26, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.mid, flexShrink: 0 }}>
+                    <Minus style={{ width: 12, height: 12 }} />
+                  </button>
+                  <div style={{ flex: 1, textAlign: "center" }}>
+                    <input
+                      type="number" value={qtyStr} min={1}
+                      onChange={e => handleQtyChange(e.target.value)}
+                      style={{ width: "100%", textAlign: "center", fontSize: 14, fontWeight: 700, background: "transparent", border: "none", outline: "none", color: C.text }}
+                    />
+                    {ruleObj && <div style={{ fontSize: 9, color: C.dim, fontFamily: mono, textAlign: "center" }}>
+                      {language === "pt" ? ruleObj.label.split(" ")[0].toLowerCase() : ruleObj.labelEn.split(" ")[0].toLowerCase()}
+                    </div>}
+                  </div>
+                  <button
+                    onClick={() => { const n = quantity + 1; setQuantity(n); setQtyStr(String(n)) }}
+                    style={{ width: 26, height: 26, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: C.mid, flexShrink: 0 }}>
+                    <Plus style={{ width: 12, height: 12 }} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Frequency */}
+              <div>
+                <label style={{ fontSize: 11, color: C.dim, marginBottom: 5, display: "block", fontWeight: 500 }}>
+                  {language === "pt" ? "Por período de" : "Per period of"}
+                </label>
+                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {FREQUENCIES.slice(0, 2).map(f => (
+                      <button key={f.id}
+                        onClick={() => setFrequency(f.id)}
+                        style={{ flex: 1, padding: "8px 0", background: frequency === f.id ? C.brand : C.surface, border: `1px solid ${frequency === f.id ? C.brand : C.border}`, borderRadius: 10, textAlign: "center", fontSize: 11, fontWeight: 600, color: frequency === f.id ? "#fff" : C.mid, cursor: "pointer" }}>
+                        {language === "pt" ? f.label : f.labelEn}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    {FREQUENCIES.slice(2).map(f => (
+                      <button key={f.id}
+                        onClick={() => setFrequency(f.id)}
+                        style={{ flex: 1, padding: "8px 0", background: frequency === f.id ? C.brand : C.surface, border: `1px solid ${frequency === f.id ? C.brand : C.border}`, borderRadius: 10, textAlign: "center", fontSize: 11, fontWeight: 600, color: frequency === f.id ? "#fff" : C.mid, cursor: "pointer" }}>
+                        {language === "pt" ? f.label : f.labelEn}
+                      </button>
                     ))}
                   </div>
                 </div>
-              )}
-            </SectionBlock>
-          )}
+              </div>
+            </div>
 
-          {/* ── 5. Regra ── */}
-          {selectedChannels.length > 0 && availableRules.length > 0 && (
-            <SectionBlock icon={<span className="text-base">📋</span>} iconBg="rgba(168,85,247,0.1)" title={language === "pt" ? "Regra" : "Rule"} sub={language === "pt" ? "O que será medido e verificado" : "What will be measured and verified"}>
-              <div className="space-y-1.5">
-                {availableRules.map(r => (
-                  <div key={r.id} className="flex items-stretch gap-2">
-                    <button
-                      onClick={() => r.available && setRule(r.id)}
-                      disabled={!r.available}
-                      className="flex-1 flex items-center gap-3 p-3 rounded-xl transition-all"
-                      style={{
-                        background: rule === r.id ? "rgba(22,163,74,0.07)" : "rgba(255,255,255,0.5)",
-                        border: rule === r.id ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
-                        opacity: !r.available ? 0.55 : 1,
-                        cursor: !r.available ? "default" : "pointer",
-                      }}>
-                      <div className="flex-1 text-left">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-gray-800">{language === "pt" ? r.label : r.labelEn}</p>
-                          {!r.available && (
-                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                              style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
-                              {t("badge_soon", language)}
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[10px] text-gray-500 font-medium">{language === "pt" ? r.desc : r.descEn}</p>
-                      </div>
-                      {r.available && rule === r.id && <Check className="w-4 h-4 text-[#16A34A] flex-shrink-0" />}
-                    </button>
-                    {/* Info balloon */}
-                    {getRuleSubrules(language)[r.id] && (
-                      <button
-                        onClick={() => setRuleInfoId(prev => prev === r.id ? null : r.id)}
-                        className="w-9 flex-shrink-0 rounded-xl flex items-center justify-center transition-all"
-                        style={{
-                          background: ruleInfoId === r.id ? "rgba(59,130,246,0.9)" : "rgba(59,130,246,0.08)",
-                          border: ruleInfoId === r.id ? "1px solid rgba(59,130,246,0.5)" : "1px solid rgba(59,130,246,0.18)",
-                        }}>
-                        <Info className="w-3.5 h-3.5" style={{ color: ruleInfoId === r.id ? "white" : "#60A5FA" }} />
-                      </button>
-                    )}
+            {/* Inline sub-rules */}
+            {reviewSubrules && (
+              <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 18, padding: 12, marginBottom: 12 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 9 }}>
+                  <div style={{ width: 20, height: 20, borderRadius: 6, background: C.activeLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <ShieldCheck style={{ width: 11, height: 11, stroke: C.brand }} />
                   </div>
-                ))}
-              </div>
-            </SectionBlock>
-          )}
-
-          {/* ── 6. Meta (Qtd + Frequência) ── */}
-          {rule && (
-            <SectionBlock icon={<span className="text-base">🎯</span>} iconBg="rgba(59,130,246,0.1)" title={t("create_meta_title", language)} sub={t("create_meta_sub", language)}>
-              <div className="p-4 rounded-xl mb-3"
-                style={{ background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.7)" }}>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 text-center">
-                  {rule === "pace" ? t("meta_pace_label", language) : t("meta_qty_label", language)}
-                </p>
-                <div className="flex items-center justify-center gap-4">
-                  <button
-                    onClick={() => { const n = Math.max(1, quantity - 1); setQuantity(n); setQtyStr(String(n)) }}
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(22,163,74,0.12)", color: "#16A34A" }}>
-                    <Minus className="w-4 h-4" />
-                  </button>
-                  <input
-                    type="number" value={qtyStr} min={1}
-                    onChange={e => handleQtyChange(e.target.value)}
-                    className="w-16 text-center text-2xl font-black text-gray-800 rounded-xl outline-none py-2"
-                    style={{ background: "rgba(255,255,255,0.8)", border: "1.5px solid rgba(22,163,74,0.3)" }}
-                  />
-                  <button
-                    onClick={() => { const n = quantity + 1; setQuantity(n); setQtyStr(String(n)) }}
-                    className="w-10 h-10 rounded-full flex items-center justify-center"
-                    style={{ background: "rgba(22,163,74,0.12)", color: "#16A34A" }}>
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  <span style={{ fontSize: 10, fontFamily: mono, fontWeight: 700, color: C.brand, textTransform: "uppercase", letterSpacing: "0.1em" }}>
+                    {reviewSubrules.title}
+                  </span>
                 </div>
-              </div>
-              <div className="flex gap-2">
-                {FREQUENCIES.map(f => (
-                  <button key={f.id}
-                    onClick={() => setFrequency(f.id)}
-                    className="flex-1 py-2.5 rounded-xl text-xs font-bold transition-all"
-                    style={{
-                      background: frequency === f.id ? "rgba(22,163,74,0.12)" : "rgba(255,255,255,0.5)",
-                      border: frequency === f.id ? "1.5px solid rgba(22,163,74,0.4)" : "1.5px solid rgba(0,0,0,0.07)",
-                      color: frequency === f.id ? "#16A34A" : "#6B7280",
-                    }}>
-                    {language === "pt" ? f.label : f.labelEn}
-                  </button>
-                ))}
-              </div>
-              {rule === "pace" && (
-                <p className="text-[11px] text-amber-600 mt-2 text-center font-semibold">
-                  {t("meta_pace_help", language)}
-                </p>
-              )}
-              {frequency && (
-                <div className="mt-3 p-3 rounded-xl"
-                  style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.18)" }}>
-                  <p className="text-[11px] text-red-600 font-semibold leading-relaxed">
-                    ⚠️ {t("meta_warning", language)}
-                  </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {reviewSubrules.items.map((item, i) => (
+                    <div key={i} style={{ display: "flex", gap: 6, fontSize: 11, color: C.mid, lineHeight: 1.45, alignItems: "flex-start" }}>
+                      <span style={{ color: C.brand, fontFamily: mono, fontWeight: 700, flexShrink: 0, fontSize: 10, marginTop: 2 }}>→</span>
+                      {item}
+                    </div>
+                  ))}
                 </div>
-              )}
-            </SectionBlock>
-          )}
-
-          {/* ── 7. Período ── */}
-          <SectionBlock icon={<span className="text-base">📅</span>} iconBg="rgba(239,68,68,0.08)" title={t("create_period_title", language)} sub={t("create_period_sub", language)}>
-            <div className="flex gap-2 mb-3 flex-wrap">
-              {PERIOD_PRESETS.map(p => (
-                <button key={p.id}
-                  onClick={() => selectPreset(p.id)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold transition-all"
-                  style={{
-                    background: periodPreset === p.id ? "rgba(22,163,74,0.12)" : "rgba(255,255,255,0.5)",
-                    border: periodPreset === p.id ? "1.5px solid rgba(22,163,74,0.4)" : "1.5px solid rgba(0,0,0,0.07)",
-                    color: periodPreset === p.id ? "#16A34A" : "#6B7280",
-                  }}>
-                  {language === "pt" ? p.label : p.labelEn}
-                </button>
-              ))}
-            </div>
-            <div className="flex gap-3 items-stretch">
-              <button
-                onClick={() => { setShowCal("start"); setCalMonth(new Date(startDate.getFullYear(), startDate.getMonth(), 1)) }}
-                className="flex-1 p-3.5 rounded-xl text-left transition-all active:scale-95"
-                style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.8)" }}>
-                <p className="text-[9px] font-bold text-gray-400 tracking-wider uppercase">{t("date_start", language)}</p>
-                <p className="text-base font-bold text-gray-800 mt-0.5">{fmtShort(startDate)}</p>
-              </button>
-              <div className="flex items-center px-1">
-                <span className="text-sm font-bold text-gray-400">{t("date_days", language, { count: diffDays })}</span>
-              </div>
-              <button
-                onClick={() => { setShowCal("end"); setCalMonth(new Date(endDate.getFullYear(), endDate.getMonth(), 1)) }}
-                className="flex-1 p-3.5 rounded-xl text-right transition-all active:scale-95"
-                style={{ background: "rgba(22,163,74,0.08)", border: "1.5px solid rgba(22,163,74,0.25)" }}>
-                <p className="text-[9px] font-bold text-[#16A34A] tracking-wider uppercase">{t("date_end", language)}</p>
-                <p className="text-base font-bold text-[#16A34A] mt-0.5">{fmtShort(endDate)}</p>
-              </button>
-            </div>
-            <div className="mt-3 p-3 rounded-xl flex items-center gap-2.5"
-              style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-              <span className="text-lg flex-shrink-0">⏰</span>
-              <div>
-                <p className="text-[11px] font-bold text-[#16A34A]">{t("date_auto_start", language)}</p>
-                <p className="text-[10px] text-gray-500 mt-0.5">
-                  {fmtFull(startDate)} · {t("date_timezone", language)}
-                </p>
-              </div>
-            </div>
-          </SectionBlock>
-
-          {/* ── 8. Pagamento ── */}
-          <SectionBlock icon={<span className="text-base">💸</span>} iconBg="rgba(22,163,74,0.1)" title={t("create_pay_title", language)} sub={t("create_pay_sub", language)}>
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {AMOUNT_PRESETS.map(v => (
-                <button key={v}
-                  onClick={() => { setAmount(v); setIsCustomAmt(false) }}
-                  className="py-4 px-2 rounded-[14px] text-center transition-all"
-                  style={{
-                    background: !isCustomAmt && amount === v ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.5)",
-                    border: !isCustomAmt && amount === v ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.08)",
-                    boxShadow: !isCustomAmt && amount === v ? "0 4px 14px rgba(22,163,74,0.15)" : "none",
-                  }}>
-                  <p className="text-[18px] font-black"
-                    style={{ color: !isCustomAmt && amount === v ? "#16A34A" : "#1f2937" }}>
-                    ${v}
-                  </p>
-                  <p className="text-[9px] text-gray-400">{t("pay_per_person", language)}</p>
-                </button>
-              ))}
-              <button
-                onClick={() => setIsCustomAmt(true)}
-                className="py-4 px-2 rounded-[14px] text-center transition-all"
-                style={{
-                  background: isCustomAmt ? "rgba(22,163,74,0.08)" : "rgba(255,255,255,0.5)",
-                  border: isCustomAmt ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.08)",
-                }}>
-                <p className="text-[18px] font-black" style={{ color: isCustomAmt ? "#16A34A" : "#1f2937" }}>{t("pay_other", language)}</p>
-                <p className="text-[9px] text-gray-400">{t("pay_custom", language)}</p>
-              </button>
-            </div>
-
-            {isCustomAmt && (
-              <div className="mb-4 relative">
-                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold text-sm">$</span>
-                <input
-                  type="number" value={customAmtStr} placeholder="0,00"
-                  onChange={e => setCustomAmtStr(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
-                  style={{
-                    background: "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)",
-                    border: parseFloat(customAmtStr) >= 10
-                      ? "2px solid rgba(22,163,74,0.35)"
-                      : "2px solid rgba(255,80,80,0.3)",
-                  }}
-                />
-                {customAmtStr && parseFloat(customAmtStr) < 10 && (
-                  <p className="text-xs text-red-400 mt-1 ml-1">{t("err_min_val", language)}</p>
+                {reviewSubrules.hint && (
+                  <div style={{ marginTop: 8, paddingTop: 8, borderTop: `1px solid ${C.border}` }}>
+                    <p style={{ fontSize: 11, color: "#B45309", fontWeight: 600 }}>{reviewSubrules.hint}</p>
+                  </div>
                 )}
               </div>
             )}
 
-            {effectiveAmount >= 10 && (
-              <div className="mb-4 p-4 rounded-[14px] flex items-center gap-3"
-                style={{
-                  background: "linear-gradient(135deg, rgba(22,163,74,0.06), rgba(34,197,94,0.04))",
-                  border: "1px solid rgba(22,163,74,0.15)",
-                }}>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: "rgba(22,163,74,0.12)" }}>
-                  <span className="text-lg">💰</span>
-                </div>
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{t("pay_pot_estimate", language)}</p>
-                  <p className="text-xl font-black text-[#16A34A]">
-                    ${(effectiveAmount * 10).toLocaleString("en-US")}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{t("pay_prize_title", language)}</p>
-            <div className="space-y-2">
-              {DISTRIBUTION_TYPES.map(d => (
-                <button key={d.id}
-                  onClick={() => d.available && setDistribution(d.id)}
-                  disabled={!d.available}
-                  className="w-full flex items-center gap-3 p-3.5 rounded-xl transition-all"
-                  style={{
-                    background: !d.available ? "rgba(255,255,255,0.3)" : distribution === d.id ? "rgba(22,163,74,0.07)" : "rgba(255,255,255,0.5)",
-                    border: !d.available ? "1.5px solid rgba(0,0,0,0.05)" : distribution === d.id ? "1.5px solid #16A34A" : "1.5px solid rgba(0,0,0,0.07)",
-                    opacity: !d.available ? 0.55 : 1,
-                    cursor: !d.available ? "default" : "pointer",
-                  }}>
-                  <span className="text-xl flex-shrink-0">{d.icon}</span>
-                  <div className="flex-1 text-left">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-gray-800">{d.label}</p>
-                      {!d.available && (
-                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded"
-                          style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
-                          {t("badge_soon", language)}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-gray-400 mt-0.5">{d.desc}</p>
-                  </div>
-                  {d.available && distribution === d.id && <Check className="w-4 h-4 text-[#16A34A] flex-shrink-0" />}
+            {/* Period */}
+            <div style={{ fontSize: 11, fontWeight: 600, color: C.mid, marginBottom: 8, marginTop: 4 }}>
+              {language === "pt" ? "Período do acordo" : "Deal period"}
+            </div>
+            <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
+              {PERIOD_PRESETS.map(p => (
+                <button key={p.id}
+                  onClick={() => selectPreset(p.id)}
+                  style={{ padding: "6px 14px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: periodPreset === p.id ? C.activeLight : C.surface, border: `1px solid ${periodPreset === p.id ? C.brand : C.border}`, color: periodPreset === p.id ? C.brand : C.mid, cursor: "pointer" }}>
+                  {language === "pt" ? p.label : p.labelEn}
                 </button>
               ))}
             </div>
-          </SectionBlock>
-
-          {/* ── 9. Visibilidade ── */}
-          <SectionBlock icon={<span className="text-base">👁️</span>} iconBg="rgba(107,114,128,0.1)" title={t("create_visibility_title", language)} sub={t("create_visibility_sub", language)}>
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2 block">{t("create_visibility_label", language)}</span>
-            <div className="flex gap-2 p-1 rounded-2xl" style={{ background: "rgba(255,255,255,0.5)" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 7, alignItems: "center", marginBottom: 10 }}>
               <button
-                onClick={() => setPrivacy("private")}
-                className={`flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all ${privacy === "private" ? "text-white" : "text-gray-500"}`}
-                style={{ background: privacy === "private" ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}
-              >
-                <Lock className="w-4 h-4" />
-                <div className="text-left">
-                  <p className="text-xs font-bold">{t("priv_private", language)}</p>
-                  <p className="text-[9px] opacity-60 font-medium leading-none mt-0.5">{t("priv_private_desc", language)}</p>
-                </div>
+                onClick={() => { setShowCal("start"); setCalMonth(new Date(startDate.getFullYear(), startDate.getMonth(), 1)) }}
+                style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 13px", textAlign: "left", cursor: "pointer" }}>
+                <div style={{ fontSize: 9, fontFamily: mono, color: C.dim, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>{t("date_start", language)}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{fmtShort(startDate)}</div>
               </button>
+              <div style={{ color: C.dim, textAlign: "center", fontSize: 13 }}>→</div>
               <button
-                onClick={() => setPrivacy("public")}
-                className={`flex-1 flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-all ${privacy === "public" ? "text-white" : "text-gray-500"}`}
-                style={{ background: privacy === "public" ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}
-              >
-                <Globe className="w-4 h-4" />
-                <div className="text-left">
-                  <p className="text-xs font-bold">{t("priv_public", language)}</p>
-                  <p className="text-[9px] opacity-60 font-medium leading-none mt-0.5">{t("priv_public_desc", language)}</p>
-                </div>
+                onClick={() => { setShowCal("end"); setCalMonth(new Date(endDate.getFullYear(), endDate.getMonth(), 1)) }}
+                style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 13px", textAlign: "right", cursor: "pointer" }}>
+                <div style={{ fontSize: 9, fontFamily: mono, color: C.dim, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>{t("date_end", language)}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{fmtShort(endDate)}</div>
               </button>
             </div>
-          </SectionBlock>
+            <div style={{ display: "inline-block", background: C.activeLight, color: C.brand, border: `1px solid ${C.activeBorder}`, borderRadius: 100, padding: "3px 9px", fontSize: 10, fontWeight: 600, marginBottom: 12, fontFamily: mono }}>
+              {t("date_days", language, { count: diffDays })}
+            </div>
 
-          <div className="mt-6">
-            <button
-              onClick={() => isValid && setScreen(2)}
-              disabled={!isValid}
-              className={`w-full py-4 rounded-2xl font-bold text-white text-sm transition-all duration-300 ${isValid ? "active:scale-[0.98]" : "opacity-40 cursor-not-allowed"}`}
-              style={{
-                background: "linear-gradient(135deg,#16A34A,#22C55E)",
-                boxShadow: isValid ? "0 8px 32px rgba(22,163,74,0.4)" : "none",
-                letterSpacing: "0.04em",
-              }}
-            >
-              {t("btn_review", language)}
-            </button>
-            {!isValid && (
-              <p className="text-center text-xs text-gray-400 mt-2">
-                {t("err_fields", language)}
-              </p>
+            {/* Compliance example */}
+            {frequency && (
+              <div style={{ background: `rgba(232,98,10,0.06)`, border: `1px solid rgba(232,98,10,0.2)`, borderRadius: 18, padding: 12, marginTop: 4 }}>
+                <div style={{ fontSize: 9, fontFamily: mono, fontWeight: 700, color: C.forming, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
+                  {language === "pt" ? "Como funciona o compliance" : "How compliance works"}
+                </div>
+                <p style={{ fontSize: 11, color: C.mid, lineHeight: 1.5, marginBottom: 8 }}>
+                  {language === "pt"
+                    ? "Seu desempenho é avaliado janela por janela. Uma falha em qualquer período classifica como perdedor, independente do desempenho anterior."
+                    : "Your performance is evaluated window by window. A failure in any period classifies you as a loser, regardless of previous performance."}
+                </p>
+                <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid rgba(232,98,10,0.2)` }}>
+                  {[
+                    { w: language === "pt" ? "Semana 1" : "Week 1", v: `${quantity} ${ruleLabel ?? "—"}`, ok: true },
+                    { w: language === "pt" ? "Semana 2" : "Week 2", v: `${quantity} ${ruleLabel ?? "—"}`, ok: true },
+                    { w: language === "pt" ? "Semana 3" : "Week 3", v: `${quantity} ${ruleLabel ?? "—"}`, ok: true },
+                    { w: language === "pt" ? "Semana 4" : "Week 4", v: language === "pt" ? `${Math.max(1, quantity - 2)} — abaixo` : `${Math.max(1, quantity - 2)} — below`, ok: false },
+                  ].map(({ w, v, ok }) => (
+                    <div key={w} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", borderBottom: `1px solid rgba(232,98,10,0.1)`, background: "rgba(255,255,255,0.6)", fontSize: 11 }}>
+                      <span style={{ color: C.mid }}>{w}</span>
+                      <span style={{ fontWeight: 600, color: ok ? C.mid : C.forming }}>{v}</span>
+                      <span style={{ fontWeight: 700, fontSize: 12, color: ok ? C.brand : C.forming }}>{ok ? "✓" : "✗"}</span>
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: 10, color: C.mid, marginTop: 7, fontStyle: "italic", lineHeight: 1.4 }}>
+                  {language === "pt" ? "Um bom desempenho anterior não compensa uma janela abaixo da meta." : "Strong previous performance does not make up for a window below the goal."}
+                </p>
+              </div>
             )}
           </div>
+
+          <div style={{ position: "sticky", bottom: 0, background: "rgba(240,243,240,0.96)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, padding: "11px 20px 34px", display: "flex", gap: 9 }}>
+            <button onClick={() => setScreen(2)} style={{ flexShrink: 0, padding: "12px 18px", borderRadius: 100, fontSize: 12, fontWeight: 600, background: C.surface, border: `1px solid ${C.border}`, color: C.mid, cursor: "pointer" }}>
+              {language === "pt" ? "Voltar" : "Back"}
+            </button>
+            <button
+              onClick={() => { if (name.trim().length >= 3 && frequency) setScreen(4) }}
+              disabled={name.trim().length < 3 || !frequency}
+              style={{ flex: 1, padding: 12, borderRadius: 100, fontSize: 12, fontWeight: 700, background: (name.trim().length >= 3 && frequency) ? C.brand : C.border, color: "#fff", border: "none", cursor: (name.trim().length >= 3 && frequency) ? "pointer" : "default", textAlign: "center" }}
+            >
+              {language === "pt" ? "Continuar" : "Continue"}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* ── Screen 2 (Confirmação) ────────────────────────────────────────────── */}
-      <div
-        className="absolute inset-0 flex flex-col overflow-y-auto"
-        style={{
-          transform: screen === 2 ? "translateX(0)" : "translateX(100%)",
-          opacity: screen === 2 ? 1 : 0,
-          transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.35s",
-          pointerEvents: screen === 2 ? "auto" : "none",
-        }}
-      >
-        {/* Header */}
-        <header className="px-5 pt-12 pb-3 flex-shrink-0 flex items-center justify-between">
-          <button onClick={() => setScreen(1)} className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: "rgba(255,255,255,0.5)" }}>
-            <ArrowLeft className="w-5 h-5 text-gray-700" />
-          </button>
-          <div className="flex-1 text-center pr-10">
-            <h1 className="text-xl font-bold text-gray-800">{t("create_title", language)}</h1>
-            <p className="text-[10px] font-medium text-gray-400 uppercase tracking-widest">{t("create_subtitle", language)}</p>
+      {/* ── STEP 4: Revisão e economia ─────────────────────────────────────────── */}
+      {screen === 4 && (
+        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+          {pageHeader}
+          <div style={{ padding: "14px 0 0" }}>
+            <Stepper step={4} lang={language} />
           </div>
-        </header>
-
-        <div className="flex-1 px-5 pb-8">
-          <div
-            className="rounded-[22px] p-5 mb-6 relative overflow-hidden"
-            style={{
-              background: "linear-gradient(135deg, #0D2E1A, #16A34A 55%, #22C55E)",
-              boxShadow: "0 14px 40px rgba(22,163,74,0.42)",
-              color: "white",
-            }}>
-            <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full"
-              style={{ background: "rgba(255,255,255,0.06)" }} />
-            <div className="relative z-10">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest mb-1">
-                    {t("deal_label", language)}
-                  </p>
-                  <h2 className="text-xl font-bold leading-tight">{name || t("deal_no_name", language)}</h2>
-                </div>
-                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
-                  style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
-                  {privacy === "private"
-                    ? <Lock className="w-3.5 h-3.5 text-white" />
-                    : <Globe className="w-3.5 h-3.5 text-white" />}
-                  <span className="text-white text-[10px] font-bold uppercase tracking-wide">
-                    {privacy === "private" ? t("priv_private", language) : t("priv_public", language)}
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { label: t("stat_entry", language),    value: effectiveAmount > 0 ? `$${effectiveAmount}` : "—" },
-                  { label: language === "pt" ? "Regra" : "Rule", value: ruleWithFreqLabel || "—" },
-                  { label: t("stat_duration", language),  value: t("date_days", language, { count: diffDays }) },
-                  { label: t("stat_prize", language),     value: DISTRIBUTION_TYPES.find(d => d.id === distribution)?.label ?? "—" },
-                ].map(stat => (
-                  <div key={stat.label} className="p-2.5 rounded-xl"
-                    style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                    <p className="text-[9px] opacity-70 uppercase tracking-wider">{stat.label}</p>
-                    <p className="text-base font-bold mt-0.5">{stat.value}</p>
-                  </div>
-                ))}
-              </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: "0 20px 120px" }}>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-.03em", lineHeight: 1.2, marginBottom: 5, color: C.text }}>
+              {language === "pt" ? "Revisão e economia" : "Review and economics"}
             </div>
-          </div>
+            <div style={{ fontSize: 12, color: C.mid, marginBottom: 18, lineHeight: 1.5 }}>
+              {language === "pt" ? "Configure o valor de entrada, distribuição e revise o acordo." : "Set entry amount, distribution and review your deal."}
+            </div>
 
-          {/* Compact info rows */}
-          <div className="rounded-xl overflow-hidden mb-3"
-            style={{ background: "rgba(255,255,255,0.48)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-            {confirmRows.map((row, i, arr) => (
-              <div key={row.key}
-                className="flex items-center gap-3 px-3.5 py-2.5"
-                style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
-                <span className="text-sm flex-shrink-0">{row.icon}</span>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 w-16 flex-shrink-0">{row.key}</span>
-                <span className="text-[12px] font-semibold text-gray-800 flex-1 min-w-0 truncate">{row.val}</span>
+            {/* Entry amount */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: 12, marginBottom: 12 }}>
+              <label style={{ display: "block", fontSize: 8, fontFamily: mono, color: C.dim, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 7 }}>
+                {language === "pt" ? "Valor de entrada por participante" : "Entry amount per participant"}
+              </label>
+              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-.03em", color: C.text, marginBottom: 3 }}>
+                ${effectiveAmount > 0 ? effectiveAmount : "—"}
               </div>
-            ))}
-          </div>
-
-          {/* Subrules — collapsible, starts open */}
-          {reviewSubrules && (
-            <div className="mb-3 rounded-2xl overflow-hidden"
-              style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.18)" }}>
-              <button
-                onClick={() => setSubrulesOpen(o => !o)}
-                className="w-full flex items-center justify-between px-4 py-3"
-                style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-              >
-                <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
-                  {reviewSubrules.title}
-                </p>
-                {subrulesOpen
-                  ? <ChevronDown className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-                  : <ChevronRight className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />}
-              </button>
-              {subrulesOpen && (
-                <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(59,130,246,0.12)" }}>
-                  <ul className="space-y-2 pt-3">
-                    {reviewSubrules.items.map((item, i) => (
-                      <li key={i} className="flex items-start gap-2.5 text-[12px] text-gray-700 leading-relaxed">
-                        <span className="text-blue-400 mt-0.5 flex-shrink-0 font-bold">✓</span>
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {reviewSubrules.hint && (
-                    <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(59,130,246,0.15)" }}>
-                      <p className="text-[11px] text-amber-600 font-semibold leading-relaxed">{reviewSubrules.hint}</p>
-                    </div>
+              <div style={{ fontSize: 11, color: C.mid, marginBottom: 12 }}>
+                {language === "pt" ? "Mínimo de 2 participantes para o deal iniciar" : "Minimum 2 participants for the deal to start"}
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginBottom: isCustomAmt ? 10 : 0 }}>
+                {AMOUNT_PRESETS.map(v => (
+                  <button key={v}
+                    onClick={() => { setAmount(v); setIsCustomAmt(false) }}
+                    style={{ padding: "10px 4px", borderRadius: 10, textAlign: "center", background: !isCustomAmt && amount === v ? C.activeLight : C.surface2, border: `1px solid ${!isCustomAmt && amount === v ? C.brand : C.border}`, cursor: "pointer" }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: !isCustomAmt && amount === v ? C.brand : C.text }}>${v}</div>
+                    <div style={{ fontSize: 9, color: C.dim, fontFamily: mono }}>{t("pay_per_person", language)}</div>
+                  </button>
+                ))}
+                <button
+                  onClick={() => setIsCustomAmt(true)}
+                  style={{ padding: "10px 4px", borderRadius: 10, textAlign: "center", background: isCustomAmt ? C.activeLight : C.surface2, border: `1px solid ${isCustomAmt ? C.brand : C.border}`, cursor: "pointer" }}>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: isCustomAmt ? C.brand : C.text }}>{t("pay_other", language)}</div>
+                  <div style={{ fontSize: 9, color: C.dim, fontFamily: mono }}>{t("pay_custom", language)}</div>
+                </button>
+              </div>
+              {isCustomAmt && (
+                <div style={{ position: "relative", marginTop: 10 }}>
+                  <span style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: C.mid, fontWeight: 600, fontSize: 13 }}>$</span>
+                  <input
+                    type="number" value={customAmtStr} placeholder="0,00"
+                    onChange={e => setCustomAmtStr(e.target.value)}
+                    style={{ width: "100%", paddingLeft: 30, paddingRight: 13, paddingTop: 10, paddingBottom: 10, fontSize: 13, background: C.surface, border: `1px solid ${parseFloat(customAmtStr) >= 10 ? C.activeBorder : "rgba(255,80,80,0.3)"}`, borderRadius: 10, outline: "none", color: C.text, boxSizing: "border-box" }}
+                  />
+                  {customAmtStr && parseFloat(customAmtStr) < 10 && (
+                    <p style={{ fontSize: 10, color: "#EF4444", marginTop: 4 }}>{t("err_min_val", language)}</p>
                   )}
                 </div>
               )}
             </div>
-          )}
 
-          {/* DealGuard — collapsible, starts closed, green */}
-          <div className="mb-3 rounded-2xl overflow-hidden"
-            style={{ background: "rgba(22,163,74,0.05)", border: "1px solid rgba(22,163,74,0.22)" }}>
-            <button
-              onClick={() => setDealguardOpen(o => !o)}
-              className="w-full flex items-center justify-between px-4 py-3"
-              style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-            >
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-                <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest">
-                  {language === "pt" ? "Verificação dupla — DealGuard Engine" : "Double verification — DealGuard Engine"}
-                </p>
-              </div>
-              {dealguardOpen
-                ? <ChevronDown className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                : <ChevronRight className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
-            </button>
-            {dealguardOpen && (
-              <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(22,163,74,0.15)" }}>
-                <div className="space-y-3 pt-3">
-                  {[
-                    {
-                      step: "1",
-                      label: language === "pt" ? "Coleta automática via API" : "Automatic API collection",
-                      desc: language === "pt"
-                        ? "O DealGuard conecta diretamente nas plataformas e extrai os dados brutos de cada participante ao final de cada janela."
-                        : "DealGuard connects directly to platforms and pulls raw data from each participant at the end of each window.",
-                    },
-                    {
-                      step: "2",
-                      label: language === "pt" ? "Análise Sentinel (IA)" : "Sentinel analysis (AI)",
-                      desc: language === "pt"
-                        ? "Uma camada de IA analisa as evidências em busca de padrões suspeitos. Resultados com risco alto são marcados e excluídos da premiação."
-                        : "An AI layer reviews the evidence for suspicious patterns. High-risk results are flagged and excluded from the prize pool.",
-                    },
-                  ].map(({ step, label, desc }) => (
-                    <div key={step} className="flex items-start gap-3">
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                        style={{ background: "rgba(22,163,74,0.12)", border: "1px solid rgba(22,163,74,0.25)" }}>
-                        <span style={{ fontSize: 10, fontWeight: 900, color: "#16A34A" }}>{step}</span>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-bold text-green-700 mb-0.5">{label}</p>
-                        <p className="text-[11px] text-gray-600 leading-relaxed">{desc}</p>
-                      </div>
+            {/* Distribution */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: 12, marginBottom: 12 }}>
+              <label style={{ display: "block", fontSize: 8, fontFamily: mono, color: C.dim, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 9 }}>
+                {language === "pt" ? "Distribuição do prêmio" : "Prize distribution"}
+              </label>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {DISTRIBUTION_TYPES.map(d => (
+                  <button key={d.id}
+                    onClick={() => d.available && setDistribution(d.id)}
+                    disabled={!d.available}
+                    style={{ background: distribution === d.id ? C.activeLight : C.surface2, border: `2px solid ${distribution === d.id ? C.brand : C.border}`, borderRadius: 10, padding: "10px 12px", display: "flex", alignItems: "center", gap: 8, cursor: d.available ? "pointer" : "default", opacity: d.available ? 1 : 0.4, textAlign: "left" }}>
+                    <div style={{ width: 15, height: 15, borderRadius: "50%", border: `2px solid ${distribution === d.id ? C.brand : C.border}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: distribution === d.id ? C.brand : "transparent" }}>
+                      {distribution === d.id && <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#fff" }} />}
                     </div>
-                  ))}
-                </div>
-                <p className="text-[10px] text-green-600 mt-3 font-semibold" style={{ borderTop: "1px solid rgba(22,163,74,0.15)", paddingTop: 10 }}>
-                  {language === "pt"
-                    ? "✓ Só após essa verificação dupla o resultado é finalizado e os fundos liberados."
-                    : "✓ Only after this double verification is the result finalized and funds released."}
-                </p>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 1, color: C.text }}>
+                        {language === "pt" ? d.label : d.labelEn}
+                        {!d.available && <span style={{ marginLeft: 5, fontSize: 9, fontFamily: mono, color: C.dim, background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 100, padding: "1px 5px" }}>{t("badge_soon", language)}</span>}
+                      </div>
+                      <div style={{ fontSize: 10, color: C.mid }}>{language === "pt" ? d.desc : d.descEn}</div>
+                    </div>
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
 
-          {/* Compliance — collapsible, starts closed */}
-          <div className="mb-6 rounded-2xl overflow-hidden"
-            style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.22)" }}>
-            <button
-              onClick={() => setComplianceOpen(o => !o)}
-              className="w-full flex items-center justify-between px-4 py-3"
-              style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-            >
-              <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
-                📋 {language === "pt" ? "Como funciona o cumprimento" : "How compliance works"}
-              </p>
-              {complianceOpen
-                ? <ChevronDown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-                : <ChevronRight className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
-            </button>
-            {complianceOpen && (
-              <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(245,158,11,0.15)" }}>
-                <p className="text-[12px] text-gray-700 leading-relaxed mb-3 pt-3">
-                  {language === "pt"
-                    ? "Seu desempenho é avaliado janela por janela — não apenas no final. Para ser vencedor, você precisa atingir a meta em cada janela do período."
-                    : "Performance is evaluated window by window — not just at the end. To win, you need to hit the goal in every window of the period."}
-                </p>
-                <div className="rounded-xl overflow-hidden mb-3" style={{ border: "1px solid rgba(245,158,11,0.2)" }}>
-                  <div className="px-3 py-2" style={{ background: "rgba(245,158,11,0.08)" }}>
-                    <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
-                      {language === "pt" ? "Exemplo: 5 posts/semana · 4 semanas" : "Example: 5 posts/week · 4 weeks"}
-                    </p>
+            {/* Summary */}
+            <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 18, padding: 12, marginBottom: 12 }}>
+              <label style={{ display: "block", fontSize: 8, fontFamily: mono, color: C.dim, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 9 }}>
+                {language === "pt" ? "Resumo do acordo" : "Deal summary"}
+              </label>
+              {[
+                { key: language === "pt" ? "Tipo" : "Type",         val: `${t(CATEGORIES.find(c => c.id === category)?.label ?? "", language)} · ${privacy === "public" ? (language === "pt" ? "Público" : "Public") : (language === "pt" ? "Privado" : "Private")}` },
+                { key: language === "pt" ? "Canal" : "Channel",     val: channelLabel ?? "—" },
+                { key: language === "pt" ? "Regra" : "Rule",        val: ruleLabel ?? "—" },
+                { key: language === "pt" ? "Meta" : "Goal",         val: ruleWithFreqLabel || "—" },
+                { key: language === "pt" ? "Período" : "Period",    val: `${fmtShort(startDate)} → ${fmtShort(endDate)} (${t("date_days", language, { count: diffDays })})` },
+                { key: language === "pt" ? "Entrada" : "Entry",     val: effectiveAmount > 0 ? `$${effectiveAmount} ${language === "pt" ? "por pessoa" : "per person"}` : "—" },
+                { key: language === "pt" ? "Taxa" : "Fee",          val: `${feeRate}% ${language === "pt" ? "do pool dos perdedores" : "of losers' pool"}` },
+              ].map(({ key, val }, i, arr) => (
+                <div key={key} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "5px 0", borderBottom: i < arr.length - 1 ? `1px solid ${C.border2}` : "none" }}>
+                  <span style={{ color: C.mid }}>{key}</span>
+                  <strong style={{ fontWeight: 600, color: C.text, textAlign: "right", maxWidth: "60%" }}>{val}</strong>
+                </div>
+              ))}
+            </div>
+
+            {/* DealGuard — collapsible */}
+            <div style={{ marginBottom: 12, borderRadius: 18, overflow: "hidden", background: "rgba(0,184,82,0.05)", border: "1px solid rgba(0,184,82,0.22)" }}>
+              <button
+                onClick={() => setDealguardOpen(o => !o)}
+                style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "none", border: "none", cursor: "pointer" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <ShieldCheck style={{ width: 14, height: 14, stroke: "#16A34A" }} />
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "#15803D", textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: mono }}>
+                    {language === "pt" ? "Verificação dupla — DealGuard Engine" : "Double verification — DealGuard Engine"}
+                  </span>
+                </div>
+                <ChevronDown style={{ width: 14, height: 14, stroke: C.brand, transform: dealguardOpen ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+              </button>
+              {dealguardOpen && (
+                <div style={{ padding: "0 14px 14px", borderTop: "1px solid rgba(0,184,82,0.15)" }}>
+                  <div style={{ paddingTop: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+                    {[
+                      { step: "1", label: language === "pt" ? "Coleta automática via API" : "Automatic API collection", desc: language === "pt" ? "O DealGuard conecta diretamente nas plataformas e extrai os dados brutos de cada participante ao final de cada janela." : "DealGuard connects directly to platforms and pulls raw data from each participant at the end of each window." },
+                      { step: "2", label: language === "pt" ? "Análise Sentinel (IA)" : "Sentinel analysis (AI)", desc: language === "pt" ? "Uma camada de IA analisa as evidências em busca de padrões suspeitos. Resultados com risco alto são marcados e excluídos da premiação." : "An AI layer reviews the evidence for suspicious patterns. High-risk results are flagged and excluded from the prize pool." },
+                    ].map(({ step, label, desc }) => (
+                      <div key={step} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                        <div style={{ width: 24, height: 24, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "rgba(0,184,82,0.12)", border: "1px solid rgba(0,184,82,0.25)" }}>
+                          <span style={{ fontSize: 10, fontWeight: 900, color: C.brand }}>{step}</span>
+                        </div>
+                        <div>
+                          <p style={{ fontSize: 11, fontWeight: 700, color: "#15803D", marginBottom: 2 }}>{label}</p>
+                          <p style={{ fontSize: 11, color: C.mid, lineHeight: 1.5 }}>{desc}</p>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  {[
-                    { window: language === "pt" ? "Semana 1" : "Week 1", value: "5 posts", ok: true },
-                    { window: language === "pt" ? "Semana 2" : "Week 2", value: "5 posts", ok: true },
-                    { window: language === "pt" ? "Semana 3" : "Week 3", value: "5 posts", ok: true },
-                    { window: language === "pt" ? "Semana 4" : "Week 4", value: language === "pt" ? "4 posts — abaixo" : "4 posts — below", ok: false },
-                  ].map(({ window, value, ok }) => (
-                    <div key={window}
-                      className="flex items-center justify-between px-3 py-2"
-                      style={{ borderTop: "1px solid rgba(245,158,11,0.1)", background: ok ? "transparent" : "rgba(239,68,68,0.04)" }}>
-                      <span className="text-[11px] text-gray-500">{window}</span>
-                      <span className="text-[11px] font-semibold" style={{ color: ok ? "#6B7280" : "#EF4444" }}>{value}</span>
-                      <span className="text-[11px] font-bold" style={{ color: ok ? "#16A34A" : "#EF4444" }}>{ok ? "✓" : "✗"}</span>
-                    </div>
-                  ))}
+                  <p style={{ fontSize: 10, color: C.brand, marginTop: 10, fontWeight: 600, borderTop: "1px solid rgba(0,184,82,0.15)", paddingTop: 10 }}>
+                    {language === "pt" ? "✓ Só após essa verificação dupla o resultado é finalizado e os fundos liberados." : "✓ Only after this double verification is the result finalized and funds released."}
+                  </p>
                 </div>
-                <p className="text-[11px] text-gray-600 leading-relaxed">
-                  {language === "pt"
-                    ? "O bom desempenho das semanas anteriores não compensa uma janela abaixo da meta."
-                    : "Strong performance in previous windows does not make up for a window below the goal."}
-                </p>
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Pin note */}
+            <div style={{ background: "rgba(232,98,10,0.06)", border: "1px solid rgba(232,98,10,0.18)", borderRadius: 12, padding: "10px 12px", marginBottom: 10 }}>
+              <p style={{ fontSize: 11, color: C.forming, lineHeight: 1.5 }}>
+                {language === "pt"
+                  ? "Ao publicar, você entra automaticamente como participante e seu stake é reservado para o período do acordo."
+                  : "By publishing, you automatically join as a participant and your stake is reserved for the deal period."}
+              </p>
+            </div>
+
+            {/* Fee note */}
+            <div style={{ background: "rgba(0,184,82,0.06)", border: "1px solid rgba(0,184,82,0.15)", borderRadius: 12, padding: "10px 12px", marginBottom: 16 }}>
+              <p style={{ fontSize: 11, color: C.mid, lineHeight: 1.5 }}>
+                {t("fee_disclaimer", language, { rate: feeRate })}
+              </p>
+            </div>
+
+            {submitError && <p style={{ fontSize: 12, color: "#EF4444", textAlign: "center", marginBottom: 10 }}>{submitError}</p>}
           </div>
 
-          <div className="p-4 rounded-xl mb-4"
-            style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              {t("fee_disclaimer", language, { rate: feeRate })}
-            </p>
-          </div>
-
-          {submitError && <p className="text-xs text-red-500 text-center mb-3">{submitError}</p>}
-
-          <div className="mt-4 mb-12">
+          <div style={{ position: "sticky", bottom: 0, background: "rgba(240,243,240,0.96)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, padding: "11px 20px 34px", display: "flex", flexDirection: "column", gap: 8 }}>
             <button
               onClick={handleConfirm}
-              disabled={isSubmitting}
-              className="w-full py-4 rounded-2xl font-bold text-white text-sm transition-all active:scale-[0.98] disabled:opacity-60"
-              style={{
-                background: "linear-gradient(135deg,#16A34A,#22C55E)",
-                boxShadow: "0 8px 32px rgba(22,163,74,0.4)",
-                letterSpacing: "0.04em",
-              }}
+              disabled={!isValid || isSubmitting}
+              style={{ width: "100%", padding: 13, borderRadius: 100, fontSize: 13, fontWeight: 700, background: (isValid && !isSubmitting) ? C.forming : C.border, color: "#fff", border: "none", cursor: (isValid && !isSubmitting) ? "pointer" : "default", textAlign: "center" }}
             >
-              {isSubmitting ? t("btn_processing", language) : t("btn_pay_start", language)}
+              {isSubmitting ? t("btn_processing", language) : `${language === "pt" ? "Publicar acordo" : "Publish deal"} · $${effectiveAmount}`}
+            </button>
+            <button onClick={() => setScreen(3)} style={{ padding: "11px", borderRadius: 100, fontSize: 12, fontWeight: 600, background: "transparent", border: "none", color: C.mid, cursor: "pointer", textAlign: "center" }}>
+              {language === "pt" ? "Voltar e editar" : "Back and edit"}
             </button>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ── Calendar ─────────────────────────────────────────────────────────── */}
       {showCal && (
@@ -1235,7 +1168,7 @@ export default function CreateDealPage() {
           style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
           onClick={() => setShowCal(null)}>
           <div className="w-full rounded-t-3xl px-5 pt-5 pb-8"
-            style={{ background: "rgba(255,255,255,0.98)" }}
+            style={{ background: C.surface }}
             onClick={e => e.stopPropagation()}>
             <p className="text-sm font-bold text-center text-gray-800 mb-4">
               {showCal === "start" ? (language === "pt" ? "Data de início" : "Start date") : (language === "pt" ? "Data de fim" : "End date")}
@@ -1246,7 +1179,7 @@ export default function CreateDealPage() {
                 <ChevronLeft className="w-5 h-5 text-gray-600" />
               </button>
               <p className="font-bold text-gray-800">
-                {language === "pt" ? MONTH_NAMES[calMonth.getMonth()] : ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"][calMonth.getMonth()]} {calMonth.getFullYear()}
+                {language === "pt" ? MONTH_NAMES[calMonth.getMonth()] : ["January","February","March","April","May","June","July","August","September","October","November","December"][calMonth.getMonth()]} {calMonth.getFullYear()}
               </p>
               <button onClick={() => setCalMonth(m => new Date(m.getFullYear(), m.getMonth() + 1, 1))}
                 className="w-9 h-9 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.05)" }}>
@@ -1266,11 +1199,7 @@ export default function CreateDealPage() {
                 return (
                   <button key={i} onClick={() => !disabled && pickCalDay(date)} disabled={disabled}
                     className="flex items-center justify-center h-9 w-9 mx-auto rounded-full text-sm"
-                    style={{
-                      background: active ? "#16A34A" : "transparent",
-                      color: active ? "white" : disabled ? "#D1D5DB" : "#374151",
-                      fontWeight: active ? "700" : "400",
-                    }}>
+                    style={{ background: active ? C.brand : "transparent", color: active ? "white" : disabled ? "#D1D5DB" : "#374151", fontWeight: active ? "700" : "400" }}>
                     {date.getDate()}
                   </button>
                 )
@@ -1278,15 +1207,15 @@ export default function CreateDealPage() {
             </div>
             {showCal === "start" && (
               <div className="mt-4 p-2.5 rounded-xl text-center"
-                style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.12)" }}>
-                <p className="text-[10px] text-[#16A34A] font-semibold">
+                style={{ background: "rgba(0,184,82,0.06)", border: "1px solid rgba(0,184,82,0.12)" }}>
+                <p className="text-[10px] font-semibold" style={{ color: C.brand }}>
                   ⏰ {language === "pt" ? "O deal inicia automaticamente às 00h (Brasília, GMT-3) do dia selecionado" : "The deal starts automatically at 00h (Brasília, GMT-3) on the selected day"}
                 </p>
               </div>
             )}
             <button onClick={() => setShowCal(null)}
-              className="w-full mt-5 py-3 rounded-2xl font-semibold text-[#16A34A] text-sm"
-              style={{ background: "rgba(22,163,74,0.07)", border: "1px solid rgba(22,163,74,0.15)" }}>
+              className="w-full mt-5 py-3 rounded-2xl font-semibold text-sm"
+              style={{ background: "rgba(0,184,82,0.07)", border: "1px solid rgba(0,184,82,0.15)", color: C.brand }}>
               {language === "pt" ? "Fechar" : "Close"}
             </button>
           </div>
@@ -1299,45 +1228,34 @@ export default function CreateDealPage() {
           style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
           onClick={() => setShowInfo(false)}>
           <div className="w-full rounded-t-3xl px-5 pt-5 pb-8"
-            style={{ background: "rgba(255,255,255,0.98)" }}
+            style={{ background: C.surface }}
             onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2">
-                <Info className="w-4 h-4 text-[#16A34A]" />
+                <Info className="w-4 h-4" style={{ stroke: C.brand }} />
                 <h3 className="text-base font-bold text-gray-800">{language === "pt" ? "Como funciona" : "How it works"}</h3>
               </div>
-              <button onClick={() => setShowInfo(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.06)" }}>
+              <button onClick={() => setShowInfo(false)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.06)" }}>
                 <X className="w-4 h-4 text-gray-500" />
               </button>
             </div>
             <div className="space-y-3">
-              <div className="p-4 rounded-2xl"
-                style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-                <p className="text-xs font-bold text-[#16A34A] mb-1.5">💸 {language === "pt" ? `Taxa de ${feeRate}% — só se houver perdedor` : `Fee of ${feeRate}% — only if there's a loser`}</p>
+              <div className="p-4 rounded-2xl" style={{ background: "rgba(0,184,82,0.06)", border: "1px solid rgba(0,184,82,0.15)" }}>
+                <p className="text-xs font-bold mb-1.5" style={{ color: C.brand }}>💸 {language === "pt" ? `Taxa de ${feeRate}% — só se houver perdedor` : `Fee of ${feeRate}% — only if there's a loser`}</p>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  {language === "pt" 
-                    ? "A taxa é cobrada apenas se algum participante não cumprir o desafio. Se todos cumprirem, o valor integral é devolvido a cada um."
-                    : "The fee is charged only if a participant does not meet the challenge. If everyone complies, the full amount is returned to each one."}
+                  {language === "pt" ? "A taxa é cobrada apenas se algum participante não cumprir o desafio. Se todos cumprirem, o valor integral é devolvido a cada um." : "The fee is charged only if a participant does not meet the challenge. If everyone complies, the full amount is returned to each one."}
                 </p>
               </div>
-              <div className="p-4 rounded-2xl"
-                style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.15)" }}>
+              <div className="p-4 rounded-2xl" style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.15)" }}>
                 <p className="text-xs font-bold text-blue-500 mb-1.5">👥 {language === "pt" ? "Mínimo de 2 participantes" : "Minimum of 2 participants"}</p>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  {language === "pt"
-                    ? "Para o deal entrar em vigor, pelo menos 2 participantes precisam confirmar antes do prazo."
-                    : "For the deal to take effect, at least 2 participants must confirm before the deadline."}
+                  {language === "pt" ? "Para o deal entrar em vigor, pelo menos 2 participantes precisam confirmar antes do prazo." : "For the deal to take effect, at least 2 participants must confirm before the deadline."}
                 </p>
               </div>
-              <div className="p-4 rounded-2xl"
-                style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
+              <div className="p-4 rounded-2xl" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.2)" }}>
                 <p className="text-xs font-bold text-red-500 mb-1.5">⚠️ {language === "pt" ? "Regra estrita por janela de frequência" : "Strict rule per frequency window"}</p>
                 <p className="text-sm text-gray-600 leading-relaxed">
-                  {language === "pt"
-                    ? "O participante precisa cumprir a meta em cada janela do período configurado. Uma janela perdida = eliminação permanente, mesmo que tenha cumprido todas as outras."
-                    : "The participant must meet the goal in each window of the configured period. A missed window = permanent elimination, even if they met all others."}
+                  {language === "pt" ? "O participante precisa cumprir a meta em cada janela do período. Uma janela perdida = eliminação permanente." : "The participant must meet the goal in each window of the period. A missed window = permanent elimination."}
                 </p>
               </div>
             </div>
@@ -1345,36 +1263,25 @@ export default function CreateDealPage() {
         </div>
       )}
 
-      {/* ── Missing social account popup ──────────────────────────────────────── */}
+      {/* ── Missing social popup ───────────────────────────────────────────────── */}
       {missingSocial && (
-        <div
-          className="fixed inset-0 z-50 flex items-end"
+        <div className="fixed inset-0 z-50 flex items-end"
           style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
-          onClick={() => setMissingSocial(null)}
-        >
-          <div
-            className="w-full rounded-t-3xl px-5 pt-5 pb-10"
-            style={{ background: "rgba(255,255,255,0.98)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
-            onClick={e => e.stopPropagation()}
-          >
+          onClick={() => setMissingSocial(null)}>
+          <div className="w-full rounded-t-3xl px-5 pt-5 pb-10"
+            style={{ background: C.surface, boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
+            onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.1)" }}>
                   <AlertCircle className="w-5 h-5 text-red-500" />
                 </div>
-                <h3 className="text-base font-bold text-gray-800">
-                  {language === "pt" ? "Conta não vinculada" : "Account not linked"}
-                </h3>
+                <h3 className="text-base font-bold text-gray-800">{language === "pt" ? "Conta não vinculada" : "Account not linked"}</h3>
               </div>
-              <button
-                onClick={() => setMissingSocial(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.06)" }}
-              >
+              <button onClick={() => setMissingSocial(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.06)" }}>
                 <X className="w-4 h-4 text-gray-500" />
               </button>
             </div>
-
             <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}>
               <p className="text-sm text-red-700 font-semibold mb-1">
                 {language === "pt"
@@ -1382,12 +1289,9 @@ export default function CreateDealPage() {
                   : `To create a deal with ${missingSocial.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ")}, you need to link your account first.`}
               </p>
               <p className="text-xs text-red-500 leading-relaxed">
-                {language === "pt"
-                  ? "O app usa sua conta para verificar automaticamente se você cumpriu o desafio."
-                  : "The app uses your account to automatically verify if you met the challenge."}
+                {language === "pt" ? "O app usa sua conta para verificar automaticamente se você cumpriu o desafio." : "The app uses your account to automatically verify if you met the challenge."}
               </p>
             </div>
-
             <div className="space-y-2">
               {missingSocial.map(ch => (
                 <div key={ch} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)" }}>
@@ -1402,99 +1306,19 @@ export default function CreateDealPage() {
                 </div>
               ))}
             </div>
-
-            <button
-              onClick={() => router.push("/profile")}
+            <button onClick={() => router.push("/profile")}
               className="w-full mt-5 py-4 rounded-2xl font-bold text-white text-sm"
-              style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)", boxShadow: "0 8px 32px rgba(22,163,74,0.35)" }}
-            >
+              style={{ background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, boxShadow: "0 8px 32px rgba(0,184,82,0.35)" }}>
               {language === "pt" ? "Conectar conta agora" : "Connect account now"}
             </button>
-            <button
-              onClick={() => setMissingSocial(null)}
-              className="w-full mt-2.5 py-3 rounded-2xl font-semibold text-gray-500 text-sm"
-              style={{ background: "rgba(0,0,0,0.04)" }}
-            >
+            <button onClick={() => setMissingSocial(null)} className="w-full mt-2.5 py-3 rounded-2xl font-semibold text-gray-500 text-sm" style={{ background: "rgba(0,0,0,0.04)" }}>
               {language === "pt" ? "Cancelar" : "Cancel"}
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Privacy info sheet ────────────────────────────────────────────────── */}
-      {showPrivacyInfo && (
-        <div className="fixed inset-0 z-50 flex items-end"
-          style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
-          onClick={() => setShowPrivacyInfo(null)}>
-          <div className="w-full rounded-t-3xl px-5 pt-5 pb-8"
-            style={{ background: "rgba(255,255,255,0.98)" }}
-            onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                {showPrivacyInfo === "private"
-                  ? <Lock className="w-4 h-4 text-gray-700" />
-                  : <Globe className="w-4 h-4 text-[#16A34A]" />}
-                <h3 className="text-base font-bold text-gray-800">
-                  {showPrivacyInfo === "private" 
-                    ? (language === "pt" ? "Deal Privado" : "Private Deal") 
-                    : (language === "pt" ? "Deal Público" : "Public Deal")}
-                </h3>
-              </div>
-              <button onClick={() => setShowPrivacyInfo(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.06)" }}>
-                <X className="w-4 h-4 text-gray-500" />
-              </button>
-            </div>
-
-            {showPrivacyInfo === "private" ? (
-              <div className="space-y-3">
-                <div className="p-4 rounded-2xl"
-                  style={{ background: "rgba(107,114,128,0.06)", border: "1px solid rgba(107,114,128,0.15)" }}>
-                  <p className="text-xs font-bold text-gray-700 mb-1.5">🔒 {language === "pt" ? "Acesso por aprovação do criador" : "Access by creator approval"}</p>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {language === "pt"
-                      ? "Qualquer usuário pode ver o deal e solicitar participação — mas só o criador pode aceitar ou recusar cada entrada."
-                      : "Any user can see the deal and request participation — but only the creator can accept or reject each entry."}
-                  </p>
-                </div>
-                <div className="p-4 rounded-2xl"
-                  style={{ background: "rgba(107,114,128,0.06)", border: "1px solid rgba(107,114,128,0.15)" }}>
-                  <p className="text-xs font-bold text-gray-700 mb-1.5">🔗 {language === "pt" ? "Link de compartilhamento" : "Sharing link"}</p>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {language === "pt"
-                      ? "O link permite que qualquer pessoa encontre e solicite entrar no deal, mas a participação só é confirmada após a aprovação do criador."
-                      : "The link allows anyone to find and request to enter the deal, but participation is only confirmed after the creator's approval."}
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="p-4 rounded-2xl"
-                  style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-                  <p className="text-xs font-bold text-[#16A34A] mb-1.5">🌐 {language === "pt" ? "Acesso livre" : "Free access"}</p>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {language === "pt"
-                      ? "Qualquer usuário pode entrar no deal diretamente, sem precisar de aprovação. O deal aparece na listagem pública do app."
-                      : "Any user can enter the deal directly, without needing approval. The deal appears in the app's public listing."}
-                  </p>
-                </div>
-                <div className="p-4 rounded-2xl"
-                  style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-                  <p className="text-xs font-bold text-[#16A34A] mb-1.5">🔗 {language === "pt" ? "Link de compartilhamento" : "Sharing link"}</p>
-                  <p className="text-sm text-gray-600 leading-relaxed">
-                    {language === "pt"
-                      ? "Quem acessar o link entra diretamente no deal, sem etapas de aprovação."
-                      : "Anyone who accesses the link enters the deal directly, without approval steps."}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── Rule info balloon ─────────────────────────────────────────────────── */}
+      {/* ── Rule info sheet ───────────────────────────────────────────────────── */}
       {ruleInfoId && (() => {
         const subrules = getRuleSubrules(language)[ruleInfoId]
         if (!subrules) return null
@@ -1503,7 +1327,7 @@ export default function CreateDealPage() {
             style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
             onClick={() => setRuleInfoId(null)}>
             <div className="w-full rounded-t-3xl px-5 pt-5 pb-8"
-              style={{ background: "rgba(255,255,255,0.98)" }}
+              style={{ background: C.surface }}
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -1512,9 +1336,7 @@ export default function CreateDealPage() {
                   </div>
                   <h3 className="text-sm font-bold text-gray-800">{subrules.title}</h3>
                 </div>
-                <button onClick={() => setRuleInfoId(null)}
-                  className="w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ background: "rgba(0,0,0,0.06)" }}>
+                <button onClick={() => setRuleInfoId(null)} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.06)" }}>
                   <X className="w-4 h-4 text-gray-500" />
                 </button>
               </div>
@@ -1527,14 +1349,11 @@ export default function CreateDealPage() {
                 ))}
               </ul>
               {subrules.hint && (
-                <div className="mt-4 p-3 rounded-xl"
-                  style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
+                <div className="mt-4 p-3 rounded-xl" style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.2)" }}>
                   <p className="text-sm text-amber-600 font-semibold leading-relaxed">{subrules.hint}</p>
                 </div>
               )}
-              <button onClick={() => setRuleInfoId(null)}
-                className="w-full mt-5 py-3 rounded-2xl font-semibold text-sm"
-                style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.15)", color: "#3B82F6" }}>
+              <button onClick={() => setRuleInfoId(null)} className="w-full mt-5 py-3 rounded-2xl font-semibold text-sm" style={{ background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.15)", color: "#3B82F6" }}>
                 {language === "pt" ? "Fechar" : "Close"}
               </button>
             </div>

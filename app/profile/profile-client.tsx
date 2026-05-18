@@ -1,45 +1,52 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import {
-  Home, Compass, Wallet, User, CheckCircle2,
-  Instagram, Twitter, Youtube, ChevronRight, Copy,
-  Trophy, Zap, Star, Shield, Bell, HelpCircle, LogOut,
-  Check, Users, Flame, Target, Award, Clock, Info, X, Loader2,
+  Home, Compass, Wallet, User, Plus, CheckCircle2,
+  ChevronRight,
+  Trophy, Zap, Shield, Bell, HelpCircle, LogOut,
+  Target, Clock, Info, X, Loader2,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getMySocialConnections, saveMembershipEmail } from "@/lib/actions/profile"
 import type { Profile, DealWithParticipants } from "@/lib/supabase/types"
 
-const NAV_ITEMS = [
-  { icon: Home,    label: "Deals",    href: "/" },
-  { icon: Compass, label: "Explorar", href: "/explore" },
-  { icon: Wallet,  label: "Wallet",   href: "/wallet" },
-  { icon: User,    label: "Perfil",   href: "/profile" },
-]
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg: "#F0F3F0", surface: "#FFFFFF", surface2: "#E8EDE8",
+  border: "#D8E0D8", border2: "#E6EEE6",
+  text: "#0B1309", mid: "#4E614E", dim: "#8BA09A",
+  brand: "#00B852", brandDark: "#008C3E", forming: "#E8620A",
+  activeLight: "rgba(0,184,82,0.08)", activeBorder: "rgba(0,184,82,0.2)",
+} as const
+const MONO: React.CSSProperties = { fontFamily: "var(--font-dm-mono,'DM Mono',monospace)" }
 
 function BottomNav({ active }: { active: string }) {
   const router = useRouter()
+  const navItem = (Icon: React.ElementType, key: string, href: string, label: string) => {
+    const isActive = active === key
+    return (
+      <button key={key} onClick={() => router.push(href)}
+        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontSize: 9, color: isActive ? C.brand : C.dim, cursor: "pointer", background: "none", border: "none", flex: 1, ...MONO, letterSpacing: "0.04em" }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: isActive ? C.brand : "transparent" }}>
+          <Icon style={{ width: 20, height: 20, stroke: isActive ? "#fff" : C.dim, fill: "none" }} />
+        </div>
+        <span style={{ textTransform: "uppercase" as const }}>{label}</span>
+      </button>
+    )
+  }
   return (
-    <nav className="fixed bottom-0 left-0 right-0 px-6 py-4 z-10"
-      style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(40px) saturate(200%)", borderTop: "1px solid rgba(255,255,255,0.5)" }}>
-      <div className="flex justify-around items-center">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon
-          const isActive = active === item.label
-          return (
-            <button key={item.label} onClick={() => router.push(item.href)}
-              className="flex flex-col items-center gap-1 transition-all duration-300">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? "scale-110" : ""}`}
-                style={{ background: isActive ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}>
-                <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500"}`} />
-              </div>
-              <span className={`text-xs font-medium ${isActive ? "text-[#16A34A]" : "text-gray-500"}`}>{item.label}</span>
-            </button>
-          )
-        })}
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
+      {navItem(Home,    "home",    "/",        "Deals")}
+      {navItem(Compass, "explore", "/explore", "Explorar")}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+        <button onClick={() => router.push("/create")} style={{ width: 50, height: 50, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -14, boxShadow: "0 4px 14px rgba(0,184,82,0.35)", border: `3px solid ${C.bg}`, cursor: "pointer" }}>
+          <Plus style={{ width: 22, height: 22, stroke: "#fff", fill: "none" }} />
+        </button>
       </div>
+      {navItem(Wallet, "wallet",  "/wallet",  "Wallet")}
+      {navItem(User,   "profile", "/profile", "Perfil")}
     </nav>
   )
 }
@@ -151,7 +158,7 @@ function MembershipModal({
     >
       <div
         className="w-full max-w-md rounded-t-3xl p-6 pb-10"
-        style={{ background: "rgba(255,255,255,0.97)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
+        style={{ background: C.surface, boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -188,7 +195,7 @@ function MembershipModal({
           onChange={(e) => { setEmail(e.target.value); setError(null) }}
           placeholder="seu@email.com"
           className="w-full px-4 py-3 rounded-xl outline-none text-gray-800 placeholder-gray-400 mb-4"
-          style={{ background: "rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.1)" }}
+          style={{ background: C.surface2, border: `1px solid ${C.border}` }}
         />
 
         {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
@@ -239,17 +246,9 @@ function SocialCard({
       <div
         className="rounded-2xl p-4 transition-all duration-200"
         style={{
-          background: state === "connected"
-            ? "rgba(22,163,74,0.07)"
-            : state === "pending"
-            ? `${platform.color}0D`
-            : "rgba(255,255,255,0.55)",
-          backdropFilter: "blur(20px)",
-          border: state === "connected"
-            ? "1px solid rgba(22,163,74,0.25)"
-            : state === "pending"
-            ? `1px solid ${platform.color}30`
-            : "1px solid rgba(255,255,255,0.55)",
+          background: state === "connected" ? C.activeLight : state === "pending" ? `${platform.color}0D` : C.surface,
+          border: state === "connected" ? `1px solid ${C.activeBorder}` : state === "pending" ? `1px solid ${platform.color}30` : `1px solid ${C.border}`,
+          borderRadius: 14, padding: 16,
         }}
       >
         <div className="flex items-center gap-3">
@@ -275,8 +274,8 @@ function SocialCard({
 
           {state === "connected" ? (
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
-              <span className="text-xs font-bold text-[#16A34A]">Conectado</span>
+              <CheckCircle2 style={{ width: 16, height: 16, color: C.brand }} />
+              <span className="text-xs font-bold" style={{ color: C.brand }}>Conectado</span>
             </div>
           ) : state === "pending" ? (
             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -343,7 +342,7 @@ function AvatarPlaceholder({ size = 84, initials }: { size?: number; initials: s
   return (
     <div className="relative" style={{ width: size, height: size }}>
       <div className="w-full h-full rounded-full flex items-center justify-center"
-        style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E6A)", border: "3px solid #16A34A" }}>
+        style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E6A)", border: `3px solid ${C.brand}` }}>
         <span className="font-bold text-white" style={{ fontSize: size * 0.3 }}>{initials}</span>
       </div>
       <div className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center"
@@ -406,8 +405,7 @@ function DashboardTab({ user }: DashboardTabProps) {
 
   return (
     <div className="px-5 pb-8 space-y-8">
-      <div className="rounded-2xl p-5"
-        style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+      <div style={{ borderRadius: 18, padding: 20, background: C.surface, border: `1px solid ${C.border}` }}>
         <div className="mb-4">
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Verificação de contas</p>
           <p className="text-xs text-gray-400 mt-2">Vincule suas contas para desbloquear deals desses canais. Toque no <Info className="w-3 h-3 inline -mt-0.5" /> para entender a importância de cada verificação.</p>
@@ -426,8 +424,7 @@ function DashboardTab({ user }: DashboardTabProps) {
         </div>
       </div>
 
-      <div className="rounded-2xl p-5"
-        style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+      <div style={{ borderRadius: 18, padding: 20, background: C.surface, border: `1px solid ${C.border}` }}>
         <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Referral</p>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div>
@@ -436,7 +433,7 @@ function DashboardTab({ user }: DashboardTabProps) {
           </div>
           <button onClick={copyReferral}
             className="rounded-xl px-4 py-2 text-sm font-semibold text-white"
-            style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)" }}>
+            style={{ background: `linear-gradient(135deg,${C.brandDark},${C.brand})` }}>
             {copied ? "Copiado" : "Copiar link"}
           </button>
         </div>
@@ -461,9 +458,8 @@ function HistoryTab({ dealHistory }: { dealHistory: DealHistoryItem[] }) {
   if (dealHistory.length === 0) {
     return (
       <div className="px-5 pb-8">
-        <div className="rounded-2xl p-8 text-center"
-          style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <p className="text-sm text-gray-400">Nenhum deal ainda — crie ou entre em um deal para começar</p>
+        <div style={{ borderRadius: 18, padding: 32, textAlign: "center", background: C.surface, border: `1px solid ${C.border}` }}>
+          <p style={{ fontSize: 13, color: C.dim }}>Nenhum deal ainda — crie ou entre em um deal para começar</p>
         </div>
       </div>
     )
@@ -472,8 +468,7 @@ function HistoryTab({ dealHistory }: { dealHistory: DealHistoryItem[] }) {
   return (
     <div className="px-5 pb-8 space-y-3">
       {dealHistory.map((deal) => (
-        <div key={deal.id} className="rounded-2xl p-4 flex items-center gap-3"
-          style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
+        <div key={deal.id} style={{ borderRadius: 18, padding: 16, display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}` }}>
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: `${deal.color}18` }}>
             {deal.result === "ganhou" ? <Trophy className="w-5 h-5" style={{ color: deal.color }} />
@@ -504,7 +499,7 @@ function HistoryTab({ dealHistory }: { dealHistory: DealHistoryItem[] }) {
 
 function ConfigTab({ onSignOut }: { onSignOut: () => void }) {
   const CONFIG_ITEMS = [
-    { icon: User,      label: "Editar Perfil",           sub: "Atualize suas informações",     color: "#16A34A", danger: false, action: undefined as (() => void) | undefined },
+    { icon: User,      label: "Editar Perfil",           sub: "Atualize suas informações",     color: C.brand,   danger: false, action: undefined as (() => void) | undefined },
     { icon: Shield,    label: "Segurança & Privacidade", sub: "Senha, 2FA, biometria",         color: "#3B82F6", danger: false, action: undefined as (() => void) | undefined },
     { icon: Bell,      label: "Notificações",            sub: "Gerencie seus alertas",         color: "#F59E0B", danger: false, action: undefined as (() => void) | undefined },
     { icon: HelpCircle,label: "Ajuda & Suporte",         sub: "FAQs e contato",                color: "#8B5CF6", danger: false, action: undefined as (() => void) | undefined },
@@ -514,8 +509,7 @@ function ConfigTab({ onSignOut }: { onSignOut: () => void }) {
   return (
     <div className="px-5 pb-8 space-y-3">
       {CONFIG_ITEMS.map(({ icon: Icon, label, sub, color, danger, action }) => (
-        <button key={label} onClick={action} className="w-full rounded-2xl p-4 flex items-center gap-4 text-left transition-all active:scale-[0.98]"
-          style={{ background: danger ? "rgba(255,74,74,0.05)" : "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: danger ? "1px solid rgba(255,74,74,0.15)" : "1px solid rgba(255,255,255,0.6)" }}>
+        <button key={label} onClick={action} style={{ width: "100%", borderRadius: 18, padding: 16, display: "flex", alignItems: "center", gap: 16, textAlign: "left", cursor: "pointer", background: danger ? "rgba(255,74,74,0.05)" : C.surface, border: danger ? "1px solid rgba(255,74,74,0.15)" : `1px solid ${C.border}` }}>
           <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: `${color}15` }}>
             <Icon className="w-5 h-5" style={{ color }} />
@@ -534,7 +528,10 @@ function ConfigTab({ onSignOut }: { onSignOut: () => void }) {
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function ProfileClient({ profile, deals, userId }: ProfileClientProps) {
-  const router = useRouter()
+  const router       = useRouter()
+  const searchParams = useSearchParams()
+  const socialError  = searchParams.get("social_error")
+  const socialSuccess = searchParams.get("social_success")
 
   // ── Derived stats ──
   const myDeals   = deals.filter(d => d.participants.some(p => p.user_id === userId))
@@ -597,55 +594,67 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
     router.push("/login")
   }
 
+  const SOCIAL_ERROR_MSGS: Record<string, string> = {
+    x_not_configured: "Integração com X não configurada. Adicione X_CLIENT_ID e X_CLIENT_SECRET ao servidor.",
+    x_token_failed:   "Falha ao obter token do X. Verifique as credenciais do app.",
+    no_verifier:      "Sessão expirada. Tente conectar novamente.",
+    state_mismatch:   "Erro de segurança CSRF. Tente conectar novamente.",
+    oauth_exception:  "Erro inesperado na autenticação. Tente novamente.",
+  }
+
   return (
-    <div className="min-h-screen flex flex-col pb-24"
-      style={{ backgroundImage: "url('/images/gradient-background.jpg')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundAttachment: "fixed" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
+
+      {socialError && (
+        <div style={{ position: "fixed", top: 16, left: 16, right: 16, zIndex: 50, borderRadius: 16, padding: "12px 16px", fontSize: 13, fontWeight: 500, color: "#fff", display: "flex", alignItems: "flex-start", gap: 8, background: "rgba(220,38,38,0.95)" }}>
+          <span style={{ flexShrink: 0 }}>✕</span>
+          <span>{SOCIAL_ERROR_MSGS[socialError] ?? `Erro: ${socialError}`}</span>
+        </div>
+      )}
+
+      {socialSuccess === "x" && (
+        <div style={{ position: "fixed", top: 16, left: 16, right: 16, zIndex: 50, borderRadius: 16, padding: "12px 16px", fontSize: 13, fontWeight: 500, color: "#fff", display: "flex", alignItems: "center", gap: 8, background: "rgba(0,184,82,0.95)" }}>
+          <CheckCircle2 style={{ width: 16, height: 16, flexShrink: 0 }} />
+          <span>X (Twitter) conectado com sucesso!</span>
+        </div>
+      )}
 
       {/* Header */}
-      <header className="px-5 pt-12 pb-6">
-        <div className="flex flex-col items-center gap-3">
-          <AvatarPlaceholder size={84} initials={initials} />
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-1.5">
-              <h1 className="text-xl font-bold text-gray-800">{USER.name}</h1>
-              {USER.verified && <CheckCircle2 className="w-5 h-5 text-[#16A34A]" />}
-            </div>
-            <p className="text-sm text-gray-500 mt-0.5">{USER.username}</p>
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <span className="text-[10px] font-bold text-[#16A34A] px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.2)" }}>
-                Reputação: Integridade Total
-              </span>
-            </div>
+      <div style={{ padding: "48px 20px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+        <AvatarPlaceholder size={80} initials={initials} />
+        <div style={{ textAlign: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>{USER.name}</h1>
+            {USER.verified && <CheckCircle2 style={{ width: 18, height: 18, color: C.brand }} />}
           </div>
-
-          {/* Dark glass stats card */}
-          <div className="w-full mt-2 rounded-3xl p-5"
-            style={{ background: "linear-gradient(135deg,#0D2E1A 0%,#0D3A22 60%,#0F4D2A 100%)", boxShadow: "0 12px 40px rgba(22,163,74,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}>
-            <div className="flex justify-around">
-              <div className="text-center">
-                <p className="text-xl font-black text-[#ADFF2F]">{USER.volumeTotal}</p>
-                <p className="text-[10px] text-white/50 mt-0.5 font-medium uppercase tracking-wide">Volume total</p>
-              </div>
-              <div className="w-px bg-white/10" />
-              <div className="text-center">
-                <p className="text-xl font-black text-[#ADFF2F]">{USER.totalWon}</p>
-                <p className="text-[10px] text-white/50 mt-0.5 font-medium uppercase tracking-wide">Total ganho</p>
-              </div>
-              <div className="w-px bg-white/10" />
-              <div className="text-center">
-                <p className="text-xl font-black" style={{ color: USER.pnlPositive ? "#ADFF2F" : "#FF4A4A" }}>{USER.pnl}</p>
-                <p className="text-[10px] text-white/50 mt-0.5 font-medium uppercase tracking-wide">PnL</p>
-              </div>
-              <div className="w-px bg-white/10" />
-              <div className="text-center">
-                <p className="text-xl font-black text-[#ADFF2F]">{USER.totalDeals}</p>
-                <p className="text-[10px] text-white/50 mt-0.5 font-medium uppercase tracking-wide">Deals · {USER.winRateLabel}</p>
-              </div>
-            </div>
+          {USER.username && <p style={{ fontSize: 12, color: C.dim, marginTop: 2, ...MONO }}>{USER.username}</p>}
+          <div style={{ marginTop: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: C.brand, padding: "3px 10px", borderRadius: 100, background: C.activeLight, border: `1px solid ${C.activeBorder}`, ...MONO }}>
+              Reputação: Integridade Total
+            </span>
           </div>
         </div>
-      </header>
+
+        {/* Stats card */}
+        <div style={{ width: "100%", borderRadius: 26, padding: 20, background: `linear-gradient(135deg,#003D22,${C.brandDark} 60%,${C.brand})`, boxShadow: "0 12px 40px rgba(0,184,82,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <div style={{ display: "flex", justifyContent: "space-around" }}>
+            {[
+              { label: "Volume", value: USER.volumeTotal },
+              { label: "Ganho", value: USER.totalWon },
+              { label: "PnL", value: USER.pnl, colored: true },
+              { label: `Deals · ${USER.winRateLabel}`, value: String(USER.totalDeals) },
+            ].map((s, i) => (
+              <>
+                {i > 0 && <div key={`div${i}`} style={{ width: 1, background: "rgba(255,255,255,0.1)" }} />}
+                <div key={s.label} style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: 18, fontWeight: 900, color: s.colored ? (USER.pnlPositive ? "#ADFF2F" : "#FF4A4A") : "#ADFF2F" }}>{s.value}</p>
+                  <p style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginTop: 2, fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.08em", ...MONO }}>{s.label}</p>
+                </div>
+              </>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <div className="flex-1">
         <DashboardTab user={{
@@ -666,16 +675,13 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
         <HistoryTab dealHistory={dealHistory} />
       </div>
 
-      <div className="px-5 pb-24 pt-4">
+      <div style={{ padding: "16px 20px 96px" }}>
         <button onClick={handleSignOut}
-          className="w-full rounded-2xl px-4 py-4 text-sm font-semibold text-[#B91C1C] text-left transition-colors hover:bg-white/80 hover:text-[#991B1B]"
-          style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(185,28,28,0.18)" }}>
-          <div className="flex items-center gap-3">
-            <span className="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-[#FEE2E2] text-[#B91C1C]">
-              <LogOut className="w-5 h-5" />
-            </span>
-            <span>Sair da conta</span>
-          </div>
+          style={{ width: "100%", borderRadius: 18, padding: 16, display: "flex", alignItems: "center", gap: 12, textAlign: "left", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "#B91C1C", background: "rgba(254,226,226,0.5)", border: "1px solid rgba(185,28,28,0.18)" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 40, height: 40, borderRadius: 12, background: "#FEE2E2" }}>
+            <LogOut style={{ width: 20, height: 20, color: "#B91C1C" }} />
+          </span>
+          <span>Sair da conta</span>
         </button>
       </div>
 

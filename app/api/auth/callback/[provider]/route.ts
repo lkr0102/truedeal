@@ -114,7 +114,8 @@ export async function GET(
     }
   }
 
-  const redirect = NextResponse.redirect(`${baseUrl}/onboarding/profile`)
+  const dest = provider === "x" ? `${baseUrl}/profile?social_success=x` : `${baseUrl}/onboarding/profile`
+  const redirect = NextResponse.redirect(dest)
   redirect.cookies.delete("oauth_state")
   redirect.cookies.delete("x_code_verifier")
   return redirect

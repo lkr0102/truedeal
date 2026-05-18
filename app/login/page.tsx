@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
+
 import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, X } from "lucide-react"
 import { useWallet } from "@solana/wallet-adapter-react"
@@ -51,7 +52,7 @@ const WALLET_INSTALL = {
   Solflare: "https://solflare.com/",
 } as const
 
-export default function LoginPage() {
+function LoginPageInner() {
   const router       = useRouter()
   const searchParams = useSearchParams()
 
@@ -444,5 +445,13 @@ export default function LoginPage() {
         </div>
       )}
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   )
 }

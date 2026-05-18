@@ -93,6 +93,9 @@ export async function GET(
   let codeVerifier: string | undefined
 
   if (provider === "x") {
+    if (!process.env.X_CLIENT_ID || !process.env.X_CLIENT_SECRET) {
+      return NextResponse.redirect(`${baseUrl}/profile?social_error=x_not_configured`)
+    }
     // PKCE: gera code_verifier e code_challenge
     codeVerifier = crypto.randomBytes(32).toString("base64url")
     const codeChallenge = crypto

@@ -6,13 +6,34 @@ import { differenceInCalendarDays, format } from "date-fns"
 import { ptBR } from "date-fns/locale"
 import {
   ArrowLeft, Share2, Activity,
-  Trophy, Lock, ExternalLink, BarChart2, ChevronRight, ChevronDown,
-  AlertCircle, X, Loader2, ShieldCheck,
+  ChevronDown, AlertCircle, X, Loader2, ShieldCheck,
+  MoreHorizontal, BookOpen, FileCheck,
 } from "lucide-react"
-import { GlassCard } from "@/components/td-ui"
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
-import { useLanguageStore, t } from "@/lib/i18n"
+import { useLanguageStore } from "@/lib/i18n"
 import { joinDeal } from "@/lib/actions/deals"
+
+// ── Design tokens (inline — not yet in globals.css) ───────────────────────────
+const C = {
+  bg:           "#F0F3F0",
+  surface:      "#FFFFFF",
+  surface2:     "#E8EDE8",
+  border:       "#D8E0D8",
+  border2:      "#E6EEE6",
+  text:         "#0B1309",
+  mid:          "#4E614E",
+  dim:          "#8BA09A",
+  brand:        "#00B852",
+  brandDark:    "#008C3E",
+  forming:      "#E8620A",
+  formingLight: "rgba(232,98,10,0.08)",
+  formingBorder:"rgba(232,98,10,0.2)",
+  activeLight:  "rgba(0,184,82,0.08)",
+  activeBorder: "rgba(0,184,82,0.2)",
+  closedLight:  "rgba(139,160,154,0.08)",
+  closedBorder: "rgba(139,160,154,0.2)",
+  teal:         "#3B8F8A",
+} as const
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -91,7 +112,7 @@ interface DealView {
 // ── Color palette ─────────────────────────────────────────────────────────────
 
 const PLAYER_COLORS = ["#2563EB", "#16A34A", "#D97706", "#7C3AED", "#DC2626", "#059669"]
-const PLAYER_BG     = [
+const PLAYER_BG = [
   "rgba(37,99,235,0.12)", "rgba(22,163,74,0.12)", "rgba(217,119,6,0.12)",
   "rgba(124,58,237,0.12)", "rgba(220,38,38,0.12)", "rgba(5,150,105,0.12)",
 ]
@@ -125,7 +146,8 @@ function buildPrizeSlices(distribution: Distribution, netPot: number): PrizeSlic
 function buildPotentialWin(distribution: Distribution, netPot: number, myRank: number): number | undefined {
   if (distribution === "winner") return myRank === 1 ? Math.round(netPot * 0.95) : undefined
   if (distribution === "top3" && myRank <= 3) {
-    return [0.50, 0.30, 0.20][myRank - 1] ? Math.round(netPot * [0.50, 0.30, 0.20][myRank - 1]) : undefined
+    const pcts = [0.50, 0.30, 0.20]
+    return pcts[myRank - 1] ? Math.round(netPot * pcts[myRank - 1]) : undefined
   }
   if (distribution === "proportional") return Math.round(netPot / 3)
   return undefined
@@ -137,22 +159,21 @@ function mapDeal(d: DealWithParticipants, userId: string | null, lang: "pt" | "e
   const endDate   = new Date(d.end_date)
   const daysTotal = Math.max(1, differenceInCalendarDays(endDate, startDate))
   const daysGone  = Math.max(0, Math.min(daysTotal, differenceInCalendarDays(now, startDate)))
-  const daysLeft  = Math.max(0, daysTotal - daysGone)
   const progress  = daysGone / daysTotal
 
   const statusMap: Record<string, DealStatus> = { formacao: "pendente", ativo: "ativo", finalizado: "finalizado" }
   const status    = statusMap[d.status] ?? "pendente"
-  const prizeMap: Record<string, PrizeType>  = { winner: "primeiro", top3: "ranking", proportional: "proporcional" }
+  const prizeMap: Record<string, PrizeType> = { winner: "primeiro", top3: "ranking", proportional: "proporcional" }
   const prizeType = prizeMap[d.distribution] ?? "primeiro"
 
   const knownVerifs = ["x", "strava", "gympass"]
   const verifications = (d.verification_channels ?? []).filter(c => knownVerifs.includes(c)) as VerifType[]
 
   const participants_list: Participant[] = d.participants.map((p, i) => {
-    const name       = p.profile.display_name || p.profile.username
-    const startVal   = p.start_snapshot   ? (Object.values(p.start_snapshot)[0]   as number ?? 0) : 0
-    const currVal    = p.current_snapshot ? (Object.values(p.current_snapshot)[0] as number ?? 0) : 0
-    const joinedAt   = new Date(p.joined_at)
+    const name     = p.profile.display_name || p.profile.username
+    const startVal = p.start_snapshot   ? (Object.values(p.start_snapshot)[0]   as number ?? 0) : 0
+    const currVal  = p.current_snapshot ? (Object.values(p.current_snapshot)[0] as number ?? 0) : 0
+    const joinedAt = new Date(p.joined_at)
     return {
       id:           p.id,
       initials:     getInitials(name),
@@ -175,92 +196,64 @@ function mapDeal(d: DealWithParticipants, userId: string | null, lang: "pt" | "e
 
   const myParticipant = userId ? d.participants.find(p => p.user_id === userId) : null
   const myRank        = myParticipant?.rank ?? undefined
-
   const prizeSlices   = buildPrizeSlices(d.distribution, d.net_pot)
   const potentialWin  = myRank != null ? buildPotentialWin(d.distribution, d.net_pot, myRank) : undefined
 
-  const locale = lang === "pt" ? ptBR : undefined
-  const startDateStr  = format(startDate, "dd MMM yyyy", { locale })
-  const endDateStr    = format(endDate,   "dd MMM yyyy", { locale })
-  const todayStr      = format(now,       "dd MMM yyyy", { locale })
+  const locale       = lang === "pt" ? ptBR : undefined
+  const startDateStr = format(startDate, "dd MMM yyyy", { locale })
+  const endDateStr   = format(endDate,   "dd MMM yyyy", { locale })
+  const todayStr     = format(now,       "dd MMM yyyy", { locale })
 
   const timeline: TimelineEvent[] = [
     { date: startDateStr, label: lang === "pt" ? "Início do deal" : "Deal start", done: status !== "pendente" },
-    { date: todayStr,     label: lang === "pt" ? "Hoje" : "Today",            done: true, current: status === "ativo" },
-    { date: endDateStr,   label: lang === "pt" ? "Fim do deal" : "Deal end",     done: status === "finalizado" },
+    { date: todayStr,     label: lang === "pt" ? "Hoje" : "Today", done: true, current: status === "ativo" },
+    { date: endDateStr,   label: lang === "pt" ? "Fim do deal" : "Deal end", done: status === "finalizado" },
     ...(status === "finalizado" ? [{ date: endDateStr, label: lang === "pt" ? "Resultado final" : "Final result", done: true }] : []),
   ]
 
-  const borderMap: Record<DealStatus, string> = { ativo: "#16A34A", pendente: "#D97706", finalizado: "#9CA3AF" }
+  const borderMap: Record<DealStatus, string> = { ativo: "#00B852", pendente: "#E8620A", finalizado: "#8BA09A" }
 
   return {
-    id:             d.id,
-    title:          d.title,
-    subtitle:       lang === "pt" 
+    id:                  d.id,
+    title:               d.title,
+    subtitle:            lang === "pt"
       ? `${d.participant_count} participante${d.participant_count !== 1 ? "s" : ""}`
       : `${d.participant_count} participant${d.participant_count !== 1 ? "s" : ""}`,
     status,
     prizeType,
     verifications,
     verificationChannels: d.verification_channels ?? [],
-    pot:            d.pot_total,
-    valuePerPerson: d.entry_amount,
-    participants:   d.participant_count,
+    pot:                 d.pot_total,
+    valuePerPerson:      d.entry_amount,
+    participants:        d.participant_count,
     progress,
     daysGone,
     daysTotal,
-    startDate:      startDateStr,
-    endDate:        endDateStr,
-    description:    d.description ?? "",
-    rules:          d.description?.split("\n").map(l => l.trim()).filter(Boolean) ?? [],
+    startDate:           startDateStr,
+    endDate:             endDateStr,
+    description:         d.description ?? "",
+    rules:               d.description?.split("\n").map(l => l.trim()).filter(Boolean) ?? [],
     participants_list,
     timeline,
     prizeSlices,
     myRank,
     potentialWin,
-    statusBorder:   borderMap[status],
+    statusBorder:        borderMap[status],
   }
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Static data ───────────────────────────────────────────────────────────────
 
 const VERIF_META: Record<VerifType, { bg: string; label: string; text?: string; Icon?: React.FC<{ className?: string }> }> = {
-  x:       { bg: "#000",    label: "X",       text: "𝕏"   },
+  x:       { bg: "#000000", label: "X",       text: "𝕏" },
   strava:  { bg: "#FC4C02", label: "Strava",  Icon: Activity },
-  gympass: { bg: "#00A651", label: "Gympass", text: "GP"  },
+  gympass: { bg: "#00A651", label: "Gympass", text: "GP" },
 }
-
-
-function VerifChip({ type }: { type: VerifType }) {
-  const m = VERIF_META[type]
-  return (
-    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ background: m.bg }}>
-      {m.Icon ? <m.Icon className="w-3 h-3 text-white" /> : <span className="text-white text-[10px] font-bold">{m.text}</span>}
-      <span className="text-white text-[10px] font-semibold">{m.label}</span>
-    </div>
-  )
-}
-
-function StatusPill({ status }: { status: DealStatus }) {
-  const { language } = useLanguageStore()
-  const map = {
-    ativo:      { bg: "rgba(22,163,74,0.15)",   color: "#16A34A", label: language === "pt" ? "Em Jogo" : "Live"      },
-    pendente:   { bg: "rgba(245,158,11,0.15)",  color: "#D97706", label: language === "pt" ? "Formação" : "Formation" },
-    finalizado: { bg: "rgba(156,163,175,0.15)", color: "#6B7280", label: language === "pt" ? "Encerrado" : "Ended"     },
-  }
-  const m = map[status]
-  return (
-    <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ background: m.bg, color: m.color }}>
-      {m.label}
-    </span>
-  )
-}
-
-// ── Deal rules card ───────────────────────────────────────────────────────────
 
 const CHANNEL_LABELS: Record<string, string> = {
   x: "X", instagram: "Instagram", tiktok: "TikTok", linkedin: "LinkedIn",
-  discord: "Discord", youtube: "YouTube", strava: "Strava", wellhub: "Wellhub", totalpass: "TotalPass",
+  discord: "Discord", youtube: "YouTube", strava: "Strava",
+  wellhub: "Wellhub", totalpass: "TotalPass", gympass: "Gympass",
 }
 
 const getRuleLabels = (lang: "pt" | "en"): Record<string, string> => ({
@@ -276,534 +269,245 @@ const getRuleLabels = (lang: "pt" | "en"): Record<string, string> => ({
   different_venues: lang === "pt" ? "Diferentes ambientes" : "Different venues",
 })
 
-const getDistMeta = (lang: "pt" | "en"): Record<string, { label: string; icon: string; desc: string }> => ({
-  winner:       { label: lang === "pt" ? "1º Lugar" : "1st Place",      icon: "👑", desc: lang === "pt" ? "Vencedor leva tudo" : "Winner takes all" },
-  top3:         { label: lang === "pt" ? "Ranking" : "Ranking",        icon: "🏅", desc: lang === "pt" ? "1º 60% · 2º 30% · 3º 10% do pote" : "1st 60% · 2nd 30% · 3rd 10% of pot" },
-  proportional: { label: lang === "pt" ? "Proporcional" : "Proportional",   icon: "🤝", desc: lang === "pt" ? "Pote final dividido entre todos que cumprirem o acordo." : "Final pot split between everyone who meets the agreement." },
-})
-
-const getVerificationSubrules = (lang: "pt" | "en"): Record<string, { title: string; items: string[]; hint?: string }> => ({
+const getVerificationSubrules = (lang: "pt" | "en"): Record<string, { title: string; items: Array<{ text: string; valid: boolean }>; pinNote?: string }> => ({
   post: {
-    title: lang === "pt" ? "Regras do post verificado" : "Verified post rules",
-    items: lang === "pt" ? [
-      "Conta pública no X no momento da verificação",
-      "Mínimo de 100 caracteres por post",
-      "Conteúdo original — o DealGuard usa análise semântica para rejeitar repetições",
-      "Posts deletados antes da verificação não são contabilizados",
-      "A verificação ocorre via API do X com o access token do participante",
-    ] : [
-      "Public X account at the time of verification",
-      "Minimum 100 characters per post",
-      "Original content — DealGuard uses semantic analysis to reject duplicates",
-      "Posts deleted before verification are not counted",
-      "Verified via X API using the participant's access token",
+    title: lang === "pt" ? "Como funciona — Posts no X" : "How it works — X posts",
+    items: [
+      { text: lang === "pt" ? "A conta X deve estar pública no momento da verificação" : "X account must be public at verification time", valid: true },
+      { text: lang === "pt" ? "O post deve ter mais de 100 caracteres" : "Post must have more than 100 characters", valid: true },
+      { text: lang === "pt" ? "Conteúdo único no período — sem posts idênticos ou semanticamente iguais (verificado por IA)" : "Unique content during the period — no identical or semantically similar posts (AI-verified)", valid: true },
+      { text: lang === "pt" ? "Verificação automática via X API — nenhuma ação manual necessária" : "Automatic verification via X API — no manual action needed", valid: true },
+      { text: lang === "pt" ? "Reposts e quotes não contam como post válido" : "Reposts and quotes do not count as valid posts", valid: false },
+      { text: lang === "pt" ? "Posts publicados antes da data de início não são contados" : "Posts published before the deal start date are not counted", valid: false },
+      { text: lang === "pt" ? "Posts deletados antes da auditoria são considerados não publicados" : "Posts deleted before audit are considered not published", valid: false },
     ],
-    hint: lang === "pt" ? "🔍 O DealGuard analisa cada post individualmente — qualidade importa tanto quanto quantidade" : "🔍 DealGuard reviews each post individually — quality matters as much as quantity",
+    pinNote: lang === "pt" ? "Publique normalmente no X — o True Deal sincroniza via API automaticamente." : "Post normally on X — True Deal syncs via API automatically.",
   },
   follower_gained: {
-    title: lang === "pt" ? "Regras — Seguidores recebidos" : "Rules — Followers gained",
-    items: lang === "pt" ? [
-      "A baseline de seguidores é registrada no início do deal (start_snapshot)",
-      "O DealGuard calcula o ganho líquido em cada janela (novos − perdidos)",
-      "O requisito é sobre ganho líquido por janela, não o total acumulado",
-      "Conta deve permanecer pública durante todo o período",
-      "Verificado via API da plataforma com access token do participante",
-    ] : [
-      "Follower baseline is recorded at deal start (start_snapshot)",
-      "DealGuard calculates net gain per window (new − lost)",
-      "Requirement is net gain per window, not cumulative total",
-      "Account must remain public throughout the period",
-      "Verified via platform API using the participant's access token",
-    ],
-  },
-  impressions: {
-    title: lang === "pt" ? "Regras — Impressões" : "Rules — Impressions",
-    items: lang === "pt" ? [
-      "Total de impressões das publicações feitas dentro da janela de frequência",
-      "Impressões de publicações anteriores ao deal não são contabilizadas",
-      "Verificado via API da plataforma com access token do participante",
-      "Conta deve permanecer pública durante todo o período",
-    ] : [
-      "Total impressions from posts published within the frequency window",
-      "Impressions from posts made before the deal are not counted",
-      "Verified via platform API using the participant's access token",
-      "Account must remain public throughout the period",
-    ],
-  },
-  comment_received: {
-    title: lang === "pt" ? "Regras — Comentários recebidos" : "Rules — Comments received",
-    items: lang === "pt" ? [
-      "Total de comentários recebidos nas publicações da janela",
-      "O DealGuard filtra comentários spam ou automatizados",
-      "Verificado via API da plataforma com access token do participante",
-      "Conta deve permanecer pública durante todo o período",
-    ] : [
-      "Total comments received on posts published within the window",
-      "DealGuard filters spam or automated comments",
-      "Verified via platform API using the participant's access token",
-      "Account must remain public throughout the period",
-    ],
-  },
-  repost_received: {
-    title: lang === "pt" ? "Regras — Reposts recebidos" : "Rules — Reposts received",
-    items: lang === "pt" ? [
-      "Total de reposts ou compartilhamentos recebidos nas publicações da janela",
-      "Auto-reposts do próprio participante não contam",
-      "Verificado via API da plataforma com access token do participante",
-    ] : [
-      "Total reposts or shares received on posts published within the window",
-      "Self-reposts by the participant do not count",
-      "Verified via platform API using the participant's access token",
+    title: lang === "pt" ? "Como funciona — Seguidores recebidos" : "How it works — Followers gained",
+    items: [
+      { text: lang === "pt" ? "A baseline de seguidores é registrada no início do deal (start_snapshot)" : "Follower baseline is recorded at deal start (start_snapshot)", valid: true },
+      { text: lang === "pt" ? "DealGuard calcula o ganho líquido por janela (novos − perdidos)" : "DealGuard calculates net gain per window (new − lost)", valid: true },
+      { text: lang === "pt" ? "Conta deve permanecer pública durante todo o período" : "Account must remain public throughout the period", valid: true },
+      { text: lang === "pt" ? "Seguidores bot detectados pelo Sentinel AI são excluídos" : "Bot followers detected by Sentinel AI are excluded", valid: false },
     ],
   },
   km_run: {
-    title: lang === "pt" ? "Regras — Kms percorridos" : "Rules — Kms run",
-    items: lang === "pt" ? [
-      "Apenas atividades com tipo Corrida (Run) são contabilizadas",
-      "As distâncias de todas as corridas da janela são somadas",
-      "DealGuard valida os dados via API do Strava com o access token do participante",
-      "Atividades manuais sem GPS podem ser desconsideradas pelo DealGuard",
-    ] : [
-      "Only Run-type activities are counted",
-      "All run distances within the window are summed",
-      "DealGuard validates data via Strava API using the participant's access token",
-      "Manual activities without GPS may be disregarded by DealGuard",
+    title: lang === "pt" ? "Como funciona — Kms corridos" : "How it works — Kms run",
+    items: [
+      { text: lang === "pt" ? "Apenas atividades do tipo Corrida (Run) são contabilizadas" : "Only Run-type activities count", valid: true },
+      { text: lang === "pt" ? "Distâncias são somadas dentro da janela de frequência" : "Distances are summed within the frequency window", valid: true },
+      { text: lang === "pt" ? "Verificação via Strava API com o access token do participante" : "Verified via Strava API with participant access token", valid: true },
+      { text: lang === "pt" ? "Atividades inseridas manualmente são excluídas" : "Manually entered activities are excluded", valid: false },
     ],
-    hint: lang === "pt" ? "🏃 Registre suas corridas normalmente no Strava — a sincronização é automática" : "🏃 Record your runs normally in Strava — sync is automatic",
-  },
-  pace: {
-    title: lang === "pt" ? "Regras — Pace médio" : "Rules — Average pace",
-    items: lang === "pt" ? [
-      "DealGuard calcula o pace médio das corridas registradas na janela (em min/km)",
-      "Condição de cumprimento: pace_médio ≤ pace configurado pelo criador",
-      "Quanto menor o valor, mais rápido (ex: 5:30 é mais rápido que 6:00)",
-      "Exemplo: criador configura 6:00 → participante com 5:45 cumpre; com 6:10, não",
-    ] : [
-      "DealGuard calculates the average pace of runs in the window (min/km)",
-      "Compliance condition: avg_pace ≤ pace configured by the creator",
-      "Lower value means faster (e.g., 5:30 is faster than 6:00)",
-      "Example: creator sets 6:00 → participant at 5:45 passes; at 6:10, fails",
-    ],
-    hint: lang === "pt" ? "⏱ Pace mais baixo = você correu mais rápido" : "⏱ Lower pace = you ran faster",
+    pinNote: lang === "pt" ? "Registre normalmente no Strava — o True Deal sincroniza via API automaticamente." : "Record normally in Strava — True Deal syncs via API automatically.",
   },
   workout_hours: {
-    title: lang === "pt" ? "Regras — Horas de exercício" : "Rules — Workout hours",
-    items: lang === "pt" ? [
-      "Tempo total de atividades registradas no Strava durante a janela",
-      "Todas as modalidades de atividade contam (não apenas corrida)",
-      "Medido em horas — ex: 1h30 = 1,5",
-      "DealGuard valida via API do Strava com o access token do participante",
-    ] : [
-      "Total workout time recorded on Strava during the window",
-      "All activity types count (not just running)",
-      "Measured in hours — e.g., 1h30 = 1.5",
-      "DealGuard validates via Strava API using the participant's access token",
+    title: lang === "pt" ? "Como funciona — Horas de exercício" : "How it works — Workout hours",
+    items: [
+      { text: lang === "pt" ? "Tempo total de todas as atividades rastreadas por GPS na janela" : "Total time from all GPS-tracked activities in the window", valid: true },
+      { text: lang === "pt" ? "Qualquer modalidade de atividade conta" : "Any activity type counts", valid: true },
+      { text: lang === "pt" ? "Verificação via Strava API com o access token do participante" : "Verified via Strava API with participant access token", valid: true },
     ],
   },
   checkin: {
     title: lang === "pt" ? "Como funciona — Check-in em Academia" : "How it works — Gym Check-in",
-    items: lang === "pt" ? [
-      "Check-in presencial em academia parceira Wellhub ou TotalPass",
-      "Verificação automática via API — sem nenhuma ação manual no app",
-      "Apenas academias credenciadas na rede parceira são aceitas",
-      "Prazo: até 23h59 (horário de Brasília) de cada janela de frequência",
-      "Máximo 1 check-in válido por dia — múltiplos na mesma unidade não acumulam",
-      "Check-ins de dias anteriores à data de início do deal não são contabilizados",
-    ] : [
-      "In-person check-in at a Wellhub or TotalPass partner gym",
-      "Automatic verification via API — no manual action required in the app",
-      "Only credentialed partner network gyms are accepted",
-      "Deadline: by 11:59 PM (Brasília time) of each frequency window",
-      "Max 1 valid check-in per day — multiple at the same location don't stack",
-      "Check-ins from days before the deal start date are not counted",
+    items: [
+      { text: lang === "pt" ? "Check-in presencial em academia parceira Wellhub ou TotalPass" : "In-person check-in at a Wellhub or TotalPass partner gym", valid: true },
+      { text: lang === "pt" ? "Verificação automática via API — sem nenhuma ação manual no app" : "Automatic verification via API — no manual action needed", valid: true },
+      { text: lang === "pt" ? "Apenas academias credenciadas na rede parceira são aceitas" : "Only credentialed partner network gyms are accepted", valid: true },
+      { text: lang === "pt" ? "Prazo: até 23h59 (horário de Brasília) de cada janela" : "Deadline: by 11:59 PM (Brasília time) of each window", valid: true },
+      { text: lang === "pt" ? "Máximo 1 check-in válido por dia — múltiplos na mesma unidade não acumulam" : "Max 1 valid check-in per day — multiple at same location don't stack", valid: false },
+      { text: lang === "pt" ? "Check-ins de dias anteriores à data de início não são contabilizados" : "Check-ins from before deal start date are not counted", valid: false },
     ],
-    hint: lang === "pt"
-      ? "📍 Basta se exercitar e fazer check-in normalmente pelo Wellhub ou TotalPass — o True Deal sincroniza via API automaticamente"
-      : "📍 Just work out and check in normally via Wellhub or TotalPass — True Deal syncs via API automatically",
-  },
-  different_venues: {
-    title: lang === "pt" ? "Regras — Ambientes diferentes" : "Rules — Different venues",
-    items: lang === "pt" ? [
-      "Número de academias ou espaços distintos visitados dentro da janela",
-      "Visitar o mesmo local múltiplas vezes conta como 1 ambiente único",
-      "Apenas locais credenciados na rede Wellhub ou TotalPass são aceitos",
-      "Verificado via API com o e-mail de membro do participante",
-    ] : [
-      "Number of distinct gyms or venues visited within the window",
-      "Visiting the same location multiple times counts as 1 unique venue",
-      "Only credentialed Wellhub or TotalPass network locations are accepted",
-      "Verified via API using the participant's member email",
-    ],
-    hint: lang === "pt" ? "🏋️ Varie as academias na semana para acumular ambientes diferentes" : "🏋️ Switch gyms during the week to stack different venues",
+    pinNote: lang === "pt" ? "Basta se exercitar e fazer check-in normalmente pelo Wellhub ou TotalPass — o True Deal sincroniza via API automaticamente." : "Just work out and check in normally via Wellhub or TotalPass — True Deal syncs via API automatically.",
   },
 })
 
+// ── Collapsible section ───────────────────────────────────────────────────────
 
-function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithParticipants }) {
-  const { language } = useLanguageStore()
-  const [subrulesOpen,    setSubrulesOpen]    = useState(true)
-  const [dealguardOpen,   setDealguardOpen]   = useState(false)
-  const [complianceOpen,  setComplianceOpen]  = useState(false)
-  const diffDays   = deal.daysTotal
-  const distMeta   = getDistMeta(language)[dealData.distribution] ?? getDistMeta(language).winner
-  const channelNames = (dealData.verification_channels ?? [])
-    .map(c => CHANNEL_LABELS[c] ?? c).join(" + ")
-  const ruleLabel  = getRuleLabels(language)[dealData.verification_type] ?? dealData.verification_type
-  const subrules   = getVerificationSubrules(language)[dealData.verification_type]
-
-  const frequencyMap: Record<string, string> = {
-    daily:   language === "pt" ? "Diário"  : "Daily",
-    weekly:  language === "pt" ? "Semanal" : "Weekly",
-    monthly: language === "pt" ? "Mensal"  : "Monthly",
-    yearly:  language === "pt" ? "Anual"   : "Yearly",
-  }
-  const freqLabel    = dealData.rule_frequency ? frequencyMap[dealData.rule_frequency] ?? dealData.rule_frequency : null
-  const targetPrefix = dealData.rule_target != null ? `${dealData.rule_target} × ` : ""
-  const ruleWithFreq = [(targetPrefix + ruleLabel).trim(), freqLabel].filter(Boolean).join(" · ")
-  const potTotal     = `$${deal.pot.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
-
-  const confirmRows = [
-    {
-      icon: "🛡️", iconBg: "rgba(22,163,74,0.1)",
-      key: language === "pt" ? "Regra" : "Rule",
-      val: channelNames ? `${channelNames} · ${ruleWithFreq}` : ruleWithFreq || "—",
-    },
-    {
-      icon: "📅", iconBg: "rgba(239,68,68,0.08)",
-      key: language === "pt" ? "Período" : "Period",
-      val: `${deal.startDate} → ${deal.endDate} (${diffDays}d)`,
-    },
-    {
-      icon: "💰", iconBg: "rgba(22,163,74,0.1)",
-      key: language === "pt" ? "Financeiro" : "Financial",
-      val: `$${deal.valuePerPerson.toLocaleString("en-US", { minimumFractionDigits: 2 })}/${language === "pt" ? "pessoa" : "person"} · ${deal.participants} ${language === "pt" ? "participantes" : "participants"} · ${potTotal}`,
-    },
-  ]
-
+function RuleSection({
+  title, accentColor, accentBg, icon: Icon, defaultOpen = true, children,
+}: {
+  title: string
+  accentColor: string
+  accentBg: string
+  icon: React.FC<{ style?: React.CSSProperties }>
+  defaultOpen?: boolean
+  children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(defaultOpen)
   return (
-    <div style={{ marginTop: 12 }}>
-      {/* Hero verde — igual ao preview de confirmação */}
-      <div className="rounded-[22px] p-5 mb-3 relative overflow-hidden"
-        style={{
-          background: "linear-gradient(135deg, #0D2E1A, #16A34A 55%, #22C55E)",
-          boxShadow: "0 14px 40px rgba(22,163,74,0.35)",
-        }}>
-        <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full"
-          style={{ background: "rgba(255,255,255,0.06)" }} />
-        <div className="relative z-10">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest mb-1">
-                Deal
-              </p>
-              <h2 className="text-xl font-bold text-white leading-tight">{deal.title}</h2>
-            </div>
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl flex-shrink-0"
-              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
-              <Lock className="w-3.5 h-3.5 text-white" />
-              <span className="text-white text-[10px] font-bold uppercase tracking-wide">
-                {dealData.type === "privado"
-                  ? (language === "pt" ? "Privado" : "Private")
-                  : (language === "pt" ? "Público" : "Public")}
-              </span>
-            </div>
+    <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, marginTop: 8, overflow: "hidden" }}>
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "12px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 22, height: 22, borderRadius: 6, background: accentBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Icon style={{ width: 13, height: 13, stroke: accentColor, fill: "none", strokeWidth: 2 }} />
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: language === "pt" ? "Entrada" : "Entry",   value: `$${deal.valuePerPerson.toLocaleString("en-US", { minimumFractionDigits: 2 })}` },
-              { label: language === "pt" ? "Regra" : "Rule",      value: ruleWithFreq || "—" },
-              { label: language === "pt" ? "Duração" : "Duration", value: `${diffDays} ${language === "pt" ? "dias" : "days"}` },
-              { label: language === "pt" ? "Premiação" : "Prize",  value: distMeta.label },
-            ].map(stat => (
-              <div key={stat.label} className="p-2.5 rounded-xl"
-                style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
-                <p className="text-[9px] text-white/70 uppercase tracking-wider">{stat.label}</p>
-                <p className="text-base font-bold text-white mt-0.5">{stat.value}</p>
-              </div>
-            ))}
-          </div>
+          <h4 style={{ fontSize: 10, fontWeight: 700, fontFamily: "monospace", letterSpacing: "0.1em", textTransform: "uppercase", color: accentColor, margin: 0 }}>
+            {title}
+          </h4>
         </div>
-      </div>
-
-      {/* Compact info rows — single card */}
-      <div className="rounded-xl overflow-hidden mb-3"
-        style={{ background: "rgba(255,255,255,0.48)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}>
-        {confirmRows.map((row, i, arr) => (
-          <div key={row.key}
-            className="flex items-center gap-3 px-3.5 py-2.5"
-            style={{ borderBottom: i < arr.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none" }}>
-            <span className="text-sm flex-shrink-0">{row.icon}</span>
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 w-16 flex-shrink-0">{row.key}</span>
-            <span className="text-[12px] font-semibold text-gray-800 flex-1 min-w-0 truncate">{row.val}</span>
-          </div>
-        ))}
-      </div>
-
-      {deal.description && (
-        <div className="mt-2 p-3.5 rounded-xl"
-          style={{ background: "rgba(255,255,255,0.48)", border: "1px solid rgba(255,255,255,0.6)" }}>
-          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">{language === "pt" ? "Descrição" : "Description"}</p>
-          <p className="text-sm text-gray-700 leading-relaxed">{deal.description}</p>
+        <ChevronDown style={{ width: 16, height: 16, color: C.dim, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s", flexShrink: 0 }} />
+      </button>
+      {open && (
+        <div style={{ borderTop: `1px solid ${C.border2}`, padding: "12px 14px" }}>
+          {children}
         </div>
       )}
-
-      {/* Subrules — collapsible, starts open */}
-      {subrules && (
-        <div className="mt-2 rounded-2xl overflow-hidden"
-          style={{ background: "rgba(59,130,246,0.05)", border: "1px solid rgba(59,130,246,0.18)" }}>
-          <button
-            onClick={() => setSubrulesOpen(o => !o)}
-            className="w-full flex items-center justify-between px-4 py-3"
-            style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-          >
-            <p className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">
-              {subrules.title}
-            </p>
-            {subrulesOpen
-              ? <ChevronDown className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
-              : <ChevronRight className="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />}
-          </button>
-          {subrulesOpen && (
-            <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(59,130,246,0.12)" }}>
-              <ul className="space-y-2 pt-3">
-                {subrules.items.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2.5 text-[12px] text-gray-700 leading-relaxed">
-                    <span className="text-blue-400 mt-0.5 flex-shrink-0 font-bold">✓</span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-              {subrules.hint && (
-                <div className="mt-3 pt-3" style={{ borderTop: "1px solid rgba(59,130,246,0.15)" }}>
-                  <p className="text-[11px] text-amber-600 font-semibold leading-relaxed">
-                    {subrules.hint}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* DealGuard — collapsible, starts closed, green */}
-      <div className="mt-2 rounded-2xl overflow-hidden"
-        style={{ background: "rgba(22,163,74,0.05)", border: "1px solid rgba(22,163,74,0.22)" }}>
-        <button
-          onClick={() => setDealguardOpen(o => !o)}
-          className="w-full flex items-center justify-between px-4 py-3"
-          style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-        >
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-green-600 flex-shrink-0" />
-            <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest">
-              {language === "pt" ? "Verificação dupla — DealGuard Engine" : "Double verification — DealGuard Engine"}
-            </p>
-          </div>
-          {dealguardOpen
-            ? <ChevronDown className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-            : <ChevronRight className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />}
-        </button>
-        {dealguardOpen && (
-          <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(22,163,74,0.15)" }}>
-            <div className="space-y-3 pt-3">
-              {[
-                {
-                  step: "1",
-                  label: language === "pt" ? "Coleta automática via API" : "Automatic API collection",
-                  desc: language === "pt"
-                    ? "O DealGuard conecta diretamente nas plataformas (X, Strava, Wellhub…) e extrai os dados brutos de cada participante ao final de cada janela."
-                    : "DealGuard connects directly to platforms (X, Strava, Wellhub…) and pulls raw data from each participant at the end of each window.",
-                },
-                {
-                  step: "2",
-                  label: language === "pt" ? "Análise Sentinel (IA)" : "Sentinel analysis (AI)",
-                  desc: language === "pt"
-                    ? "Uma camada de inteligência artificial analisa as evidências em busca de padrões suspeitos ou atividade fraudulenta. Resultados com risco alto são marcados e excluídos da premiação."
-                    : "An AI layer reviews the evidence for suspicious patterns or fraudulent activity. High-risk results are flagged and excluded from the prize pool.",
-                },
-              ].map(({ step, label, desc }) => (
-                <div key={step} className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
-                    style={{ background: "rgba(22,163,74,0.12)", border: "1px solid rgba(22,163,74,0.25)" }}>
-                    <span style={{ fontSize: 10, fontWeight: 900, color: "#16A34A" }}>{step}</span>
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-green-700 mb-0.5">{label}</p>
-                    <p className="text-[11px] text-gray-600 leading-relaxed">{desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <p className="text-[10px] text-green-600 mt-3 font-semibold" style={{ borderTop: "1px solid rgba(22,163,74,0.15)", paddingTop: 10 }}>
-              {language === "pt"
-                ? "✓ Só após essa verificação dupla o resultado é finalizado e os fundos liberados."
-                : "✓ Only after this double verification is the result finalized and funds released."}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Compliance — collapsible, starts closed */}
-      <div className="mt-2 rounded-2xl overflow-hidden"
-        style={{ background: "rgba(245,158,11,0.05)", border: "1px solid rgba(245,158,11,0.22)" }}>
-        <button
-          onClick={() => setComplianceOpen(o => !o)}
-          className="w-full flex items-center justify-between px-4 py-3"
-          style={{ background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-        >
-          <p className="text-[10px] font-bold text-amber-600 uppercase tracking-widest">
-            📋 {language === "pt" ? "Como funciona o cumprimento" : "How compliance works"}
-          </p>
-          {complianceOpen
-            ? <ChevronDown className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />
-            : <ChevronRight className="w-3.5 h-3.5 text-amber-500 flex-shrink-0" />}
-        </button>
-        {complianceOpen && (
-          <div className="px-4 pb-4" style={{ borderTop: "1px solid rgba(245,158,11,0.15)" }}>
-            <p className="text-[12px] text-gray-700 leading-relaxed mb-3 pt-3">
-              {language === "pt"
-                ? "Seu desempenho é avaliado janela por janela — não apenas no final. Para ser vencedor, você precisa atingir a meta em cada janela do período (diária, semanal ou mensal)."
-                : "Your performance is evaluated window by window — not just at the end. To win, you need to hit the goal in every window of the period (daily, weekly, or monthly)."}
-            </p>
-            <div className="rounded-xl overflow-hidden mb-3" style={{ border: "1px solid rgba(245,158,11,0.2)" }}>
-              <div className="px-3 py-2" style={{ background: "rgba(245,158,11,0.08)" }}>
-                <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">
-                  {language === "pt" ? "Exemplo: 5 posts/semana · 4 semanas" : "Example: 5 posts/week · 4 weeks"}
-                </p>
-              </div>
-              {[
-                { window: language === "pt" ? "Semana 1" : "Week 1", value: "5 posts", ok: true },
-                { window: language === "pt" ? "Semana 2" : "Week 2", value: "5 posts", ok: true },
-                { window: language === "pt" ? "Semana 3" : "Week 3", value: "5 posts", ok: true },
-                { window: language === "pt" ? "Semana 4" : "Week 4", value: language === "pt" ? "4 posts — abaixo" : "4 posts — below", ok: false },
-              ].map(({ window, value, ok }) => (
-                <div key={window}
-                  className="flex items-center justify-between px-3 py-2"
-                  style={{ borderTop: "1px solid rgba(245,158,11,0.1)", background: ok ? "transparent" : "rgba(239,68,68,0.04)" }}>
-                  <span className="text-[11px] text-gray-500">{window}</span>
-                  <span className="text-[11px] font-semibold" style={{ color: ok ? "#6B7280" : "#EF4444" }}>{value}</span>
-                  <span className="text-[11px] font-bold" style={{ color: ok ? "#16A34A" : "#EF4444" }}>
-                    {ok ? "✓" : "✗"}
-                  </span>
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-gray-600 leading-relaxed">
-              {language === "pt"
-                ? "O bom desempenho das semanas anteriores não compensa uma janela abaixo da meta. O DealGuard verifica automaticamente ao final de cada janela."
-                : "Strong performance in previous windows does not make up for a window below the goal. DealGuard checks automatically at the end of each window."}
-            </p>
-          </div>
-        )}
-      </div>
     </div>
   )
 }
 
-// ── Live ranking card ─────────────────────────────────────────────────────────
+// ── Pin note ──────────────────────────────────────────────────────────────────
 
-function PlayerCard({
-  player, expanded, onToggle,
-}: { player: Participant; expanded: boolean; onToggle: () => void }) {
-  const { language } = useLanguageStore()
-  const delta    = player.currentValue - player.startValue
-  const deltaStr = player.hasData
-    ? (delta >= 0 ? `+${delta.toLocaleString("pt-BR")}` : delta.toLocaleString("pt-BR"))
-    : "—"
-
+function PinNote({ text, color, bg, border }: { text: string; color: string; bg: string; border: string }) {
   return (
-    <GlassCard
-      accent={player.isMe ? "#16A34A" : undefined}
-      style={{ overflow: "hidden", background: player.isMe ? "rgba(22,163,74,0.05)" : undefined }}
-    >
-      <button
-        onClick={onToggle}
-        style={{
-          width: "100%", padding: 14,
-          display: "flex", gap: 12, alignItems: "center",
-          background: "none", border: "none", cursor: "pointer", textAlign: "left",
-        }}
-      >
-        <div style={{ width: 24, textAlign: "center", flexShrink: 0 }}>
-          <span style={{ fontWeight: 900, fontSize: 16, color: player.rank === 1 ? "#16A34A" : "#9CA3AF" }}>
-            {player.rank}{language === "pt" ? "º" : (player.rank === 1 ? "st" : player.rank === 2 ? "nd" : player.rank === 3 ? "rd" : "th")}
-          </span>
-        </div>
-        <div style={{
-          width: 44, height: 44, borderRadius: 13, flexShrink: 0,
-          background: `linear-gradient(135deg,${player.bg},${player.bg}CC)`,
-          border: `2px solid ${player.color}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <span style={{ fontWeight: 700, fontSize: 13, color: player.color }}>{player.initials}</span>
-        </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-            <span style={{ fontWeight: 700, color: "#1f2937", fontSize: 13 }}>{player.name}</span>
-            {player.userTag && (
-              <span style={{ fontStyle: "italic", fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
-                {player.userTag}
-              </span>
-            )}
-            {player.isMe && (
-              <span style={{
-                fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 100,
-                background: "rgba(22,163,74,0.15)", color: "#16A34A",
-              }}>{language === "pt" ? "Você" : "You"}</span>
-            )}
-          </div>
-          <div style={{ fontSize: 11, color: "#9CA3AF" }}>
-            {player.socialHandle ?? player.username}
-          </div>
-          {player.hasData && (
-            <div style={{ fontSize: 11, fontWeight: 600, marginTop: 2, color: delta >= 0 ? "#16A34A" : "#EF4444" }}>
-              {deltaStr} pts
-            </div>
-          )}
-        </div>
-        <div style={{ textAlign: "right", flexShrink: 0 }}>
-          {player.hasData ? (
-            <div style={{ fontSize: 14, fontWeight: 700, color: "#1f2937" }}>
-              {player.currentValue.toLocaleString("pt-BR")}
-            </div>
-          ) : (
-            <div style={{ fontSize: 11, color: "#9CA3AF" }}>{language === "pt" ? "sem dados" : "no data"}</div>
-          )}
-        </div>
-        {expanded
-          ? <ChevronDown size={14} color="#9CA3AF" style={{ flexShrink: 0 }} />
-          : <ChevronRight size={14} color="#9CA3AF" style={{ flexShrink: 0 }} />}
-      </button>
-
-      {expanded && (
-        <div style={{ padding: "0 14px 14px", borderTop: "1px solid rgba(0,0,0,0.05)" }}>
-          {player.hasData ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, paddingTop: 10 }}>
-              {[
-                { label: language === "pt" ? "Início" : "Start", value: player.startValue.toLocaleString("pt-BR") },
-                { label: language === "pt" ? "Atual" : "Current",  value: player.currentValue.toLocaleString("pt-BR") },
-              ].map(({ label, value }) => (
-                <div key={label} style={{
-                  borderRadius: 10, padding: "8px 4px", textAlign: "center",
-                  background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.6)",
-                }}>
-                  <div style={{ fontWeight: 700, color: "#1f2937", fontSize: 12 }}>{value}</div>
-                  <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2 }}>{label}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p style={{ fontSize: 12, color: "#9CA3AF", textAlign: "center", paddingTop: 10 }}>
-              {language === "pt" ? "Dados de tracking ainda não disponíveis" : "Tracking data not yet available"}
-            </p>
-          )}
-        </div>
-      )}
-    </GlassCard>
+    <div style={{ marginTop: 10, padding: "8px 10px", borderRadius: 10, fontSize: 11, fontWeight: 600, lineHeight: 1.5, display: "flex", gap: 6, alignItems: "flex-start", background: bg, color, border: `1px solid ${border}` }}>
+      {text}
+    </div>
   )
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────────
+// ── DealRulesCard ─────────────────────────────────────────────────────────────
+
+function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithParticipants }) {
+  const { language } = useLanguageStore()
+  const subrules = getVerificationSubrules(language)[dealData.verification_type]
+  const channelName = (dealData.verification_channels ?? [])
+    .map(c => CHANNEL_LABELS[c] ?? c).join(" + ")
+
+  const freqMap: Record<string, string> = {
+    daily:   language === "pt" ? "Diário"  : "Daily",
+    weekly:  language === "pt" ? "Semanal" : "Weekly",
+    monthly: language === "pt" ? "Mensal"  : "Monthly",
+  }
+  const freqLabel = dealData.rule_frequency ? freqMap[dealData.rule_frequency] ?? dealData.rule_frequency : null
+
+  // Section 1: How it works for this channel
+  const section1Title = subrules?.title ?? (language === "pt" ? `Como funciona — ${channelName}` : `How it works — ${channelName}`)
+
+  return (
+    <div style={{ paddingBottom: 8 }}>
+      {/* Section 1: How it works */}
+      <RuleSection
+        title={section1Title}
+        accentColor={C.teal}
+        accentBg={`rgba(59,143,138,0.1)`}
+        icon={BookOpen}
+        defaultOpen={true}
+      >
+        {subrules ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+            {subrules.items.map((item, i) => (
+              <div key={i} style={{ display: "flex", gap: 7, alignItems: "flex-start", fontSize: 12, color: C.mid, lineHeight: 1.45 }}>
+                <div style={{ width: 16, height: 16, borderRadius: "50%", flexShrink: 0, marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, background: item.valid ? C.activeLight : C.formingLight, color: item.valid ? C.brand : C.forming }}>
+                  {item.valid ? "✓" : "✗"}
+                </div>
+                {item.text}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ fontSize: 12, color: C.mid }}>
+            {language === "pt" ? "Verificação automática via API da plataforma." : "Automatic verification via platform API."}
+          </p>
+        )}
+        {subrules?.pinNote && (
+          <PinNote text={subrules.pinNote} color={C.forming} bg={C.formingLight} border={C.formingBorder} />
+        )}
+      </RuleSection>
+
+      {/* Section 2: DealGuard Engine */}
+      <RuleSection
+        title={language === "pt" ? "Verificação dupla — DealGuard Engine" : "Double verification — DealGuard Engine"}
+        accentColor={C.brand}
+        accentBg={C.activeLight}
+        icon={ShieldCheck}
+        defaultOpen={false}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 9, marginBottom: 8 }}>
+          {[
+            {
+              step: "1",
+              label: language === "pt" ? "Coleta automática via API" : "Automatic API collection",
+              desc: language === "pt"
+                ? `O DealGuard conecta diretamente ao ${channelName} e coleta os dados brutos de cada participante ao final de cada janela de frequência.`
+                : `DealGuard connects directly to ${channelName} and pulls raw data from each participant at the end of each window.`,
+            },
+            {
+              step: "2",
+              label: language === "pt" ? "Análise Sentinel AI" : "Sentinel AI analysis",
+              desc: language === "pt"
+                ? "Uma camada de IA revisa as evidências em busca de padrões suspeitos ou atividade fraudulenta. Resultados de alto risco são sinalizados e excluídos do pool."
+                : "An AI layer reviews the evidence for suspicious patterns or fraudulent activity. High-risk results are flagged and excluded from the prize pool.",
+            },
+          ].map(({ step, label, desc }) => (
+            <div key={step} style={{ display: "flex", gap: 9, alignItems: "flex-start" }}>
+              <div style={{ width: 22, height: 22, borderRadius: "50%", background: C.activeLight, color: C.brand, fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontFamily: "monospace", border: `1px solid ${C.activeBorder}` }}>
+                {step}
+              </div>
+              <div>
+                <strong style={{ fontSize: 12, fontWeight: 700, color: C.brand, display: "block", marginBottom: 2 }}>{label}</strong>
+                <p style={{ fontSize: 11, color: C.mid, lineHeight: 1.45, margin: 0 }}>{desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <PinNote
+          text={language === "pt" ? "Somente após essa verificação dupla o resultado é finalizado e os fundos liberados." : "Only after this double verification is the result finalized and funds released."}
+          color={C.brand}
+          bg={C.activeLight}
+          border={C.activeBorder}
+        />
+      </RuleSection>
+
+      {/* Section 3: Compliance */}
+      <RuleSection
+        title={language === "pt" ? "Como funciona o compliance" : "How compliance works"}
+        accentColor={C.forming}
+        accentBg={C.formingLight}
+        icon={FileCheck}
+        defaultOpen={false}
+      >
+        <p style={{ fontSize: 12, color: C.mid, lineHeight: 1.5, marginBottom: 10 }}>
+          {language === "pt"
+            ? "Seu desempenho é avaliado janela por janela — não apenas no final. Para vencer, você precisa cumprir a meta em cada janela do período."
+            : "Your performance is evaluated window by window — not just at the end. To win, you need to hit the goal in every window."}
+        </p>
+        <div style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: C.forming, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 7 }}>
+          {language === "pt" ? "Exemplo: 1 post/dia · 4 semanas" : "Example: 1 post/day · 4 weeks"}
+        </div>
+        <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${C.border}` }}>
+          {[
+            { window: language === "pt" ? "Semana 1" : "Week 1", value: "7 posts", ok: true },
+            { window: language === "pt" ? "Semana 2" : "Week 2", value: "7 posts", ok: true },
+            { window: language === "pt" ? "Semana 3" : "Week 3", value: "7 posts", ok: true },
+            { window: language === "pt" ? "Semana 4" : "Week 4", value: language === "pt" ? "5 posts — abaixo" : "5 posts — below", ok: false },
+          ].map(({ window, value, ok }, i, arr) => (
+            <div key={window} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", borderBottom: i < arr.length - 1 ? `1px solid ${C.border2}` : "none", fontSize: 12, background: ok ? "transparent" : "rgba(232,98,10,0.03)" }}>
+              <span style={{ color: C.mid }}>{window}</span>
+              <span style={{ fontWeight: 600, color: ok ? C.mid : C.forming }}>{value}</span>
+              <span style={{ fontWeight: 700, color: ok ? C.brand : C.forming }}>{ok ? "✓" : "✗"}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 11, color: C.mid, lineHeight: 1.45, marginTop: 8 }}>
+          {language === "pt"
+            ? "Um bom desempenho nas semanas anteriores não compensa uma janela abaixo da meta. O DealGuard verifica automaticamente ao final de cada janela."
+            : "Strong performance in previous windows does not compensate for a window below the goal. DealGuard verifies automatically at the end of each window."}
+        </p>
+      </RuleSection>
+    </div>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+type TabId = "overview" | "participants" | "rules"
 
 export default function DealClient({
   deal: dealData,
@@ -814,16 +518,87 @@ export default function DealClient({
   userId: string | null
   userSocialConnections?: SocialConnection[]
 }) {
-  const router  = useRouter()
-  const { language } = useLanguageStore()
-  const deal    = mapDeal(dealData, userId, language)
-  const [expandedId,       setExpandedId]       = useState<string | null>(null)
+  const router             = useRouter()
+  const { language }       = useLanguageStore()
+  const deal               = mapDeal(dealData, userId, language)
+  const [activeTab,        setActiveTab]        = useState<TabId>("overview")
   const [joinLoading,      setJoinLoading]      = useState(false)
   const [joinError,        setJoinError]        = useState<string | null>(null)
   const [showSocialPopup,  setShowSocialPopup]  = useState<string[] | null>(null)
+  const [showShareSheet,   setShowShareSheet]   = useState(false)
+  const [linkCopied,       setLinkCopied]       = useState(false)
 
+  // ── Computed ────────────────────────────────────────────────────────────────
+  const entryAmount    = dealData.entry_amount
+  const feePct         = dealData.fee_pct ?? 3
+  const aliveList      = deal.participants_list.filter(p => p.approved)
+  const eliminatedList = deal.participants_list.filter(p => !p.approved)
+  const aliveCount     = aliveList.length
+  const eliminatedCount = eliminatedList.length
+  const loserPool      = entryAmount * eliminatedCount
+  const netLoserPool   = loserPool * (1 - feePct / 100)
+  const extraPerWinner = aliveCount > 0 && eliminatedCount > 0 ? netLoserPool / aliveCount : 0
+  const totalPerWinner = entryAmount + extraPerWinner
+  const daysLeft       = Math.max(0, deal.daysTotal - deal.daysGone)
+
+  // ── Frequency label ─────────────────────────────────────────────────────────
+  const FREQ_LABELS: Record<string, Record<"pt"|"en", string>> = {
+    daily:   { pt: "Diário",  en: "Daily"   },
+    weekly:  { pt: "Semanal", en: "Weekly"  },
+    monthly: { pt: "Mensal",  en: "Monthly" },
+    yearly:  { pt: "Anual",   en: "Yearly"  },
+  }
+  const freqLabel = dealData.rule_frequency
+    ? (FREQ_LABELS[dealData.rule_frequency]?.[language] ?? dealData.rule_frequency)
+    : null
+
+  // ── Channel handle for current user ─────────────────────────────────────────
+  const myChannelHandle = (() => {
+    const ch = dealData.verification_channels?.[0]
+    if (!ch || !userSocialConnections) return null
+    const conn = userSocialConnections.find(c => c.platform === ch && c.username)
+    return conn?.username ? `@${conn.username}` : null
+  })()
+
+  // ── Share link ───────────────────────────────────────────────────────────────
+  const shareUrl = `https://truedeal.app/deal/${dealData.id}`
+
+  function handleCopyLink() {
+    navigator.clipboard.writeText(shareUrl).catch(() => {})
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
+  }
+
+  async function handleNativeShare() {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: dealData.title, text: language === "pt" ? `Participe do acordo "${dealData.title}" no TrueDeal` : `Join the deal "${dealData.title}" on TrueDeal`, url: shareUrl })
+      } catch { /* cancelled */ }
+    } else {
+      handleCopyLink()
+    }
+  }
+
+  // ── Status helpers ──────────────────────────────────────────────────────────
+  const statusGradient =
+    deal.status === "ativo"    ? "linear-gradient(135deg, #00523A, #00875A 60%, #00B852)" :
+    deal.status === "pendente" ? "linear-gradient(135deg, #9E3700, #C94C0A 60%, #E8620A)" :
+                                 "linear-gradient(135deg, #3A4A3A, #5A6A5A 60%, #8BA09A)"
+
+  const statusColor =
+    deal.status === "ativo"    ? C.brand :
+    deal.status === "pendente" ? C.forming :
+                                 C.dim
+
+  const statusLabel =
+    deal.status === "ativo"    ? (language === "pt" ? "Em andamento" : "Active") :
+    deal.status === "pendente" ? (language === "pt" ? "Formação"     : "Formation") :
+                                 (language === "pt" ? "Encerrado"    : "Ended")
+
+  const activeTabColor = deal.status === "ativo" ? C.brand : deal.status === "pendente" ? C.forming : C.dim
+
+  // ── Social connection check ─────────────────────────────────────────────────
   const requiredChannel = deal.verificationChannels?.[0] ?? null
-  const requiredChannelLabel = requiredChannel ? CHANNEL_LABELS[requiredChannel] ?? requiredChannel : null
   const emailOnlyPlatforms = new Set(["wellhub", "totalpass"])
   const hasRequiredConnection = requiredChannel
     ? !!userSocialConnections?.some(c => {
@@ -835,14 +610,17 @@ export default function DealClient({
 
   const isParticipant = userId ? dealData.participants.some(p => p.user_id === userId) : false
 
+  // ── Join handler ────────────────────────────────────────────────────────────
   async function handleJoin() {
     if (!userId) { router.push("/login"); return }
     if (!hasRequiredConnection && requiredChannel) {
-      setShowSocialPopup(deal.verificationChannels.filter(ch => !userSocialConnections?.some(c => {
-        if (c.platform !== ch) return false
-        if (!c.username && !c.member_email && !c.external_id) return false
-        return emailOnlyPlatforms.has(c.platform) || c.status !== "pending"
-      })))
+      setShowSocialPopup(
+        deal.verificationChannels.filter(ch => !userSocialConnections?.some(c => {
+          if (c.platform !== ch) return false
+          if (!c.username && !c.member_email && !c.external_id) return false
+          return emailOnlyPlatforms.has(c.platform) || c.status !== "pending"
+        }))
+      )
       return
     }
     setJoinLoading(true)
@@ -861,381 +639,521 @@ export default function DealClient({
     router.refresh()
   }
 
-  const isWinning = deal.myRank != null && deal.myRank <= Math.ceil(deal.participants * 0.3)
-
-  const myInitials = userId
-    ? deal.participants_list.find(p => p.isMe)?.initials ?? "EU"
-    : "EU"
-
-  // ── Participant stats ──
-  const aliveList       = deal.participants_list.filter(p => p.approved)
-  const eliminatedList  = deal.participants_list.filter(p => !p.approved)
-  const aliveCount      = aliveList.length
-  const eliminatedCount = eliminatedList.length
-  const totalCount      = deal.participants_list.length
-
-  // ── Financial calc ──
-  const entryAmount    = dealData.entry_amount
-  const feePct         = dealData.fee_pct ?? 3
-  const loserPool      = entryAmount * eliminatedCount
-  const netLoserPool   = loserPool * (1 - feePct / 100)
-  const extraPerWinner = aliveCount > 0 && eliminatedCount > 0 ? netLoserPool / aliveCount : 0
-  const totalPerWinner = entryAmount + extraPerWinner
-  const isAlive        = deal.participants_list.find(p => p.isMe)?.approved ?? false
+  // ── Tabs config ─────────────────────────────────────────────────────────────
+  const TABS: { id: TabId; label: string }[] = [
+    { id: "overview",     label: language === "pt" ? "Visão geral"    : "Overview" },
+    { id: "participants", label: language === "pt" ? "Participantes"  : "Participants" },
+    { id: "rules",        label: language === "pt" ? "Regras & Verif.": "Rules & Verif." },
+  ]
 
   return (
-    <div className="min-h-screen pb-8"
-      style={{
-        backgroundImage: "url('/images/gradient-background.jpg')",
-        backgroundSize: "cover", backgroundPosition: "center",
-        backgroundRepeat: "no-repeat", backgroundAttachment: "fixed",
-      }}>
+    <div style={{ minHeight: "100vh", background: C.bg, maxWidth: 430, margin: "0 auto", display: "flex", flexDirection: "column", paddingBottom: 100 }}>
 
-      {/* Hero */}
-      <div className="relative">
-        <div className="px-5 pt-12 pb-6"
-          style={{ background: "linear-gradient(160deg, #0D2E1A 0%, #16A34A 55%, #22C55E 100%)" }}>
-          <div className="flex items-center justify-between mb-6">
-            <button onClick={() => router.back()}
-              className="w-10 h-10 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
-              <ArrowLeft className="w-5 h-5 text-white" />
-            </button>
-            <button
-              className="w-10 h-10 rounded-full flex items-center justify-center"
-              style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.25)" }}>
-              <Share2 className="w-5 h-5 text-white" />
-            </button>
+      {/* ── TOP BAR ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px 10px" }}>
+        <button
+          onClick={() => router.back()}
+          style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: C.mid, background: "none", border: "none", cursor: "pointer" }}
+        >
+          <ArrowLeft style={{ width: 14, height: 14 }} />
+          {language === "pt" ? "Acordos" : "Deals"}
+        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={() => setShowShareSheet(true)} style={{ width: 32, height: 32, background: C.surface, border: `1px solid ${C.border}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <Share2 style={{ width: 15, height: 15, stroke: C.mid, fill: "none" }} />
+          </button>
+          <div style={{ width: 32, height: 32, background: C.surface, border: `1px solid ${C.border}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <MoreHorizontal style={{ width: 15, height: 15, stroke: C.mid, fill: "none" }} />
           </div>
-
-          <div className="flex items-center gap-2 mb-3 flex-wrap">
-            <StatusPill status={deal.status} />
-            <a 
-              href={`https://explorer.solana.com/address/9zfQ1dwJ9Po7YCPWJ3S13ic3nxZcA9cEwBVsXdKub1c4?cluster=devnet`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[10px] text-white/80 font-bold transition-all border border-white/10"
-            >
-              <ExternalLink className="w-3 h-3" />
-              BLOCKCHAIN
-            </a>
-            {deal.verifications.map((v) => <VerifChip key={v} type={v} />)}
-          </div>
-
-          <h1 className="text-white text-2xl font-black leading-tight mb-1">{deal.title}</h1>
-          <p className="text-white/70 text-sm mb-5">{deal.subtitle}</p>
-
-          {deal.status === "ativo" && (
-            <>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-white/70 text-xs">{language === "pt" ? "Progresso" : "Progress"}</span>
-                <span className="text-white font-bold text-xs">{Math.round(deal.progress * 100)}%</span>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.2)" }}>
-                <div className="h-full rounded-full" style={{ width: `${Math.round(deal.progress * 100)}%`, background: "rgba(255,255,255,0.9)" }} />
-              </div>
-            </>
-          )}
-          {deal.status === "pendente" && (
-            <>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-white/70 text-xs">{language === "pt" ? "Vagas preenchidas" : "Slots filled"}</span>
-                <span className="text-white font-bold text-xs">
-                  {deal.participants}/{dealData.max_participants}
-                </span>
-              </div>
-              <div className="h-2 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.2)" }}>
-                <div className="h-full rounded-full"
-                  style={{ width: `${Math.min(100, (deal.participants / dealData.max_participants) * 100)}%`, background: "rgba(255,255,255,0.9)" }} />
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Info grid */}
-        <div className="px-5 -mt-1">
-          {/* My rank tile */}
-          {deal.myRank != null && (
-            <GlassCard style={{ padding: "12px 16px", marginTop: 12 }}
-              accent={isWinning ? "#16A34A" : "#9CA3AF"}>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center"
-                    style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E5A)" }}>
-                    <span className="text-blue-300 font-bold text-xs">{myInitials}</span>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400">{language === "pt" ? "Minha posição" : "My position"}</p>
-                    <p className="text-gray-800 font-bold text-base">
-                      {deal.myRank}{language === "pt" ? "º" : (deal.myRank === 1 ? "st" : deal.myRank === 2 ? "nd" : deal.myRank === 3 ? "rd" : "th")} {language === "pt" ? "lugar" : "place"}
-                      {isWinning && <span className="ml-2 text-[11px]" style={{ color: "#16A34A" }}>· {language === "pt" ? "Em zona de prêmio" : "In prize zone"}</span>}
-                    </p>
-                  </div>
-                </div>
-                {deal.potentialWin != null && deal.potentialWin > 0 && (
-                  <div className="text-right">
-                    <p className="text-[10px] text-gray-400">{language === "pt" ? "Ganho potencial" : "Potential gain"}</p>
-                    <p className="font-bold" style={{ color: "#16A34A" }}>${deal.potentialWin.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
-                  </div>
-                )}
-                {isWinning && <Trophy className="w-5 h-5 text-yellow-500 ml-2" />}
-              </div>
-            </GlassCard>
-          )}
-
-          {/* Join button — only for non-participants during formation */}
-          {deal.status === "pendente" && !isParticipant && userId && (
-            <div className="mt-3 mb-1">
-              {joinError && (
-                <p className="text-xs text-red-500 mb-2 text-center">{joinError}</p>
-              )}
-              <button
-                onClick={handleJoin}
-                disabled={joinLoading}
-                className="w-full py-4 rounded-2xl font-bold text-white text-sm flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
-                style={{
-                  background: "linear-gradient(135deg,#16A34A,#22C55E)",
-                  boxShadow: "0 8px 32px rgba(22,163,74,0.38)",
-                  opacity: joinLoading ? 0.7 : 1,
-                }}
-              >
-                {joinLoading
-                  ? <Loader2 className="w-4 h-4 animate-spin" />
-                  : (language === "pt" ? "Participar do Deal" : "Join Deal")}
-              </button>
-            </div>
-          )}
-
-          <DealRulesCard deal={deal} dealData={dealData} />
-
-          {/* Financeiro + Situação dos participantes — card unificado */}
-          <GlassCard style={{ padding: 16, marginTop: 12 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12 }}>
-              {language === "pt" ? "Financeiro & Participantes" : "Financial & Participants"}
-            </p>
-
-            {/* Entrada + Pote total */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 14 }}>
-              {[
-                { label: language === "pt" ? "Entrada" : "Entry",      value: `$${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, color: "#374151" },
-                { label: language === "pt" ? "Pote total" : "Total pot", value: `$${deal.pot.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,   color: "#16A34A" },
-              ].map(({ label, value, color }) => (
-                <div key={label} style={{ borderRadius: 12, padding: "10px 8px", textAlign: "center", background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.15)" }}>
-                  <p style={{ fontSize: 17, fontWeight: 900, color, lineHeight: 1 }}>{value}</p>
-                  <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>{label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Iniciaram / No jogo / Eliminados */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 12 }}>
-              {[
-                { label: language === "pt" ? "Iniciaram" : "Started",   value: totalCount,      color: "#374151", bg: "rgba(0,0,0,0.04)"     },
-                { label: language === "pt" ? "No jogo" : "In game",     value: aliveCount,      color: "#16A34A", bg: "rgba(22,163,74,0.08)" },
-                { label: language === "pt" ? "Eliminados" : "Out",      value: eliminatedCount, color: "#EF4444", bg: "rgba(239,68,68,0.08)" },
-              ].map(({ label, value, color, bg }) => (
-                <div key={label} style={{ borderRadius: 12, padding: "10px 8px", textAlign: "center", background: bg }}>
-                  <p style={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1 }}>{value}</p>
-                  <p style={{ fontSize: 10, color: "#9CA3AF", marginTop: 4 }}>{label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Barra proporcional */}
-            {totalCount > 0 && (
-              <>
-                <div style={{ height: 8, borderRadius: 100, overflow: "hidden", display: "flex" }}>
-                  <div style={{ width: `${(aliveCount / totalCount) * 100}%`, background: "linear-gradient(90deg,#16A34A,#22C55E)", transition: "width 0.5s ease" }} />
-                  <div style={{ width: `${(eliminatedCount / totalCount) * 100}%`, background: "linear-gradient(90deg,#EF4444,#F87171)", transition: "width 0.5s ease" }} />
-                  <div style={{ flex: 1, background: "rgba(0,0,0,0.07)" }} />
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between", marginTop: 5, marginBottom: 12 }}>
-                  <span style={{ fontSize: 10, color: "#16A34A" }}>
-                    {Math.round((aliveCount / totalCount) * 100)}% {language === "pt" ? "ainda competindo" : "still competing"}
-                  </span>
-                  {eliminatedCount > 0 && (
-                    <span style={{ fontSize: 10, color: "#EF4444" }}>
-                      {Math.round((eliminatedCount / totalCount) * 100)}% {language === "pt" ? "eliminados" : "eliminated"}
-                    </span>
-                  )}
-                </div>
-              </>
-            )}
-
-            {/* Breakdown financeiro — apenas quando deal está ativo */}
-            {deal.status !== "pendente" && (
-              <>
-                <div style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "4px 0 12px" }} />
-                <p style={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 10 }}>
-                  {language === "pt" ? "Estimativa por participante ativo" : "Estimate per active participant"}
-                </p>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, color: "#6B7280" }}>{language === "pt" ? "Entrada paga" : "Entry paid"}</span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
-                      ${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                  {eliminatedCount > 0 && (
-                    <>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 12, color: "#6B7280" }}>
-                          {language === "pt" ? `Pote dos eliminados (${eliminatedCount}×)` : `Losers pool (${eliminatedCount}×)`}
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#374151" }}>
-                          ${loserPool.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-                          {language === "pt" ? `Taxa da plataforma (${feePct}%)` : `Platform fee (${feePct}%)`}
-                        </span>
-                        <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-                          −${(loserPool * feePct / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: 12, color: "#6B7280" }}>
-                          {language === "pt" ? `Distribuído entre ${aliveCount} ativos` : `Distributed among ${aliveCount} active`}
-                        </span>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#16A34A" }}>
-                          +${extraPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                        </span>
-                      </div>
-                      <div style={{ height: 1, background: "rgba(0,0,0,0.07)", margin: "4px 0" }} />
-                    </>
-                  )}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{language === "pt" ? "Total estimado por ativo" : "Estimated total per active"}</span>
-                    <span style={{ fontSize: 18, fontWeight: 900, color: "#16A34A" }}>
-                      ${totalPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-                    </span>
-                  </div>
-                </div>
-
-                {eliminatedCount === 0 ? (
-                  <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(59,130,246,0.07)", border: "1px solid rgba(59,130,246,0.18)" }}>
-                    <p style={{ fontSize: 12, color: "#3B82F6", fontWeight: 600, lineHeight: 1.5 }}>
-                      🤝 {language === "pt"
-                        ? `Todos ainda no jogo! Se isso se mantiver, cada participante recupera os $${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })} integralmente.`
-                        : `Everyone still in the game! If this continues, each participant recovers their $${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })} in full.`}
-                    </p>
-                  </div>
-                ) : isAlive ? (
-                  <div style={{ padding: "10px 12px", borderRadius: 12, background: "linear-gradient(135deg,rgba(22,163,74,0.1),rgba(34,197,94,0.06))", border: "1px solid rgba(22,163,74,0.25)" }}>
-                    <p style={{ fontSize: 12, color: "#16A34A", fontWeight: 700, lineHeight: 1.5 }}>
-                      ✅ {language === "pt"
-                        ? `Cumprir sua palavra está te fazendo ganhar $${extraPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })} a mais. Continue assim!`
-                        : `Keeping your word is earning you $${extraPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })} more. Keep it up!`}
-                    </p>
-                  </div>
-                ) : (
-                  <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(239,68,68,0.07)", border: "1px solid rgba(239,68,68,0.2)" }}>
-                    <p style={{ fontSize: 12, color: "#EF4444", fontWeight: 600, lineHeight: 1.5 }}>
-                      ❌ {language === "pt" ? "Você foi eliminado deste deal. Acompanhe quem vai até o fim." : "You've been eliminated from this deal. Follow who goes until the end."}
-                    </p>
-                  </div>
-                )}
-              </>
-            )}
-          </GlassCard>
-
-          {/* Live ranking */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 16, marginBottom: 4 }}>
-            <BarChart2 size={15} color="#16A34A" />
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>{language === "pt" ? "Participantes" : "Participants"}</span>
-            <div
-              className="animate-pulse"
-              style={{ width: 7, height: 7, borderRadius: "50%", background: "#16A34A", marginLeft: "auto" }}
-            />
-            <span style={{ fontSize: 10, color: "#9CA3AF" }}>{language === "pt" ? "atualizado agora" : "updated now"}</span>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {deal.participants_list
-              .sort((a, b) => a.rank - b.rank)
-              .map(player => (
-                <PlayerCard
-                  key={player.id}
-                  player={player}
-                  expanded={expandedId === player.id}
-                  onToggle={() => setExpandedId(expandedId === player.id ? null : player.id)}
-                />
-              ))}
-          </div>
-
         </div>
       </div>
 
-      {/* ── Missing social popup ───────────────────────────────────────────────── */}
+      {/* ── HERO BLOCK ── */}
+      <div style={{ margin: "0 20px", borderRadius: 26, overflow: "hidden" }}>
+        <div style={{ background: statusGradient, padding: 20, position: "relative" }}>
+          {/* Glow */}
+          <div style={{ position: "absolute", top: "-20%", right: "-10%", width: 200, height: 200, background: "rgba(255,255,255,0.1)", borderRadius: "50%", filter: "blur(30px)", pointerEvents: "none" }} />
+
+          {/* Status + privacy chips */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, position: "relative" }}>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "rgba(0,0,0,0.2)", borderRadius: 100, padding: "3px 9px", fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.9)", fontFamily: "monospace", letterSpacing: "0.08em", textTransform: "uppercase" as const }}>
+              <span style={{ width: 5, height: 5, borderRadius: "50%", background: deal.status === "ativo" ? C.brand : "rgba(255,255,255,0.8)", boxShadow: deal.status === "ativo" ? `0 0 4px ${C.brand}` : "none", display: "inline-block", marginRight: 2 }} />
+              {statusLabel}
+            </div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 3, background: "rgba(0,0,0,0.2)", borderRadius: 100, padding: "3px 9px", fontSize: 9, color: "rgba(255,255,255,0.65)", fontFamily: "monospace", letterSpacing: "0.06em", textTransform: "uppercase" as const }}>
+              {dealData.type === "privado" ? (language === "pt" ? "Privado" : "Private") : (language === "pt" ? "Público" : "Public")}
+            </div>
+          </div>
+
+          {/* Channel icons */}
+          <div style={{ display: "flex", gap: 5, marginBottom: 8, position: "relative" }}>
+            {deal.verifications.map(v => {
+              const m = VERIF_META[v]
+              return (
+                <div key={v} style={{ width: 22, height: 22, borderRadius: "50%", background: m.bg, border: "2px solid rgba(255,255,255,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff" }}>
+                  {m.text ? m.text : (m.Icon ? <m.Icon className="w-2.5 h-2.5" /> : v[0].toUpperCase())}
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Title + description */}
+          <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.04em", color: "#fff", lineHeight: 1.1, marginBottom: 5, position: "relative" }}>
+            {deal.title}
+          </h1>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 14, position: "relative" }}>
+            {deal.description || deal.subtitle}
+          </p>
+
+          {/* 4-stat grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 7, position: "relative" }}>
+            {[
+              { label: language === "pt" ? "Pote"    : "Pot",       value: `$${deal.pot.toLocaleString("en-US")}` },
+              { label: "Players",                                     value: String(deal.participants) },
+              { label: deal.status === "pendente" ? (language === "pt" ? "Início em" : "Starts in") : (language === "pt" ? "Dia" : "Day"), value: deal.status === "pendente" ? `${daysLeft}d` : `${deal.daysGone}/${deal.daysTotal}` },
+              { label: language === "pt" ? "Duração" : "Duration",  value: `${deal.daysTotal}d` },
+            ].map(s => (
+              <div key={s.label}>
+                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)", textTransform: "uppercase" as const, letterSpacing: "0.1em", fontFamily: "monospace", display: "block", marginBottom: 2 }}>{s.label}</div>
+                <div style={{ fontSize: 14, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>{s.value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* CTA — forming, non-participant, logged in */}
+          {deal.status === "pendente" && !isParticipant && userId && (
+            <button
+              onClick={handleJoin}
+              disabled={joinLoading}
+              style={{ width: "100%", background: "rgba(255,255,255,0.9)", borderRadius: 100, padding: "11px", textAlign: "center", fontSize: 12, fontWeight: 700, color: "#9E3700", border: "none", cursor: "pointer", marginTop: 14, position: "relative" }}
+            >
+              {joinLoading ? <Loader2 style={{ width: 16, height: 16, display: "inline" }} /> : `${language === "pt" ? "Entrar no acordo" : "Join deal"} · $${entryAmount}`}
+            </button>
+          )}
+          {joinError && <p style={{ fontSize: 11, color: "rgba(255,220,0,0.9)", marginTop: 6, textAlign: "center", position: "relative" }}>{joinError}</p>}
+        </div>
+      </div>
+
+      {/* ── TAB BAR ── */}
+      <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, margin: "14px 0 0", padding: "0 20px" }}>
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{
+              flex: 1,
+              textAlign: "center",
+              padding: "9px 0",
+              fontSize: 10,
+              fontWeight: activeTab === tab.id ? 700 : 500,
+              color: activeTab === tab.id ? activeTabColor : C.dim,
+              fontFamily: "monospace",
+              letterSpacing: "0.04em",
+              textTransform: "uppercase" as const,
+              background: "none",
+              border: "none",
+              borderBottom: activeTab === tab.id ? `2px solid ${activeTabColor}` : "2px solid transparent",
+              marginBottom: -1,
+              cursor: "pointer",
+            }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── OVERVIEW TAB ── */}
+      {activeTab === "overview" && (
+        <div style={{ padding: "14px 20px" }}>
+
+          {/* 2x2 info grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 7 }}>
+            {/* Entry — status-accented */}
+            <div style={{ background: deal.status === "ativo" ? C.activeLight : C.formingLight, border: `1px solid ${deal.status === "ativo" ? C.activeBorder : C.formingBorder}`, borderRadius: 12, padding: 11 }}>
+              <div style={{ fontSize: 8, fontFamily: "monospace", color: deal.status === "ativo" ? "rgba(0,184,82,0.55)" : "rgba(232,98,10,0.55)", textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 3 }}>
+                {language === "pt" ? "Entrada" : "Entry"}
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700, letterSpacing: "-0.02em", color: statusColor }}>
+                ${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </div>
+            </div>
+            {/* Channel — status-accented */}
+            <div style={{ background: deal.status === "ativo" ? C.activeLight : C.formingLight, border: `1px solid ${deal.status === "ativo" ? C.activeBorder : C.formingBorder}`, borderRadius: 12, padding: 11 }}>
+              <div style={{ fontSize: 8, fontFamily: "monospace", color: deal.status === "ativo" ? "rgba(0,184,82,0.55)" : "rgba(232,98,10,0.55)", textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 3 }}>
+                {language === "pt" ? "Canal" : "Channel"}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: statusColor }}>
+                {(dealData.verification_channels ?? []).map(c => CHANNEL_LABELS[c] ?? c).join(" + ") || "—"}
+              </div>
+            </div>
+            {/* Goal — neutral */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11 }}>
+              <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 3 }}>
+                {language === "pt" ? "Meta" : "Goal"}
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700 }}>
+                {dealData.rule_target ?? "—"} {getRuleLabels(language)[dealData.verification_type] ?? dealData.verification_type}
+              </div>
+              {freqLabel && (
+                <div style={{ fontSize: 9, fontFamily: "monospace", color: C.dim, marginTop: 3, textTransform: "lowercase" as const }}>
+                  {freqLabel}
+                </div>
+              )}
+            </div>
+            {/* Duration — neutral */}
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 11 }}>
+              <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 3 }}>
+                {language === "pt" ? "Duração" : "Duration"}
+              </div>
+              <div style={{ fontSize: 15, fontWeight: 700 }}>{deal.daysTotal} {language === "pt" ? "dias" : "days"}</div>
+            </div>
+          </div>
+
+          {/* Active: my progress block */}
+          {deal.status === "ativo" && isParticipant && (
+            <div style={{ background: C.activeLight, border: `1px solid ${C.activeBorder}`, borderRadius: 18, padding: 14, marginBottom: 7 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
+                <span style={{ fontSize: 12, color: C.mid }}>{language === "pt" ? "Seu progresso" : "Your progress"}</span>
+                <span style={{ fontSize: 20, fontWeight: 800, color: C.brand, letterSpacing: "-0.03em" }}>
+                  {language === "pt" ? `Dia ${deal.daysGone}` : `Day ${deal.daysGone}`}
+                </span>
+              </div>
+              <div style={{ height: 5, background: "rgba(0,184,82,0.2)", borderRadius: 100, overflow: "hidden" }}>
+                <div style={{ height: "100%", background: C.brand, width: `${Math.max(3, Math.round(deal.progress * 100))}%`, borderRadius: 100 }} />
+              </div>
+              <div style={{ fontSize: 10, color: C.mid, marginTop: 5, fontFamily: "monospace" }}>
+                {deal.daysGone} {language === "pt" ? "de" : "of"} {deal.daysTotal} {language === "pt" ? "dias" : "days"} · {daysLeft}d {language === "pt" ? "restantes" : "left"}
+              </div>
+            </div>
+          )}
+
+          {/* Period tracker */}
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 12, padding: 12, marginTop: 7 }}>
+            <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 9 }}>
+              {language === "pt" ? "Período" : "Period"}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" as const }}>{deal.startDate}</span>
+              <div style={{ flex: 1, height: 3, background: C.surface2, borderRadius: 100, overflow: "hidden" }}>
+                <div style={{ height: "100%", background: statusColor, width: `${Math.max(3, Math.round(deal.progress * 100))}%`, borderRadius: 100 }} />
+              </div>
+              <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" as const }}>{deal.endDate}</span>
+            </div>
+            {deal.status === "pendente" && (
+              <div style={{ fontFamily: "monospace", fontSize: 9, color: C.forming, marginTop: 5, textAlign: "center" }}>
+                {language === "pt" ? "30 dias · mín. 2 participantes para iniciar" : "30 days · min. 2 participants to start"}
+              </div>
+            )}
+          </div>
+
+          {/* Economic model */}
+          <div style={{ background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 18, padding: 12, marginTop: 7 }}>
+            <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 9 }}>
+              {language === "pt" ? "Modelo econômico" : "Economic model"}
+            </div>
+            {[
+              { label: language === "pt" ? "Entrada por pessoa" : "Entry per person", value: `$${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, color: C.text },
+              { label: `${language === "pt" ? "Pote atual" : "Current pot"} (${deal.participants} players)`, value: `$${deal.pot.toLocaleString("en-US", { minimumFractionDigits: 2 })}`, color: C.brand },
+              { label: language === "pt" ? "Taxa TrueDeal" : "TrueDeal fee", value: language === "pt" ? "3% do pool dos perdedores" : "3% of losers' pool only", color: C.dim },
+              { label: language === "pt" ? "Vencedores recebem" : "Winners receive", value: language === "pt" ? "stake + 97% redistribuído" : "stake + 97% redistributed", color: C.brand },
+            ].map((row, i, arr) => (
+              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: i < arr.length - 1 ? `1px solid ${C.border2}` : "none", fontSize: 12 }}>
+                <span style={{ color: C.mid }}>{row.label}</span>
+                <strong style={{ fontWeight: 600, color: row.color }}>{row.value}</strong>
+              </div>
+            ))}
+            <div style={{ fontSize: 10, color: C.dim, marginTop: 7, lineHeight: 1.5, fontFamily: "monospace" }}>
+              {language === "pt" ? "A taxa incide apenas sobre quem não cumprir. Vencedores nunca pagam taxa." : "The fee only applies to those who don't comply. Winners never pay a fee."}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── PARTICIPANTS TAB ── */}
+      {activeTab === "participants" && (
+        <div style={{ padding: "14px 20px" }}>
+
+          {/* 2-col counts */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 12 }}>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.brand }}>{aliveCount}</div>
+              <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginTop: 2 }}>
+                {language === "pt" ? "Ativos" : "Active"}
+              </div>
+            </div>
+            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
+              <div style={{ fontSize: 18, fontWeight: 800, color: C.forming }}>{eliminatedCount}</div>
+              <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginTop: 2 }}>
+                {language === "pt" ? "Falharam" : "Failed"}
+              </div>
+            </div>
+          </div>
+
+          {/* Active list */}
+          <div style={{ fontSize: 10, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 7, fontWeight: 600 }}>
+            {language === "pt" ? "Ativos" : "Active"}
+          </div>
+          {aliveList.length === 0 && (
+            <div style={{ textAlign: "center", padding: "12px 0", fontSize: 11, color: C.dim }}>
+              {language === "pt" ? "Nenhum participante ativo ainda." : "No active participants yet."}
+            </div>
+          )}
+          {aliveList.map((player, i) => (
+            <div key={player.id} style={{ background: player.isMe ? C.activeLight : C.surface, border: `1px solid ${player.isMe ? C.activeBorder : C.border}`, borderRadius: 10, padding: "9px 11px", marginBottom: 5, display: "flex", alignItems: "center", gap: 9 }}>
+              <div style={{ fontSize: 14, width: 18, textAlign: "center", flexShrink: 0, color: C.dim }}>{i + 1}</div>
+              <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.surface2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.mid, flexShrink: 0, border: `1px solid ${C.border}` }}>
+                {player.initials}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 1 }}>
+                  {player.name}
+                  {player.isMe && <span style={{ fontSize: 9, fontWeight: 700, marginLeft: 6, padding: "1px 5px", borderRadius: 100, background: C.activeLight, color: C.brand, fontFamily: "monospace" }}>{language === "pt" ? "Você" : "You"}</span>}
+                </div>
+                <div style={{ fontSize: 10, color: C.dim, fontFamily: "monospace" }}>
+                  {player.isMe && myChannelHandle ? myChannelHandle : player.username}
+                </div>
+              </div>
+              <div style={{ fontSize: 12, fontWeight: 700, textAlign: "right", color: C.brand }}>
+                {eliminatedCount > 0
+                  ? `+$${totalPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                  : `$${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+              </div>
+            </div>
+          ))}
+
+          {/* Failed list */}
+          {eliminatedList.length > 0 && (
+            <>
+              <div style={{ fontSize: 10, fontFamily: "monospace", color: C.forming, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginTop: 10, marginBottom: 7, fontWeight: 600 }}>
+                {language === "pt" ? "Falharam" : "Failed"}
+              </div>
+              {eliminatedList.map(player => (
+                <div key={player.id} style={{ background: C.closedLight, border: `1px solid ${C.closedBorder}`, borderRadius: 10, padding: "9px 11px", marginBottom: 5, display: "flex", alignItems: "center", gap: 9, opacity: 0.75 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.surface2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.mid, flexShrink: 0, border: `1px solid ${C.border}` }}>
+                    {player.initials}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 1 }}>{player.name}</div>
+                    <div style={{ fontSize: 10, color: C.dim, fontFamily: "monospace" }}>
+                      {player.isMe && myChannelHandle ? myChannelHandle : player.username}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 12, fontWeight: 700, textAlign: "right", color: C.forming }}>
+                    −${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Projection block */}
+          <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 18, padding: 12, marginTop: 10 }}>
+            <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 10 }}>
+              {language === "pt" ? "Projeção se encerrar agora" : "Projection if it ends now"}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 7 }}>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.02em", color: C.brand }}>
+                  {eliminatedCount > 0
+                    ? `+$${totalPerWinner.toLocaleString("en-US", { minimumFractionDigits: 2 })}`
+                    : `$${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}`}
+                </div>
+                <div style={{ fontSize: 9, color: C.dim, fontFamily: "monospace", marginTop: 2 }}>{language === "pt" ? "por vencedor" : "per winner"}</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.02em", color: C.forming }}>
+                  −${entryAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: 9, color: C.dim, fontFamily: "monospace", marginTop: 2 }}>{language === "pt" ? "por perdedor" : "per loser"}</div>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "-0.02em", color: C.dim }}>
+                  ${(loserPool * feePct / 100).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </div>
+                <div style={{ fontSize: 9, color: C.dim, fontFamily: "monospace", marginTop: 2 }}>taxa (3%)</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Forming: deal start info */}
+          {deal.status === "pendente" && (
+            <div style={{ marginTop: 10, padding: "8px 10px", borderRadius: 10, fontSize: 11, fontWeight: 600, background: C.formingLight, color: C.forming, border: `1px solid ${C.formingBorder}`, lineHeight: 1.5 }}>
+              {language === "pt"
+                ? "Deal inicia automaticamente às 00h00 GMT-3. Se houver menos de 2 participantes, o deal é cancelado e o stake devolvido."
+                : "Deal starts automatically at midnight GMT-3. If fewer than 2 participants, the deal is cancelled and stakes returned."}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── RULES TAB ── */}
+      {activeTab === "rules" && (
+        <div style={{ padding: "14px 20px" }}>
+          <DealRulesCard deal={deal} dealData={dealData} />
+        </div>
+      )}
+
+      {/* ── STICKY CTA FOOTER ── */}
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "rgba(240,243,240,0.96)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, padding: "11px 20px 30px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-0.03em", color: statusColor }}>
+              ${deal.pot.toLocaleString("en-US")} {language === "pt" ? "pote" : "pot"}
+            </div>
+            <div style={{ fontSize: 10, color: C.mid }}>
+              {deal.status === "pendente"
+                ? `$${entryAmount} ${language === "pt" ? "entrada · mín. 2 para iniciar" : "entry · min. 2 to start"}`
+                : deal.status === "ativo" && isParticipant
+                ? `${language === "pt" ? "Você está dentro" : "You're in"} · ${daysLeft}d ${language === "pt" ? "restantes" : "left"}`
+                : `$${entryAmount} ${language === "pt" ? "entrada" : "entry"}`}
+            </div>
+          </div>
+          {deal.status === "pendente" && !isParticipant && userId && (
+            <button
+              onClick={handleJoin}
+              disabled={joinLoading}
+              style={{ padding: "13px 20px", borderRadius: 100, fontSize: 12, fontWeight: 700, background: C.forming, color: "#fff", border: "none", cursor: "pointer", opacity: joinLoading ? 0.7 : 1 }}
+            >
+              {joinLoading ? "..." : `${language === "pt" ? "Entrar" : "Join"} · $${entryAmount}`}
+            </button>
+          )}
+          {deal.status === "ativo" && (
+            <button style={{ padding: "13px 20px", borderRadius: 100, fontSize: 12, fontWeight: 700, background: C.brand, color: "#fff", border: "none", cursor: "pointer" }}>
+              {language === "pt" ? "Abrir" : "Open"} {deal.verificationChannels[0] ? CHANNEL_LABELS[deal.verificationChannels[0]] : "App"}
+            </button>
+          )}
+          {deal.status === "finalizado" && (
+            <button onClick={() => router.push(`/deal/${dealData.id}/result`)} style={{ padding: "13px 20px", borderRadius: 100, fontSize: 12, fontWeight: 700, background: C.surface2, color: C.mid, border: `1px solid ${C.border}`, cursor: "pointer" }}>
+              {language === "pt" ? "Resultados" : "Results"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* ── SHARE SHEET ── */}
+      {showShareSheet && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+          onClick={() => setShowShareSheet(false)}
+        >
+          <div
+            style={{ width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", padding: "20px 20px 44px", background: C.surface, boxShadow: "0 -12px 48px rgba(0,0,0,0.18)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle bar */}
+            <div style={{ width: 36, height: 4, borderRadius: 100, background: C.border, margin: "0 auto 20px" }} />
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+              <div>
+                <p style={{ fontSize: 16, fontWeight: 800, color: C.text, letterSpacing: "-0.02em", marginBottom: 2 }}>
+                  {language === "pt" ? "Compartilhar acordo" : "Share deal"}
+                </p>
+                <p style={{ fontSize: 12, color: C.dim }}>{dealData.title}</p>
+              </div>
+              <button onClick={() => setShowShareSheet(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: C.surface2, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <X style={{ width: 16, height: 16, stroke: C.mid, fill: "none" }} />
+              </button>
+            </div>
+
+            {/* Deal preview pill */}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 14, background: deal.status === "pendente" ? C.formingLight : C.activeLight, border: `1px solid ${deal.status === "pendente" ? C.formingBorder : C.activeBorder}`, marginBottom: 18 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 10, background: deal.status === "pendente" ? C.forming : C.brand, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <Activity style={{ width: 16, height: 16, stroke: "#fff", fill: "none" }} />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dealData.title}</p>
+                <p style={{ fontSize: 10, color: C.dim, fontFamily: "monospace" }}>
+                  ${dealData.entry_amount} · {dealData.participant_count} {language === "pt" ? "participantes" : "participants"}
+                </p>
+              </div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: deal.status === "pendente" ? C.forming : C.brand, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>
+                {statusLabel}
+              </div>
+            </div>
+
+            {/* URL row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 14, background: C.surface2, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+              <span style={{ flex: 1, fontSize: 12, color: C.mid, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shareUrl}</span>
+              <button
+                onClick={handleCopyLink}
+                style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: linkCopied ? C.brand : C.mid, background: "none", border: "none", cursor: "pointer", fontFamily: "monospace", letterSpacing: "0.04em" }}
+              >
+                {linkCopied ? (language === "pt" ? "Copiado!" : "Copied!") : (language === "pt" ? "Copiar" : "Copy")}
+              </button>
+            </div>
+
+            {/* CTA buttons */}
+            <button
+              onClick={handleNativeShare}
+              style={{ width: "100%", padding: 15, borderRadius: 100, fontWeight: 700, fontSize: 14, color: "#fff", background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, border: "none", cursor: "pointer", boxShadow: "0 4px 18px rgba(0,184,82,0.3)" }}
+            >
+              {language === "pt" ? "Compartilhar" : "Share"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── SOCIAL POPUP ── */}
       {showSocialPopup && (
         <div
-          className="fixed inset-0 z-50 flex items-end"
-          style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
           onClick={() => setShowSocialPopup(null)}
         >
           <div
-            className="w-full rounded-t-3xl px-5 pt-5 pb-10"
-            style={{ background: "rgba(255,255,255,0.98)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
+            style={{ width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", padding: "20px 20px 40px", background: "rgba(255,255,255,0.98)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: "rgba(239,68,68,0.1)" }}>
-                  <AlertCircle className="w-5 h-5 text-red-500" />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(232,98,10,0.1)" }}>
+                  <AlertCircle style={{ width: 20, height: 20, stroke: C.forming, fill: "none" }} />
                 </div>
-                <h3 className="text-base font-bold text-gray-800">
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text }}>
                   {language === "pt" ? "Conta não vinculada" : "Account not linked"}
                 </h3>
               </div>
               <button
                 onClick={() => setShowSocialPopup(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.06)" }}
+                style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(0,0,0,0.06)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
               >
-                <X className="w-4 h-4 text-gray-500" />
+                <X style={{ width: 16, height: 16, stroke: C.mid, fill: "none" }} />
               </button>
             </div>
-
-            <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.18)" }}>
-              <p className="text-sm text-red-700 font-semibold mb-1">
+            <div style={{ borderRadius: 16, padding: 16, marginBottom: 20, background: C.formingLight, border: `1px solid ${C.formingBorder}` }}>
+              <p style={{ fontSize: 14, color: "#9E3700", fontWeight: 600, marginBottom: 4, lineHeight: 1.5 }}>
                 {language === "pt"
-                  ? `Para participar deste deal, você precisa vincular sua conta do ${showSocialPopup.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ")}.`
-                  : `To join this deal, you need to link your ${showSocialPopup.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ")} account.`}
+                  ? `Para participar deste deal, vincule sua conta ${showSocialPopup.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ")}.`
+                  : `To join this deal, link your ${showSocialPopup.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ")} account.`}
               </p>
-              <p className="text-xs text-red-500 leading-relaxed">
+              <p style={{ fontSize: 12, color: C.forming, lineHeight: 1.5 }}>
                 {language === "pt"
                   ? "O app usa sua conta para verificar automaticamente se você cumpriu o desafio."
                   : "The app uses your account to automatically verify if you met the challenge."}
               </p>
             </div>
-
-            <div className="space-y-2 mb-5">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
               {showSocialPopup.map(ch => (
-                <div key={ch} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)" }}>
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white"
-                    style={{ background: ch === "x" ? "#000" : ch === "strava" ? "#FC4C02" : ch === "wellhub" ? "#00A651" : ch === "totalpass" ? "#0047AB" : "#6B7280" }}>
-                    {ch === "x" ? "𝕏" : ch === "strava" ? "S" : ch === "wellhub" ? "W" : ch === "totalpass" ? "TP" : ch[0].toUpperCase()}
+                <div key={ch} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)" }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, color: "#fff", background: ch === "x" ? "#000" : ch === "strava" ? "#FC4C02" : ch === "wellhub" ? "#D00020" : ch === "totalpass" ? "#0055BB" : C.dim }}>
+                    {ch === "x" ? "𝕏" : ch[0].toUpperCase()}
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">{CHANNEL_LABELS[ch] ?? ch}</p>
-                    <p className="text-xs text-gray-400">{language === "pt" ? "Não vinculado" : "Not linked"}</p>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{CHANNEL_LABELS[ch] ?? ch}</div>
+                    <div style={{ fontSize: 12, color: C.dim }}>{language === "pt" ? "Não vinculado" : "Not linked"}</div>
                   </div>
                 </div>
               ))}
             </div>
-
             <button
               onClick={() => router.push("/profile")}
-              className="w-full py-4 rounded-2xl font-bold text-white text-sm"
-              style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)", boxShadow: "0 8px 32px rgba(22,163,74,0.35)" }}
+              style={{ width: "100%", padding: 16, borderRadius: 100, fontWeight: 700, color: "#fff", fontSize: 14, background: C.brand, border: "none", cursor: "pointer" }}
             >
               {language === "pt" ? "Vincular conta agora" : "Link account now"}
             </button>
             <button
               onClick={() => setShowSocialPopup(null)}
-              className="w-full mt-2.5 py-3 rounded-2xl font-semibold text-gray-500 text-sm"
-              style={{ background: "rgba(0,0,0,0.04)" }}
+              style={{ width: "100%", marginTop: 10, padding: 12, borderRadius: 100, fontWeight: 600, color: C.mid, fontSize: 14, background: "rgba(0,0,0,0.04)", border: "none", cursor: "pointer" }}
             >
               {language === "pt" ? "Cancelar" : "Cancel"}
             </button>

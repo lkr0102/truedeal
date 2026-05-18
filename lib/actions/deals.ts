@@ -21,6 +21,34 @@ const CHANNEL_LABELS: Record<string, string> = {
   totalpass: "TotalPass",
 }
 
+// ── Sweep stale forming deals (<2 participants past start date) ───────────────
+
+export async function sweepStaleDeals() {
+  if (process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("seu-projeto")) return
+  const supabase = await createClient()
+
+  const today = new Date().toISOString().split("T")[0]
+
+  const { data: stale } = await (supabase.from("deals") as any)
+    .select("id, deal_participants(id)")
+    .eq("status", "formacao")
+    .lt("start_date", today)
+
+  if (!stale?.length) return
+
+  const toCancel: string[] = (stale as any[])
+    .filter((d: any) => (d.deal_participants?.length ?? 0) < 2)
+    .map((d: any) => d.id)
+
+  if (!toCancel.length) return
+
+  await (supabase.from("deals") as any)
+    .update({ status: "encerrado" })
+    .in("id", toCancel)
+
+  revalidatePath("/")
+}
+
 // ── Create ────────────────────────────────────────────────────────────────────
 
 export interface CreateDealInput {
@@ -259,6 +287,7 @@ export async function fetchDeals(filters?: {
       )
     `)
     .order("created_at", { ascending: false })
+    .neq("status", "encerrado")
 
   if (filters?.status)    query = query.eq("status", filters.status)
   if (filters?.type)      query = query.eq("type",   filters.type)
