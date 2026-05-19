@@ -3,48 +3,70 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
-  Home, Compass, Wallet, User,
+  Home, Compass, Wallet, User, Plus,
   Eye, EyeOff, ArrowDownToLine, ArrowUpFromLine,
   Trophy, X as XIcon, TrendingDown,
   Copy, Check, ChevronRight,
 } from "lucide-react"
 import type { Profile, TdpTransaction, TdpReason } from "@/lib/supabase/types"
 
-// ── Bottom nav ────────────────────────────────────────────────────────────────
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg:           "#F0F3F0",
+  surface:      "#FFFFFF",
+  surface2:     "#E8EDE8",
+  border:       "#D8E0D8",
+  border2:      "#E6EEE6",
+  text:         "#0B1309",
+  mid:          "#4E614E",
+  dim:          "#8BA09A",
+  brand:        "#00B852",
+  brandDark:    "#008C3E",
+  forming:      "#E8620A",
+  activeLight:  "rgba(0,184,82,0.08)",
+  activeBorder: "rgba(0,184,82,0.2)",
+} as const
 
-const NAV_ITEMS = [
-  { icon: Home,    label: "Deals",    href: "/" },
-  { icon: Compass, label: "Explorar", href: "/explore" },
-  { icon: Wallet,  label: "Wallet",   href: "/wallet" },
-  { icon: User,    label: "Perfil",   href: "/profile" },
-]
+const MONO: React.CSSProperties = { fontFamily: "var(--font-dm-mono,'DM Mono',monospace)" }
+
+// ── Bottom nav ────────────────────────────────────────────────────────────────
 
 function BottomNav({ active }: { active: string }) {
   const router = useRouter()
+  const items = [
+    { icon: Home,    key: "home",    href: "/" },
+    { icon: Compass, key: "explore", href: "/explore" },
+  ]
+  const rightItems = [
+    { icon: Wallet, key: "wallet",  href: "/wallet" },
+    { icon: User,   key: "profile", href: "/profile" },
+  ]
+  const navItem = (Icon: React.ElementType, key: string, href: string, label: string) => {
+    const isActive = active === key
+    return (
+      <button key={key} onClick={() => router.push(href)}
+        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3, fontSize: 9, color: isActive ? C.brand : C.dim, cursor: "pointer", background: "none", border: "none", flex: 1, ...MONO, letterSpacing: "0.04em" }}>
+        <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", background: isActive ? C.brand : "transparent" }}>
+          <Icon style={{ width: 20, height: 20, stroke: isActive ? "#fff" : C.dim, fill: "none" }} />
+        </div>
+        <span style={{ textTransform: "uppercase" as const }}>{label}</span>
+      </button>
+    )
+  }
   return (
-    <nav className="fixed bottom-0 left-0 right-0 px-6 py-4 z-10"
-      style={{ background: "rgba(255,255,255,0.85)", backdropFilter: "blur(40px) saturate(200%)", borderTop: "1px solid rgba(255,255,255,0.5)" }}>
-      <div className="flex justify-around items-center">
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon
-          const isActive = active === item.label
-          return (
-            <button key={item.label} onClick={() => router.push(item.href)}
-              className="flex flex-col items-center gap-1 transition-all duration-300">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? "scale-110" : ""}`}
-                style={{ background: isActive ? "linear-gradient(135deg,#16A34A,#22C55E)" : "transparent" }}>
-                <Icon className={`w-5 h-5 ${isActive ? "text-white" : "text-gray-500"}`} />
-              </div>
-              <span className={`text-xs font-medium ${isActive ? "text-[#16A34A]" : "text-gray-500"}`}>{item.label}</span>
-            </button>
-          )
-        })}
+    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
+      {items.map(i => navItem(i.icon, i.key, i.href, i.key === "home" ? "Deals" : "Explorar"))}
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+        <button onClick={() => router.push("/create")} style={{ width: 50, height: 50, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -14, boxShadow: "0 4px 14px rgba(0,184,82,0.35)", border: `3px solid ${C.bg}`, cursor: "pointer" }}>
+          <Plus style={{ width: 22, height: 22, stroke: "#fff", fill: "none" }} />
+        </button>
       </div>
+      {rightItems.map(i => navItem(i.icon, i.key, i.href, i.key === "wallet" ? "Wallet" : "Perfil"))}
     </nav>
   )
 }
 
-// ── Deal-only history labels ──────────────────────────────────────────────────
+// ── Labels ────────────────────────────────────────────────────────────────────
 
 const DEAL_REASONS: TdpReason[] = ["deal_create", "deal_join", "deal_win"]
 const DEAL_LABELS: Partial<Record<TdpReason, string>> = {
@@ -65,16 +87,15 @@ function formatDate(isoString: string): string {
   const date = new Date(isoString)
   const now = new Date()
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const yesterday = new Date(today)
-  yesterday.setDate(yesterday.getDate() - 1)
+  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1)
   const itemDate = new Date(date.getFullYear(), date.getMonth(), date.getDate())
   if (itemDate.getTime() === today.getTime()) return "Hoje"
   if (itemDate.getTime() === yesterday.getTime()) return "Ontem"
   const MONTHS = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"]
-  return `${String(date.getDate()).padStart(2, "0")} ${MONTHS[date.getMonth()]}`
+  return `${String(date.getDate()).padStart(2,"0")} ${MONTHS[date.getMonth()]}`
 }
 
-type Currency = "usd" | "sol"
+type Currency  = "usd" | "sol"
 type ModalType = "deposit" | "withdraw" | null
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -82,7 +103,7 @@ type ModalType = "deposit" | "withdraw" | null
 interface WalletClientProps {
   profile:          Profile | null
   tdpHistory:       TdpTransaction[]
-  activeDealsValue: number           // sum of entry amounts in USDC
+  activeDealsValue: number
   managedPublicKey: string | null
   solBalance:       number
   solUsdPrice:      number
@@ -91,12 +112,7 @@ interface WalletClientProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function WalletClient({
-  profile,
-  tdpHistory,
-  activeDealsValue,
-  managedPublicKey,
-  solBalance,
-  solUsdPrice,
+  profile, tdpHistory, activeDealsValue, managedPublicKey, solBalance, solUsdPrice,
 }: WalletClientProps) {
   const [showBalance, setShowBalance] = useState(true)
   const [currency,    setCurrency]    = useState<Currency>("usd")
@@ -104,208 +120,161 @@ export default function WalletClient({
   const [copied,      setCopied]      = useState(false)
   const [pixAmount,   setPixAmount]   = useState("")
 
-  // ── Address helpers
-  function truncateAddr(addr: string) {
-    return `${addr.slice(0, 6)}...${addr.slice(-6)}`
-  }
+  function truncateAddr(addr: string) { return `${addr.slice(0,6)}...${addr.slice(-6)}` }
   function copyAddr() {
     if (!managedPublicKey) return
     navigator.clipboard.writeText(managedPublicKey).catch(() => {})
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    setCopied(true); setTimeout(() => setCopied(false), 2000)
   }
 
-  // ── Currency helpers
   const totalUsd     = solBalance * solUsdPrice
-  const frozenUsd    = activeDealsValue   // entry_amount is already in USDC (USD)
+  const frozenUsd    = activeDealsValue
   const availableUsd = Math.max(0, totalUsd - frozenUsd)
 
   function fmtAmount(usdAmount: number, hide = false): string {
     if (hide) return "••••"
-    switch (currency) {
-      case "usd": return `$${usdAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      case "sol": return `${(solUsdPrice > 0 ? usdAmount / solUsdPrice : 0).toFixed(4)} SOL`
-    }
+    if (currency === "sol") return `${(solUsdPrice > 0 ? usdAmount / solUsdPrice : 0).toFixed(4)} SOL`
+    return `$${usdAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
-  // ── Profile
   const displayName = profile?.display_name ?? "Usuário"
   const username    = profile?.username ?? ""
   const initials    = getInitials(displayName)
-
-  // ── Deal-only history
   const dealHistory = tdpHistory.filter(tx => DEAL_REASONS.includes(tx.reason))
 
   const CURRENCY_LABELS: Record<Currency, string> = { usd: "USD", sol: "SOL" }
   const CURRENCY_CYCLE: Currency[] = ["usd", "sol"]
   function cycleCurrency() {
     const idx = CURRENCY_CYCLE.indexOf(currency)
-    setCurrency(CURRENCY_CYCLE[(idx + 1) % 3])
+    setCurrency(CURRENCY_CYCLE[(idx + 1) % CURRENCY_CYCLE.length])
   }
 
   return (
-    <div className="min-h-screen flex flex-col pb-24"
-      style={{ backgroundImage: "url('/images/gradient-background.jpg')", backgroundSize: "cover", backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundAttachment: "fixed" }}>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
 
-      {/* Header */}
-      <header className="px-5 pt-12 pb-2 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Wallet</h1>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-          style={{ background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.25)" }}>
-          <div className="w-2 h-2 rounded-full bg-[#16A34A]" />
-          <span className="text-xs font-semibold text-[#16A34A]">Ativa</span>
+      {/* Top bar */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
+        <h1 style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>Wallet</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 100, background: C.activeLight, border: `1px solid ${C.activeBorder}` }}>
+          <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.brand }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: C.brand, ...MONO }}>Ativa</span>
         </div>
-      </header>
+      </div>
 
-      <div className="flex-1 px-5 overflow-y-auto">
+      <div style={{ flex: 1, padding: "0 20px", overflowY: "auto" }}>
 
         {/* User mini-card */}
-        <div className="rounded-2xl px-4 py-3 mb-4 mt-3 flex items-center gap-3"
-          style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E5A)" }}>
-            <span className="text-blue-300 font-bold text-sm">{initials}</span>
+        <div style={{ borderRadius: 16, padding: "12px 14px", marginBottom: 14, marginTop: 6, display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}` }}>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: C.brand, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <span style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>{initials}</span>
           </div>
-          <div className="flex-1">
-            <p className="font-bold text-gray-800 text-sm">{displayName}</p>
-            {username && <p className="text-xs text-gray-400">@{username}</p>}
+          <div style={{ flex: 1 }}>
+            <p style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{displayName}</p>
+            {username && <p style={{ fontSize: 12, color: C.dim, ...MONO }}>@{username}</p>}
           </div>
-          <ChevronRight className="w-4 h-4 text-gray-300" />
+          <ChevronRight style={{ width: 16, height: 16, stroke: C.border, fill: "none" }} />
         </div>
 
-        {/* ── Balance card ── */}
-        <div className="rounded-3xl p-6 mb-5 relative overflow-hidden"
-          style={{
-            background: "linear-gradient(135deg,#0D2E1A 0%,#16A34A 55%,#22C55E 100%)",
-            boxShadow: "0 16px 48px rgba(22,163,74,0.45)",
-          }}>
-          {/* Grid texture */}
-          <div className="absolute inset-0 opacity-[0.04]"
-            style={{ backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(255,255,255,1) 28px,rgba(255,255,255,1) 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,rgba(255,255,255,1) 28px,rgba(255,255,255,1) 29px)" }} />
-
-          <div className="relative z-10">
-
+        {/* Balance card — hero verde, mantido por design */}
+        <div style={{ borderRadius: 26, padding: 22, marginBottom: 16, position: "relative", overflow: "hidden", background: `linear-gradient(135deg,#003D22,${C.brandDark} 55%,${C.brand})`, boxShadow: "0 12px 40px rgba(0,184,82,0.35)" }}>
+          <div style={{ position: "absolute", inset: 0, opacity: 0.04, backgroundImage: "repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(255,255,255,1) 28px,rgba(255,255,255,1) 29px),repeating-linear-gradient(90deg,transparent,transparent 28px,rgba(255,255,255,1) 28px,rgba(255,255,255,1) 29px)" }} />
+          <div style={{ position: "relative", zIndex: 1 }}>
             {/* Balance row */}
-            <div className="flex items-start justify-between mb-4">
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
-                <p className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-1">Saldo Total</p>
-                <p className="text-white text-3xl font-black tracking-tight">
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4, ...MONO }}>Saldo Total</p>
+                <p style={{ color: "#fff", fontSize: 30, fontWeight: 900, letterSpacing: "-0.03em" }}>
                   {showBalance ? fmtAmount(totalUsd) : "••••"}
                 </p>
               </div>
-              <div className="flex gap-2">
-                {/* Currency toggle */}
-                <button onClick={cycleCurrency}
-                  className="px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-all"
-                  style={{ background: "rgba(255,255,255,0.18)", color: "white", border: "1px solid rgba(255,255,255,0.25)" }}>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={cycleCurrency} style={{ padding: "6px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, color: "#fff", background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)", cursor: "pointer", ...MONO }}>
                   {CURRENCY_LABELS[currency]}
                 </button>
-                {/* Show/hide */}
-                <button onClick={() => setShowBalance(b => !b)}
-                  className="p-2 rounded-full"
-                  style={{ background: "rgba(255,255,255,0.15)" }}>
-                  {showBalance
-                    ? <Eye className="w-4 h-4 text-white" />
-                    : <EyeOff className="w-4 h-4 text-white" />}
+                <button onClick={() => setShowBalance(b => !b)} style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(255,255,255,0.15)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  {showBalance ? <Eye style={{ width: 16, height: 16, stroke: "#fff", fill: "none" }} /> : <EyeOff style={{ width: 16, height: 16, stroke: "#fff", fill: "none" }} />}
                 </button>
               </div>
             </div>
 
             {/* Disponível / Em Deals */}
-            <div className="flex gap-4 mb-4 pt-4" style={{ borderTop: "1px solid rgba(255,255,255,0.2)" }}>
+            <div style={{ display: "flex", gap: 20, marginBottom: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               <div>
-                <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Disponível</p>
-                <p className="text-white font-bold">{fmtAmount(availableUsd, !showBalance)}</p>
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 2, ...MONO }}>Disponível</p>
+                <p style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>{fmtAmount(availableUsd, !showBalance)}</p>
               </div>
-              <div className="w-px bg-white/20" />
+              <div style={{ width: 1, background: "rgba(255,255,255,0.2)" }} />
               <div>
-                <p className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-0.5">Em Deals</p>
-                <p className="text-white font-bold">{fmtAmount(frozenUsd, !showBalance)}</p>
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 2, ...MONO }}>Em Deals</p>
+                <p style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>{fmtAmount(frozenUsd, !showBalance)}</p>
               </div>
             </div>
 
-            {/* Wallet address (replaces PIX) */}
-            <button onClick={copyAddr}
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all active:scale-[0.98]"
-              style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)" }}>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold text-white/50 uppercase">◎</span>
-                <span className="text-xs text-white/90 font-mono font-medium">
+            {/* Wallet address */}
+            <button onClick={copyAddr} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: 12, background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.2)", cursor: "pointer" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>◎</span>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,0.9)", ...MONO }}>
                   {managedPublicKey ? truncateAddr(managedPublicKey) : "Gerando…"}
                 </span>
               </div>
-              {copied
-                ? <Check className="w-4 h-4 text-white" />
-                : <Copy className="w-4 h-4 text-white/60" />}
+              {copied ? <Check style={{ width: 16, height: 16, stroke: "#fff", fill: "none" }} /> : <Copy style={{ width: 16, height: 16, stroke: "rgba(255,255,255,0.6)", fill: "none" }} />}
             </button>
-            <p className="mt-2 text-[9px] text-white/40 text-center uppercase tracking-widest font-bold">
-              🔐 Sovereign Managed Wallet · AES-256-GCM Secured
+            <p style={{ marginTop: 8, fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, ...MONO }}>
+              🔐 Sovereign Managed Wallet · AES-256-GCM
             </p>
           </div>
         </div>
 
         {/* Quick actions */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 24 }}>
           {[
-            { label: "Depositar", icon: ArrowDownToLine, action: () => setActiveModal("deposit"),  primary: true  },
-            { label: "Sacar",     icon: ArrowUpFromLine, action: () => setActiveModal("withdraw"), primary: false },
-          ].map((btn) => {
-            const Icon = btn.icon
-            return (
-              <button key={btn.label} onClick={btn.action}
-                className="py-4 rounded-2xl flex flex-col items-center gap-2 font-semibold text-sm transition-all duration-300 active:scale-[0.97]"
-                style={{
-                  background: btn.primary
-                    ? "linear-gradient(135deg,#16A34A,#22C55E)"
-                    : "rgba(255,255,255,0.5)",
-                  color:     btn.primary ? "white" : "#374151",
-                  border:    btn.primary ? "none" : "1px solid rgba(255,255,255,0.55)",
-                  backdropFilter: "blur(20px)",
-                  boxShadow: btn.primary ? "0 8px 24px rgba(22,163,74,0.35)" : "none",
-                }}>
-                <Icon className="w-5 h-5" />
-                {btn.label}
-              </button>
-            )
-          })}
+            { label: "Depositar", Icon: ArrowDownToLine, action: () => setActiveModal("deposit"),  primary: true  },
+            { label: "Sacar",     Icon: ArrowUpFromLine, action: () => setActiveModal("withdraw"), primary: false },
+          ].map((btn) => (
+            <button key={btn.label} onClick={btn.action}
+              style={{
+                padding: "16px 0", borderRadius: 18, display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                fontWeight: 700, fontSize: 14, cursor: "pointer",
+                background: btn.primary ? C.brand : C.surface,
+                color:      btn.primary ? "#fff" : C.mid,
+                border:     btn.primary ? "none" : `1px solid ${C.border}`,
+                boxShadow:  btn.primary ? "0 6px 20px rgba(0,184,82,0.3)" : "none",
+              }}>
+              <btn.Icon style={{ width: 20, height: 20, stroke: "currentColor", fill: "none" }} />
+              {btn.label}
+            </button>
+          ))}
         </div>
 
         {/* Deal history */}
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-bold text-gray-700">Extrato de Deals</p>
-        </div>
+        <p style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 12 }}>Extrato de Deals</p>
 
-        <div className="space-y-2.5 mb-4">
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
           {dealHistory.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-10 rounded-2xl gap-2"
-              style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
-              <Trophy className="w-8 h-8 text-gray-200" />
-              <p className="text-sm text-gray-400">Nenhum deal ainda</p>
-              <p className="text-xs text-gray-300">Participe de um deal para ver seu histórico</p>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px", borderRadius: 18, gap: 8, background: C.surface, border: `1px solid ${C.border}` }}>
+              <Trophy style={{ width: 32, height: 32, stroke: C.border, fill: "none" }} />
+              <p style={{ fontSize: 14, color: C.dim, fontWeight: 600 }}>Nenhum deal ainda</p>
+              <p style={{ fontSize: 12, color: C.dim }}>Participe de um deal para ver seu histórico</p>
             </div>
           ) : (
             dealHistory.map((tx) => {
               const isPositive = tx.amount > 0
               const Icon  = isPositive ? Trophy : TrendingDown
-              const color = isPositive ? "#16A34A" : "#EF4444"
-              const bg    = isPositive ? "rgba(22,163,74,0.1)" : "rgba(239,68,68,0.1)"
+              const color = isPositive ? C.brand : "#DC2626"
+              const bg    = isPositive ? C.activeLight : "rgba(220,38,38,0.08)"
               const label = DEAL_LABELS[tx.reason] ?? tx.reason
-              const dateStr = formatDate(tx.created_at)
               return (
-                <div key={tx.id} className="flex items-center gap-3 p-4 rounded-2xl"
-                  style={{ background: "rgba(255,255,255,0.5)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.55)" }}>
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: bg }}>
-                    <Icon className="w-5 h-5" style={{ color }} />
+                <div key={tx.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", borderRadius: 18, background: C.surface, border: `1px solid ${C.border}` }}>
+                  <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: bg }}>
+                    <Icon style={{ width: 20, height: 20, stroke: color, fill: "none" }} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{label}</p>
-                    <p className="text-[11px] text-gray-400">{dateStr}</p>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</p>
+                    <p style={{ fontSize: 11, color: C.dim }}>{formatDate(tx.created_at)}</p>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <p className="text-sm font-bold" style={{ color }}>
-                      {isPositive ? "+" : ""}{tx.amount} 🤝
-                    </p>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <p style={{ fontSize: 14, fontWeight: 700, color }}>{isPositive ? "+" : ""}{tx.amount} 🤝</p>
                   </div>
                 </div>
               )
@@ -314,72 +283,58 @@ export default function WalletClient({
         </div>
       </div>
 
-      <BottomNav active="Wallet" />
+      <BottomNav active="wallet" />
 
-      {/* ── Deposit modal ── */}
+      {/* Deposit / Withdraw modal */}
       {activeModal && (
-        <div className="fixed inset-0 z-50 flex items-end"
-          style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
-          onClick={() => setActiveModal(null)}>
-          <div className="w-full rounded-t-3xl px-5 pt-6 pb-10"
-            style={{ background: "rgba(255,255,255,0.98)" }}
-            onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-gray-800">
+        <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", background: "rgba(0,0,0,0.4)" }} onClick={() => setActiveModal(null)}>
+          <div style={{ width: "100%", background: C.surface, borderRadius: "24px 24px 0 0", padding: "24px 20px 48px", boxShadow: "0 -16px 64px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: C.text }}>
                 {activeModal === "deposit" ? "Depositar" : "Sacar"}
               </h2>
-              <button onClick={() => setActiveModal(null)}
-                className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.06)" }}>
-                <XIcon className="w-4 h-4 text-gray-500" />
+              <button onClick={() => setActiveModal(null)} style={{ width: 32, height: 32, borderRadius: "50%", background: C.surface2, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <XIcon style={{ width: 14, height: 14, stroke: C.mid, fill: "none" }} />
               </button>
             </div>
 
             {activeModal === "deposit" ? (
-              <div className="space-y-4">
-                <div className="p-4 rounded-2xl"
-                  style={{ background: "rgba(22,163,74,0.06)", border: "1px solid rgba(22,163,74,0.2)" }}>
-                  <p className="text-xs text-gray-500 mb-1">Endereço da sua carteira</p>
-                  <p className="font-mono font-bold text-gray-800 text-sm break-all">{managedPublicKey ?? "—"}</p>
-                  <button onClick={copyAddr}
-                    className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#16A34A]">
-                    {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div style={{ padding: 16, borderRadius: 14, background: C.activeLight, border: `1px solid ${C.activeBorder}` }}>
+                  <p style={{ fontSize: 11, color: C.dim, marginBottom: 4 }}>Endereço da sua carteira</p>
+                  <p style={{ fontWeight: 700, color: C.text, fontSize: 14, wordBreak: "break-all", ...MONO }}>{managedPublicKey ?? "—"}</p>
+                  <button onClick={copyAddr} style={{ marginTop: 10, display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: C.brand, background: "none", border: "none", cursor: "pointer" }}>
+                    {copied ? <Check style={{ width: 14, height: 14, stroke: C.brand, fill: "none" }} /> : <Copy style={{ width: 14, height: 14, stroke: C.brand, fill: "none" }} />}
                     {copied ? "Copiado!" : "Copiar endereço"}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 text-center leading-relaxed">
+                <p style={{ fontSize: 12, color: C.dim, textAlign: "center", lineHeight: 1.5 }}>
                   Envie SOL para esse endereço. O saldo é atualizado automaticamente.
                 </p>
-                <div className="pt-2">
-                  <a href="https://faucet.solana.com/" target="_blank" rel="noreferrer"
-                    className="block w-full py-2 text-center text-[11px] font-bold text-blue-500 rounded-lg"
-                    style={{ background: "rgba(59,130,246,0.06)", border: "1px dashed rgba(59,130,246,0.3)" }}>
-                    Precisa de SOL de teste? Use o Faucet da Solana →
-                  </a>
-                </div>
+                <a href="https://faucet.solana.com/" target="_blank" rel="noreferrer"
+                  style={{ display: "block", textAlign: "center", padding: "10px 0", fontSize: 12, fontWeight: 700, color: "#3B82F6", borderRadius: 10, background: "rgba(59,130,246,0.06)", border: "1px dashed rgba(59,130,246,0.3)", textDecoration: "none" }}>
+                  Precisa de SOL de teste? Use o Faucet da Solana →
+                </a>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <label className="text-xs font-semibold text-gray-600 mb-1.5 block">Valor a sacar (USD)</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">$</span>
-                    <input type="number" value={pixAmount} onChange={e => setPixAmount(e.target.value)}
-                      placeholder="0.00" className="w-full pl-8 pr-4 py-3.5 rounded-xl outline-none text-gray-800 placeholder-gray-400 font-medium"
-                      style={{ background: "rgba(0,0,0,0.04)", border: "1.5px solid rgba(22,163,74,0.3)" }} />
+                  <label style={{ fontSize: 12, fontWeight: 600, color: C.mid, display: "block", marginBottom: 8 }}>Valor a sacar (USD)</label>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.mid, fontWeight: 600 }}>$</span>
+                    <input type="number" value={pixAmount} onChange={(e) => setPixAmount(e.target.value)}
+                      placeholder="0.00"
+                      style={{ width: "100%", boxSizing: "border-box", paddingLeft: 28, paddingRight: 16, paddingTop: 13, paddingBottom: 13, borderRadius: 12, fontSize: 14, background: C.surface2, border: `1px solid ${C.activeBorder}`, color: C.text, outline: "none", fontWeight: 500 }} />
                   </div>
-                  <p className="text-[10px] text-gray-400 mt-1">
-                    Disponível: {fmtAmount(availableUsd)}
-                  </p>
+                  <p style={{ fontSize: 11, color: C.dim, marginTop: 4 }}>Disponível: {fmtAmount(availableUsd)}</p>
                 </div>
-                <div className="p-3 rounded-xl" style={{ background: "rgba(0,0,0,0.04)" }}>
-                  <p className="text-[10px] text-gray-500 mb-0.5">Destino</p>
-                  <p className="text-sm font-mono font-semibold text-gray-800 break-all">
+                <div style={{ padding: "12px 14px", borderRadius: 12, background: C.surface2, border: `1px solid ${C.border}` }}>
+                  <p style={{ fontSize: 10, color: C.dim, marginBottom: 3 }}>Destino</p>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: C.text, wordBreak: "break-all", ...MONO }}>
                     {managedPublicKey ? truncateAddr(managedPublicKey) : "—"}
                   </p>
                 </div>
-                <button
-                  className="w-full py-4 rounded-2xl font-bold text-white transition-all"
-                  style={{ background: "linear-gradient(135deg,#16A34A,#22C55E)", boxShadow: "0 8px 24px rgba(22,163,74,0.35)" }}>
+                <button style={{ width: "100%", padding: "15px 0", borderRadius: 16, fontWeight: 700, fontSize: 15, color: "#fff", background: C.brand, border: "none", cursor: "pointer", boxShadow: "0 6px 20px rgba(0,184,82,0.3)" }}>
                   Confirmar saque
                 </button>
               </div>

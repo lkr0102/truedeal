@@ -7,6 +7,23 @@ import { Camera, Hash, ArrowRight, CheckCircle2, Loader2, Info, X, Clock } from 
 import { updateProfile, getMySocialConnections, saveMembershipEmail } from "@/lib/actions/profile"
 import { createClient } from "@/lib/supabase/client"
 
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg:           "#F0F3F0",
+  surface:      "#FFFFFF",
+  surface2:     "#E8EDE8",
+  border:       "#D8E0D8",
+  text:         "#0B1309",
+  mid:          "#4E614E",
+  dim:          "#8BA09A",
+  brand:        "#00B852",
+  brandDark:    "#008C3E",
+  activeLight:  "rgba(0,184,82,0.08)",
+  activeBorder: "rgba(0,184,82,0.2)",
+} as const
+
+const MONO: React.CSSProperties = { fontFamily: "var(--font-dm-mono,'DM Mono',monospace)" }
+
 // ── Handle generator ──────────────────────────────────────────────────────────
 
 function generateHandle(name: string): string {
@@ -40,72 +57,44 @@ interface Platform {
 
 const PLATFORMS: Platform[] = [
   {
-    key:          "x",
-    label:        "X (Twitter)",
-    dealCategory: "Social Media",
-    whyNeeded:    "Necessário para deals de crescimento de seguidores, posts e engajamento no X. O app lê seus dados via API do X para verificar automaticamente o resultado.",
-    color:        "#000000",
-    textColor:    "#ffffff",
-    mode:         "oauth",
-    oauthPath:    "/api/auth/x",
+    key: "x", label: "X (Twitter)", dealCategory: "Social Media",
+    whyNeeded: "Necessário para deals de crescimento de seguidores, posts e engajamento no X. O app lê seus dados via API do X para verificar automaticamente o resultado.",
+    color: "#000000", textColor: "#ffffff", mode: "oauth", oauthPath: "/api/auth/x",
   },
   {
-    key:          "strava",
-    label:        "Strava",
-    dealCategory: "Corrida & Ciclismo",
-    whyNeeded:    "Necessário para deals de corrida, ciclismo e atividades ao ar livre. O app lê suas atividades com GPS via API do Strava para verificar distâncias e tempos.",
-    color:        "#FC4C02",
-    textColor:    "#ffffff",
-    mode:         "oauth",
-    oauthPath:    "/api/auth/strava",
+    key: "strava", label: "Strava", dealCategory: "Corrida & Ciclismo",
+    whyNeeded: "Necessário para deals de corrida, ciclismo e atividades ao ar livre. O app lê suas atividades com GPS via API do Strava para verificar distâncias e tempos.",
+    color: "#FC4C02", textColor: "#ffffff", mode: "oauth", oauthPath: "/api/auth/strava",
   },
   {
-    key:          "wellhub",
-    label:        "Wellhub",
-    dealCategory: "Academia & Fitness",
-    whyNeeded:    "Necessário para deals de frequência em academias parceiras Wellhub (ex-Gympass). A verificação de check-ins é feita via parceria com a plataforma.",
-    color:        "#00A651",
-    textColor:    "#ffffff",
-    mode:         "email",
+    key: "wellhub", label: "Wellhub", dealCategory: "Academia & Fitness",
+    whyNeeded: "Necessário para deals de frequência em academias parceiras Wellhub (ex-Gympass). A verificação de check-ins é feita via parceria com a plataforma.",
+    color: "#00A651", textColor: "#ffffff", mode: "email",
   },
   {
-    key:          "totalpass",
-    label:        "TotalPass",
-    dealCategory: "Academia & Fitness",
-    whyNeeded:    "Necessário para deals de check-in em academias parceiras TotalPass. A verificação é feita via parceria com a plataforma.",
-    color:        "#0047AB",
-    textColor:    "#ffffff",
-    mode:         "email",
+    key: "totalpass", label: "TotalPass", dealCategory: "Academia & Fitness",
+    whyNeeded: "Necessário para deals de check-in em academias parceiras TotalPass. A verificação é feita via parceria com a plataforma.",
+    color: "#0047AB", textColor: "#ffffff", mode: "email",
   },
 ]
 
-// Platform icon badge
+// ── Platform icon ─────────────────────────────────────────────────────────────
+
 function PlatformIcon({ p }: { p: Platform }) {
   const letters: Record<SocialKey, string> = { x: "𝕏", strava: "S", wellhub: "W", totalpass: "TP" }
   return (
-    <div
-      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-sm"
-      style={{ background: p.color, color: p.textColor }}
-    >
+    <div style={{ width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 900, fontSize: 14, background: p.color, color: p.textColor }}>
       {letters[p.key]}
     </div>
   )
 }
 
-// ── Membership email modal (Wellhub / TotalPass) ──────────────────────────────
+// ── Membership email modal ────────────────────────────────────────────────────
 
-function MembershipModal({
-  platform,
-  onClose,
-  onSaved,
-}: {
-  platform: Platform
-  onClose: () => void
-  onSaved: () => void
-}) {
-  const [email,   setEmail]   = useState("")
-  const [saving,  setSaving]  = useState(false)
-  const [error,   setError]   = useState<string | null>(null)
+function MembershipModal({ platform, onClose, onSaved }: { platform: Platform; onClose: () => void; onSaved: () => void }) {
+  const [email,  setEmail]  = useState("")
+  const [saving, setSaving] = useState(false)
+  const [error,  setError]  = useState<string | null>(null)
 
   async function handleSave() {
     if (!email.trim() || !email.includes("@")) { setError("E-mail inválido"); return }
@@ -116,73 +105,50 @@ function MembershipModal({
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center"
-      style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-t-3xl p-6 pb-10"
-        style={{ background: "rgba(255,255,255,0.97)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-3">
+    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center", background: "rgba(0,0,0,0.45)" }} onClick={onClose}>
+      <div style={{ width: "100%", maxWidth: 480, background: C.surface, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", boxShadow: "0 -16px 64px rgba(0,0,0,0.12)" }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <PlatformIcon p={platform} />
             <div>
-              <p className="font-bold text-gray-800">{platform.label}</p>
-              <p className="text-xs text-gray-400">Verificação de membership</p>
+              <p style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{platform.label}</p>
+              <p style={{ fontSize: 12, color: C.dim }}>Verificação de membership</p>
             </div>
           </div>
-          <button onClick={onClose} className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: "rgba(0,0,0,0.07)" }}>
-            <X className="w-4 h-4 text-gray-500" />
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: "50%", background: C.surface2, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <X width={14} height={14} color={C.mid} />
           </button>
         </div>
 
-        {/* Info box */}
-        <div className="rounded-2xl p-4 mb-5" style={{ background: "rgba(0,71,171,0.06)", border: "1px solid rgba(0,71,171,0.12)" }}>
-          <div className="flex gap-2.5">
-            <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: platform.color }} />
+        <div style={{ borderRadius: 12, padding: 14, marginBottom: 18, background: `${platform.color}0D`, border: `1px solid ${platform.color}30` }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            <Clock width={14} height={14} style={{ color: platform.color, flexShrink: 0, marginTop: 1 }} />
             <div>
-              <p className="text-xs font-bold mb-0.5" style={{ color: platform.color }}>Verificação via parceria</p>
-              <p className="text-xs text-gray-500 leading-relaxed">
-                {platform.label} não possui OAuth público para apps de terceiros. Cadastre o e-mail da sua conta {platform.label} — a verificação automática dos seus check-ins será ativada assim que a parceria estiver ativa.
+              <p style={{ fontSize: 12, fontWeight: 700, color: platform.color, marginBottom: 3 }}>Verificação via parceria</p>
+              <p style={{ fontSize: 12, color: C.mid, lineHeight: 1.5 }}>
+                {platform.label} não possui OAuth público. Cadastre o e-mail da sua conta {platform.label} — a verificação automática será ativada quando a parceria estiver ativa.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Email input */}
-        <label className="text-sm font-semibold text-gray-700 block mb-2">
+        <label style={{ fontSize: 13, fontWeight: 600, color: C.mid, display: "block", marginBottom: 8 }}>
           E-mail da sua conta {platform.label}
         </label>
         <input
-          type="email"
-          value={email}
+          type="email" value={email}
           onChange={(e) => { setEmail(e.target.value); setError(null) }}
-          placeholder={`seu@email.com`}
-          className="w-full px-4 py-3 rounded-xl outline-none text-gray-800 placeholder-gray-400 mb-4"
-          style={{ background: "rgba(0,0,0,0.05)", border: "1px solid rgba(0,0,0,0.1)" }}
+          placeholder="seu@email.com"
+          style={{ width: "100%", boxSizing: "border-box", padding: "13px 16px", borderRadius: 12, fontSize: 14, background: C.surface2, border: `1px solid ${C.border}`, color: C.text, outline: "none", marginBottom: 16 }}
         />
 
-        {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
+        {error && <p style={{ fontSize: 12, color: "#DC2626", marginBottom: 12 }}>{error}</p>}
 
-        <button
-          onClick={handleSave}
-          disabled={saving || !email.trim()}
-          className="w-full py-3.5 rounded-2xl font-semibold text-white transition-all active:scale-[0.98]"
-          style={{
-            background: `linear-gradient(135deg, ${platform.color}, ${platform.color}CC)`,
-            opacity: saving || !email.trim() ? 0.6 : 1,
-          }}
-        >
-          {saving ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Salvar e-mail"}
+        <button onClick={handleSave} disabled={saving || !email.trim()}
+          style={{ width: "100%", padding: "14px 0", borderRadius: 16, fontWeight: 700, fontSize: 14, color: "#fff", background: platform.color, border: "none", cursor: saving || !email.trim() ? "not-allowed" : "pointer", opacity: saving || !email.trim() ? 0.5 : 1 }}>
+          {saving ? <Loader2 style={{ width: 16, height: 16, margin: "0 auto" }} /> : "Salvar e-mail"}
         </button>
-
-        <p className="text-center text-xs text-gray-400 mt-3">
-          Você poderá atualizar isso no seu perfil a qualquer momento
-        </p>
+        <p style={{ textAlign: "center", fontSize: 11, color: C.dim, marginTop: 12 }}>Você poderá atualizar isso no seu perfil a qualquer momento</p>
       </div>
     </div>
   )
@@ -190,98 +156,65 @@ function MembershipModal({
 
 // ── Social connect card ───────────────────────────────────────────────────────
 
-function SocialCard({
-  platform,
-  state,
-  username,
-  onOAuth,
-  onEmailSaved,
-}: {
-  platform:     Platform
-  state:        ConnectState
-  username?:    string | null
-  onOAuth:      () => void
-  onEmailSaved: () => void
+function SocialCard({ platform, state, username, onOAuth, onEmailSaved }: {
+  platform: Platform; state: ConnectState; username?: string | null; onOAuth: () => void; onEmailSaved: () => void
 }) {
-  const [showTip,    setShowTip]    = useState(false)
-  const [showModal,  setShowModal]  = useState(false)
+  const [showTip,   setShowTip]   = useState(false)
+  const [showModal, setShowModal] = useState(false)
 
   function handleConnect() {
-    if (platform.mode === "oauth")  { onOAuth(); return }
-    if (platform.mode === "email")  { setShowModal(true) }
+    if (platform.mode === "oauth") { onOAuth(); return }
+    setShowModal(true)
   }
 
   return (
     <>
-      <div
-        className="rounded-2xl p-4 transition-all duration-200"
-        style={{
-          background: state === "connected"
-            ? "rgba(22,163,74,0.07)"
-            : state === "pending"
-            ? `${platform.color}0D`
-            : "rgba(255,255,255,0.55)",
-          backdropFilter: "blur(20px)",
-          border: state === "connected"
-            ? "1px solid rgba(22,163,74,0.25)"
-            : state === "pending"
-            ? `1px solid ${platform.color}30`
-            : "1px solid rgba(255,255,255,0.55)",
-        }}
-      >
-        <div className="flex items-center gap-3">
+      <div style={{
+        borderRadius: 14, padding: 16,
+        background: state === "connected" ? C.activeLight : state === "pending" ? `${platform.color}0D` : C.surface,
+        border: state === "connected" ? `1px solid ${C.activeBorder}` : state === "pending" ? `1px solid ${platform.color}30` : `1px solid ${C.border}`,
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <PlatformIcon p={platform} />
-
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-              <span className="text-sm font-bold text-gray-800">{platform.label}</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+              <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{platform.label}</span>
               {state === "connected" && username && (
-                <span className="text-[10px] text-gray-400">@{username}</span>
+                <span style={{ fontSize: 11, color: C.dim }}>@{username}</span>
               )}
-              <button type="button" onClick={() => setShowTip(v => !v)} className="text-gray-300 hover:text-gray-500">
-                <Info className="w-3.5 h-3.5" />
+              <button type="button" onClick={() => setShowTip(v => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.dim, display: "flex" }}>
+                <Info width={13} height={13} />
               </button>
             </div>
-            <span
-              className="text-[11px] font-semibold px-2 py-0.5 rounded-full"
-              style={{ background: `${platform.color}18`, color: platform.color }}
-            >
+            <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 100, background: `${platform.color}18`, color: platform.color }}>
               {platform.dealCategory}
             </span>
           </div>
 
-          {/* Action button / status */}
           {state === "connected" ? (
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <CheckCircle2 className="w-4 h-4 text-[#16A34A]" />
-              <span className="text-xs font-bold text-[#16A34A]">Conectado</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <CheckCircle2 width={16} height={16} style={{ color: C.brand }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: C.brand }}>Conectado</span>
             </div>
           ) : state === "pending" ? (
-            <div className="flex items-center gap-1.5 flex-shrink-0">
-              <Clock className="w-4 h-4" style={{ color: platform.color }} />
-              <span className="text-xs font-bold" style={{ color: platform.color }}>Pendente</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+              <Clock width={14} height={14} style={{ color: platform.color }} />
+              <span style={{ fontSize: 12, fontWeight: 700, color: platform.color }}>Pendente</span>
             </div>
           ) : (
-            <button
-              onClick={handleConnect}
-              className="flex-shrink-0 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all active:scale-95"
-              style={{ background: `linear-gradient(135deg, ${platform.color}, ${platform.color}CC)` }}
-            >
+            <button onClick={handleConnect}
+              style={{ flexShrink: 0, padding: "8px 14px", borderRadius: 10, fontSize: 12, fontWeight: 700, color: "#fff", background: platform.color, border: "none", cursor: "pointer" }}>
               Conectar
             </button>
           )}
         </div>
 
-        {/* Why needed tooltip */}
         {showTip && (
-          <div
-            className="mt-3 rounded-xl px-3 py-2.5 text-xs text-gray-600 leading-relaxed"
-            style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
-          >
-            <span className="font-semibold text-gray-700">Por que verificar? </span>
+          <div style={{ marginTop: 12, borderRadius: 10, padding: "10px 12px", fontSize: 12, color: C.mid, lineHeight: 1.5, background: C.surface2, border: `1px solid ${C.border}` }}>
+            <span style={{ fontWeight: 700, color: C.text }}>Por que verificar? </span>
             {platform.whyNeeded}
             {platform.mode === "email" && (
-              <span className="block mt-1.5 text-[11px]" style={{ color: platform.color }}>
+              <span style={{ display: "block", marginTop: 6, fontSize: 11, color: platform.color }}>
                 ⚠ Verificação automática ativa quando a parceria {platform.label} estiver disponível.
               </span>
             )}
@@ -290,11 +223,7 @@ function SocialCard({
       </div>
 
       {showModal && (
-        <MembershipModal
-          platform={platform}
-          onClose={() => setShowModal(false)}
-          onSaved={() => { setShowModal(false); onEmailSaved() }}
-        />
+        <MembershipModal platform={platform} onClose={() => setShowModal(false)} onSaved={() => { setShowModal(false); onEmailSaved() }} />
       )}
     </>
   )
@@ -322,7 +251,6 @@ function ProfileSetupContent() {
     x: null, strava: null, wellhub: null, totalpass: null,
   })
 
-  // Load existing connections on mount
   useEffect(() => {
     getMySocialConnections().then(({ connections }) => {
       const newStates    = { ...states }
@@ -340,14 +268,10 @@ function ProfileSetupContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Handle return from OAuth (Strava / X)
   useEffect(() => {
     const connected = searchParams.get("social_connected") as SocialKey | null
     const errParam  = searchParams.get("social_error")
-
-    if (connected && connected in states) {
-      setStates(prev => ({ ...prev, [connected]: "connected" }))
-    }
+    if (connected && connected in states) setStates(prev => ({ ...prev, [connected]: "connected" }))
     if (errParam) {
       const messages: Record<string, string> = {
         strava_denied: "Autorização do Strava cancelada.",
@@ -375,34 +299,21 @@ function ProfileSetupContent() {
     reader.readAsDataURL(file)
   }
 
-  function handleOAuth(platform: Platform) {
-    if (platform.oauthPath) window.location.href = platform.oauthPath
-  }
-
-  function handleEmailSaved(key: SocialKey) {
-    setStates(prev => ({ ...prev, [key]: "pending" }))
-  }
-
   async function handleContinue() {
     if (!name.trim()) return
     setUploading(true)
-
     const supabase = createClient()
     let avatar_url: string | undefined
-
     if (photoFile) {
       const ext = photoFile.name.split(".").pop() ?? "jpg"
       const { data: { user } } = await supabase.auth.getUser()
       const path = `${user?.id ?? "anon"}/${Date.now()}.${ext}`
-      const { error: upErr } = await supabase.storage
-        .from("avatars")
-        .upload(path, photoFile, { upsert: true })
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, photoFile, { upsert: true })
       if (!upErr) {
         const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path)
         avatar_url = urlData.publicUrl
       }
     }
-
     const username = handle.replace(/[^a-z0-9_]/gi, "").toLowerCase().slice(0, 20) || "user"
     await updateProfile({ display_name: name.trim(), username, ...(avatar_url ? { avatar_url } : {}) })
     await supabase.auth.updateUser({ data: { onboarding_completed: true } })
@@ -412,84 +323,63 @@ function ProfileSetupContent() {
   const isValid = name.trim().length >= 2
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{
-        backgroundImage:      "url('/images/gradient-background.jpg')",
-        backgroundSize:       "cover",
-        backgroundPosition:   "center",
-        backgroundRepeat:     "no-repeat",
-        backgroundAttachment: "fixed",
-      }}
-    >
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
       {/* Progress */}
-      <div className="px-5 pt-12 pb-2">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.3)" }}>
-            <div className="h-full rounded-full" style={{ width: "50%", background: "linear-gradient(90deg, #16A34A, #22C55E)" }} />
-          </div>
+      <div style={{ padding: "48px 20px 16px" }}>
+        <div style={{ height: 4, borderRadius: 100, background: C.border, overflow: "hidden", marginBottom: 6 }}>
+          <div style={{ height: "100%", width: "50%", background: C.brand, borderRadius: 100 }} />
         </div>
-        <p className="text-xs text-gray-500">Etapa 1 de 2 — Perfil</p>
+        <p style={{ fontSize: 11, color: C.dim, ...MONO, textTransform: "uppercase", letterSpacing: "0.06em" }}>Etapa 1 de 2 — Perfil</p>
       </div>
 
-      <div className="flex-1 px-5 pb-8 overflow-y-auto">
-        <div className="text-center mb-8 mt-4">
-          <h1 className="text-2xl font-bold text-gray-800">Crie seu perfil</h1>
-          <p className="text-gray-600 mt-1 text-sm">Como os outros te verão no True Deal</p>
+      <div style={{ flex: 1, padding: "0 20px 32px", overflowY: "auto" }}>
+        {/* Title */}
+        <div style={{ textAlign: "center", marginBottom: 28, marginTop: 8 }}>
+          <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>Crie seu perfil</h1>
+          <p style={{ fontSize: 13, color: C.mid, marginTop: 4 }}>Como os outros te verão no True Deal</p>
         </div>
 
         {/* Avatar */}
-        <div className="flex justify-center mb-8">
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 28 }}>
           <button
             onClick={() => fileRef.current?.click()}
-            className="relative w-24 h-24 rounded-2xl overflow-hidden transition-all duration-300 hover:scale-105"
             style={{
-              background:  photo ? "transparent" : "linear-gradient(135deg, #1A2E3A 0%, #2A4E5A 100%)",
-              boxShadow:   "0 8px 24px rgba(0,0,0,0.15)",
-              border:      "2px solid rgba(255,255,255,0.5)",
+              position: "relative", width: 88, height: 88, borderRadius: 24,
+              overflow: "hidden", background: photo ? "transparent" : C.brand,
+              border: `2px solid ${C.border}`, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
             }}
           >
             {photo
-              ? <img src={photo} alt="Foto de perfil" className="w-full h-full object-cover" />
-              : <span className="text-blue-300 font-bold text-2xl">{initials}</span>}
-            <div
-              className="absolute inset-0 flex items-end justify-center pb-2 opacity-0 hover:opacity-100 transition-opacity"
-              style={{ background: "rgba(0,0,0,0.4)" }}
-            >
-              <Camera className="w-5 h-5 text-white" />
+              ? <img src={photo} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : <span style={{ color: "#fff", fontWeight: 800, fontSize: 24 }}>{initials}</span>}
+            <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)", display: "flex", alignItems: "flex-end", justifyContent: "center", paddingBottom: 8 }}>
+              <Camera width={18} height={18} color="#fff" />
             </div>
           </button>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} />
+          <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoChange} />
         </div>
 
         {/* Nome */}
-        <div className="mb-5">
-          <label className="text-sm font-semibold text-gray-600 mb-2 block">Nome completo</label>
+        <div style={{ marginBottom: 18 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: C.mid, display: "block", marginBottom: 8 }}>Nome completo</label>
           <input
-            type="text"
-            value={name}
-            onChange={(e) => handleNameChange(e.target.value)}
+            type="text" value={name} onChange={(e) => handleNameChange(e.target.value)}
             placeholder="Seu nome"
-            className="w-full p-4 rounded-xl outline-none text-gray-800 placeholder-gray-400 font-medium"
-            style={{
-              background:    "rgba(255,255,255,0.6)",
-              backdropFilter: "blur(20px)",
-              border:        name ? "2px solid rgba(22,163,74,0.4)" : "1px solid rgba(255,255,255,0.6)",
-            }}
+            style={{ width: "100%", boxSizing: "border-box", padding: "13px 16px", borderRadius: 12, fontSize: 14, background: C.surface2, border: `1px solid ${name ? C.activeBorder : C.border}`, color: C.text, outline: "none", fontWeight: 500 }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = C.brand }}
+            onBlur={(e)  => { e.currentTarget.style.borderColor = name ? C.activeBorder : C.border }}
           />
         </div>
 
         {/* Handle */}
-        <div className="mb-8">
-          <label className="text-sm font-semibold text-gray-600 mb-2 block">
-            Seu identificador <span className="text-gray-400 font-normal">(como amigos te encontram)</span>
+        <div style={{ marginBottom: 28 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: C.mid, display: "block", marginBottom: 8 }}>
+            Seu identificador <span style={{ color: C.dim, fontWeight: 400 }}>(como amigos te encontram)</span>
           </label>
-          <div
-            className="flex items-center rounded-xl overflow-hidden"
-            style={{ background: "rgba(255,255,255,0.6)", backdropFilter: "blur(20px)", border: "1px solid rgba(255,255,255,0.6)" }}
-          >
-            <div className="px-3 py-4" style={{ borderRight: "1px solid rgba(255,255,255,0.5)" }}>
-              <Hash className="w-4 h-4 text-[#16A34A]" />
+          <div style={{ display: "flex", alignItems: "center", borderRadius: 12, overflow: "hidden", background: C.surface, border: `1px solid ${C.border}` }}>
+            <div style={{ padding: "13px 14px", borderRight: `1px solid ${C.border}`, display: "flex", alignItems: "center" }}>
+              <Hash width={14} height={14} color={C.brand} />
             </div>
             <input
               type="text"
@@ -500,60 +390,55 @@ function ProfileSetupContent() {
                 setHandle(`${base}#${e.target.value.replace(/\D/g, "").slice(0, 4)}`)
               }}
               placeholder="0000"
-              className="flex-1 px-3 py-4 outline-none text-gray-800 font-medium bg-transparent"
               maxLength={4}
+              style={{ flex: 1, padding: "13px 12px", outline: "none", fontSize: 14, color: C.text, background: "transparent", fontWeight: 500 }}
             />
-            <span className="px-3 text-sm text-gray-400">{handle.split("#")[0] || "user"}</span>
+            <span style={{ padding: "0 14px", fontSize: 13, color: C.dim }}>{handle.split("#")[0] || "user"}</span>
           </div>
-          <p className="text-xs text-gray-400 mt-1 ml-1">
-            Identificador único: <span className="text-[#16A34A] font-medium">{handle || "user#0000"}</span>
+          <p style={{ fontSize: 11, color: C.dim, marginTop: 5, marginLeft: 2 }}>
+            Identificador único: <span style={{ color: C.brand, fontWeight: 600 }}>{handle || "user#0000"}</span>
           </p>
         </div>
 
         {/* Social verification */}
-        <div className="mb-8">
-          <div className="mb-3">
-            <label className="text-sm font-semibold text-gray-600 block">
-              Verificação de contas <span className="text-gray-400 font-normal">(opcional)</span>
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: C.mid, display: "block", marginBottom: 4 }}>
+              Verificação de contas <span style={{ color: C.dim, fontWeight: 400 }}>(opcional)</span>
             </label>
-            <p className="text-xs text-gray-400 mt-1 leading-relaxed">
-              Vincule suas contas para desbloquear deals desses canais. Toque no{" "}
-              <Info className="w-3 h-3 inline -mt-0.5" /> para entender a importância de cada verificação.
+            <p style={{ fontSize: 12, color: C.dim, lineHeight: 1.5 }}>
+              Vincule suas contas para desbloquear deals. Toque no <Info width={11} height={11} style={{ display: "inline", verticalAlign: "middle" }} /> para saber mais.
             </p>
           </div>
-
-          <div className="space-y-3">
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {PLATFORMS.map((platform) => (
               <SocialCard
                 key={platform.key}
                 platform={platform}
                 state={states[platform.key]}
                 username={usernames[platform.key]}
-                onOAuth={() => handleOAuth(platform)}
-                onEmailSaved={() => handleEmailSaved(platform.key)}
+                onOAuth={() => { if (platform.oauthPath) window.location.href = platform.oauthPath }}
+                onEmailSaved={() => setStates(prev => ({ ...prev, [platform.key]: "pending" }))}
               />
             ))}
           </div>
-
-          {socialError && (
-            <p className="text-xs text-red-500 mt-2 ml-1">{socialError}</p>
-          )}
+          {socialError && <p style={{ fontSize: 12, color: "#DC2626", marginTop: 8 }}>{socialError}</p>}
         </div>
 
         {/* Continuar */}
         <button
           onClick={handleContinue}
           disabled={!isValid || uploading}
-          className={`w-full py-4 rounded-2xl font-semibold text-white flex items-center justify-center gap-2 transition-all duration-300 ${
-            isValid && !uploading ? "hover:scale-[1.02] active:scale-[0.98]" : "opacity-40 cursor-not-allowed"
-          }`}
           style={{
-            background: "linear-gradient(135deg, #16A34A 0%, #22C55E 100%)",
-            boxShadow:  isValid ? "0 8px 32px rgba(22,163,74,0.4)" : "none",
+            width: "100%", padding: "15px 0", borderRadius: 16,
+            fontWeight: 700, fontSize: 15, color: "#fff",
+            background: isValid && !uploading ? C.brand : C.dim,
+            border: "none", cursor: isValid && !uploading ? "pointer" : "not-allowed",
+            display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
           }}
         >
           {uploading ? "Salvando…" : "Continuar"}
-          {!uploading && <ArrowRight className="w-5 h-5" />}
+          {!uploading && <ArrowRight width={18} height={18} />}
         </button>
       </div>
     </div>
@@ -562,7 +447,7 @@ function ProfileSetupContent() {
 
 export default function ProfileSetupPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-white font-bold bg-[#1A2E3A]">Carregando...</div>}>
+    <Suspense fallback={<div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F0F3F0", fontWeight: 700, color: "#0B1309" }}>Carregando...</div>}>
       <ProfileSetupContent />
     </Suspense>
   )

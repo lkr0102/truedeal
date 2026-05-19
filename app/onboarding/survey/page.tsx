@@ -5,7 +5,23 @@ import { useRouter } from "next/navigation"
 import { ArrowRight, ArrowLeft, ChevronDown, X } from "lucide-react"
 import { saveSurveyResponses } from "@/lib/actions/survey"
 
-// ── Lista completa de países ──────────────────────────────────────────────────
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg:           "#F0F3F0",
+  surface:      "#FFFFFF",
+  surface2:     "#E8EDE8",
+  border:       "#D8E0D8",
+  text:         "#0B1309",
+  mid:          "#4E614E",
+  dim:          "#8BA09A",
+  brand:        "#00B852",
+  activeLight:  "rgba(0,184,82,0.08)",
+  activeBorder: "rgba(0,184,82,0.25)",
+} as const
+
+const MONO: React.CSSProperties = { fontFamily: "var(--font-dm-mono,'DM Mono',monospace)" }
+
+// ── Countries ─────────────────────────────────────────────────────────────────
 const ALL_COUNTRIES = [
   "Afeganistão","África do Sul","Albânia","Alemanha","Andorra","Angola",
   "Antígua e Barbuda","Arábia Saudita","Argentina","Armênia","Austrália",
@@ -34,312 +50,262 @@ const ALL_COUNTRIES = [
   "Uruguai","Uzbequistão","Venezuela","Vietnã","Zâmbia","Zimbábue",
 ].sort((a, b) => a.localeCompare(b, "pt"))
 
-// ── Definição das perguntas ───────────────────────────────────────────────────
+// ── Questions ─────────────────────────────────────────────────────────────────
 type Question =
-  | { id: string; type: "single";    text: string; options: string[] }
-  | { id: string; type: "country";   text: string }
-  | { id: string; type: "text";      text: string; placeholder: string }
-  | { id: string; type: "multiple";  text: string; subtitle: string; options: string[] }
+  | { id: string; type: "single";   text: string; options: string[] }
+  | { id: string; type: "country";  text: string }
+  | { id: string; type: "text";     text: string; placeholder: string }
+  | { id: string; type: "multiple"; text: string; subtitle: string; options: string[] }
 
 const questions: Question[] = [
-  {
-    id: "age",
-    type: "single",
-    text: "Qual é a sua faixa etária?",
-    options: ["Menos de 18", "18–24", "25–34", "35–44", "45 ou mais"],
-  },
-  {
-    id: "country",
-    type: "country",
-    text: "Em qual país você mora?",
-  },
-  {
-    id: "source",
-    type: "text",
-    text: "Como você conheceu o True Deal?",
-    placeholder: "Ex: vi no TikTok, um amigo me indicou…",
-  },
-  {
-    id: "motivation",
-    type: "multiple",
-    text: "O que você espera do True Deal?",
-    subtitle: "Pode escolher mais de um",
-    options: [
-      "Desafios fitness",
-      "Apostas e desafios entre amigos",
-      "Motivação extra para metas pessoais",
-      "Gamificar os compromissos",
-    ],
-  },
+  { id: "age",        type: "single",   text: "Qual é a sua faixa etária?", options: ["Menos de 18","18–24","25–34","35–44","45 ou mais"] },
+  { id: "country",    type: "country",  text: "Em qual país você mora?" },
+  { id: "source",     type: "text",     text: "Como você conheceu o True Deal?", placeholder: "Ex: vi no TikTok, um amigo me indicou…" },
+  { id: "motivation", type: "multiple", text: "O que você espera do True Deal?", subtitle: "Pode escolher mais de um",
+    options: ["Desafios fitness","Apostas e desafios entre amigos","Motivação extra para metas pessoais","Gamificar os compromissos"] },
 ]
 
 type Answers = Record<string, string | string[]>
 
+// ── Option button ─────────────────────────────────────────────────────────────
+
+function OptionButton({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        width: "100%", padding: "14px 16px", borderRadius: 14, textAlign: "left",
+        background: selected ? C.activeLight : C.surface,
+        border: `${selected ? "1.5px" : "1px"} solid ${selected ? C.activeBorder : C.border}`,
+        cursor: "pointer", transition: "all 0.15s",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{
+          width: 20, height: 20, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+          background: selected ? C.brand : "transparent", border: `2px solid ${selected ? C.brand : C.border}`,
+        }}>
+          {selected && (
+            <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+              <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          )}
+        </div>
+        <span style={{ fontSize: 14, fontWeight: selected ? 600 : 400, color: selected ? C.brand : C.text }}>
+          {label}
+        </span>
+      </div>
+    </button>
+  )
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+
 export default function SurveyPage() {
   const router = useRouter()
-
-  const [step, setStep]       = useState(0)
-  const [answers, setAnswers] = useState<Answers>({})
-  const [countrySearch, setCountrySearch] = useState("")
-  const [showCountryModal, setShowCountryModal] = useState(false)
+  const [step,              setStep]             = useState(0)
+  const [answers,           setAnswers]          = useState<Answers>({})
+  const [countrySearch,     setCountrySearch]    = useState("")
+  const [showCountryModal,  setShowCountryModal] = useState(false)
 
   const current = questions[step]
   const isLast  = step === questions.length - 1
 
-  // ── Helpers de resposta ──
   function getAnswer(id: string) { return answers[id] }
-
-  function setAnswer(id: string, value: string | string[]) {
-    setAnswers((a) => ({ ...a, [id]: value }))
-  }
-
+  function setAnswer(id: string, value: string | string[]) { setAnswers((a) => ({ ...a, [id]: value })) }
   function toggleMultiple(id: string, option: string) {
     const prev = (getAnswer(id) as string[]) ?? []
-    const next = prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option]
-    setAnswer(id, next)
+    setAnswer(id, prev.includes(option) ? prev.filter((o) => o !== option) : [...prev, option])
   }
-
   function isSelected(id: string, option: string): boolean {
     const a = getAnswer(id)
-    if (Array.isArray(a)) return a.includes(option)
-    return a === option
+    return Array.isArray(a) ? a.includes(option) : a === option
   }
-
   function canAdvance(): boolean {
     const a = getAnswer(current.id)
     if (current.type === "multiple") return Array.isArray(a) && a.length > 0
     if (current.type === "text") return typeof a === "string" && a.trim().length > 0
     return !!a
   }
-
   async function handleNext() {
     if (!canAdvance()) return
-    if (isLast) {
-      await saveSurveyResponses(answers)
-      router.push("/")
-    } else {
-      setStep((s) => s + 1)
-    }
+    if (isLast) { await saveSurveyResponses(answers); router.push("/") }
+    else setStep((s) => s + 1)
   }
 
   const progress = ((step + 1) / questions.length) * 100
-
-  const filteredCountries = ALL_COUNTRIES.filter((c) =>
-    c.toLowerCase().includes(countrySearch.toLowerCase())
-  )
+  const filteredCountries = ALL_COUNTRIES.filter((c) => c.toLowerCase().includes(countrySearch.toLowerCase()))
+  const otherSelected = current.type === "country" && getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{
-        backgroundImage: "url('/images/gradient-background.jpg')",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-        backgroundAttachment: "fixed",
-      }}
-    >
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column" }}>
+
       {/* Header */}
-      <header className="px-5 pt-12 pb-4">
-        <div className="flex items-center justify-between mb-3">
+      <header style={{ padding: "48px 20px 16px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
           <button
             onClick={() => step > 0 && setStep((s) => s - 1)}
-            className={`flex items-center gap-1 text-gray-600 transition-opacity ${step === 0 ? "opacity-0 pointer-events-none" : ""}`}
+            style={{ display: "flex", alignItems: "center", gap: 4, color: C.mid, background: "none", border: "none", cursor: "pointer", opacity: step === 0 ? 0 : 1, pointerEvents: step === 0 ? "none" : "auto" }}
           >
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm font-medium">Voltar</span>
+            <ArrowLeft width={16} height={16} />
+            <span style={{ fontSize: 13, fontWeight: 500 }}>Voltar</span>
           </button>
-          <span className="text-sm text-gray-500 font-medium">{step + 1} / {questions.length}</span>
-          <button onClick={() => router.push("/")} className="text-sm text-gray-400 hover:text-gray-600">
+          <span style={{ fontSize: 13, color: C.dim, fontWeight: 500, ...MONO }}>{step + 1} / {questions.length}</span>
+          <button onClick={() => router.push("/")} style={{ fontSize: 13, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>
             Pular
           </button>
         </div>
-        <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.3)" }}>
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${progress}%`, background: "#00D26A" }}
-          />
+        <div style={{ height: 4, borderRadius: 100, background: C.border, overflow: "hidden" }}>
+          <div style={{ height: "100%", borderRadius: 100, background: C.brand, width: `${progress}%`, transition: "width 0.4s ease" }} />
         </div>
-        <p className="text-xs text-gray-400 mt-1">Etapa 2 de 2 — Pesquisa rápida</p>
+        <p style={{ fontSize: 11, color: C.dim, marginTop: 5, ...MONO, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          Etapa 2 de 2 — Pesquisa rápida
+        </p>
       </header>
 
-      {/* Conteúdo */}
-      <div className="flex-1 px-5 pb-8 flex flex-col">
-        <div className="mb-6 mt-4">
-          <h1 className="text-xl font-bold text-white leading-snug">{current.text}</h1>
+      {/* Content */}
+      <div style={{ flex: 1, padding: "0 20px 32px", display: "flex", flexDirection: "column" }}>
+        <div style={{ marginBottom: 20, marginTop: 8 }}>
+          <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.02em", color: C.text, lineHeight: 1.3 }}>{current.text}</h1>
           {current.type === "multiple" && (
-            <p className="text-sm text-gray-400 mt-1">{current.subtitle}</p>
+            <p style={{ fontSize: 13, color: C.dim, marginTop: 4 }}>{current.subtitle}</p>
           )}
         </div>
 
-        <div className="flex-1 space-y-3">
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 10 }}>
 
-          {/* ── Single choice ── */}
-          {current.type === "single" &&
-            current.options.map((option) => {
-              const sel = isSelected(current.id, option)
-              return (
-                <OptionButton key={option} label={option} selected={sel}
-                  onClick={() => setAnswer(current.id, option)} />
-              )
-            })
-          }
+          {/* Single choice */}
+          {current.type === "single" && current.options.map((option) => (
+            <OptionButton key={option} label={option} selected={isSelected(current.id, option)} onClick={() => setAnswer(current.id, option)} />
+          ))}
 
-          {/* ── País (3 botões + Outro modal) ── */}
+          {/* Country */}
           {current.type === "country" && (
             <>
-              {["Brasil", "Argentina"].map((c) => (
-                <OptionButton key={c} label={c} selected={isSelected(current.id, c)}
-                  onClick={() => setAnswer(current.id, c)} />
+              {["Brasil","Argentina"].map((c) => (
+                <OptionButton key={c} label={c} selected={isSelected(current.id, c)} onClick={() => setAnswer(current.id, c)} />
               ))}
               <button
                 onClick={() => setShowCountryModal(true)}
-                className="w-full p-4 rounded-2xl text-left flex items-center justify-between transition-all duration-300 hover:scale-[1.01]"
                 style={{
-                  background: getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
-                    ? "rgba(0,210,106,0.12)" : "rgba(255,255,255,0.05)",
-                  backdropFilter: "blur(20px) saturate(200%)",
-                  border: getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
-                    ? "2px solid rgba(0,210,106,0.5)" : "1px solid rgba(255,255,255,0.1)",
+                  width: "100%", padding: "14px 16px", borderRadius: 14, textAlign: "left",
+                  background: otherSelected ? C.activeLight : C.surface,
+                  border: `${otherSelected ? "1.5px" : "1px"} solid ${otherSelected ? C.activeBorder : C.border}`,
+                  cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",
                 }}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center"
-                    style={{
-                      background: getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
-                        ? "#00D26A" : "rgba(255,255,255,0.2)",
-                      border: "2px solid rgba(255,255,255,0.1)",
-                    }}
-                  >
-                    {getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string) && (
-                      <svg className="w-3 h-3 text-black" viewBox="0 0 12 12" fill="none">
-                        <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{
+                    width: 20, height: 20, borderRadius: "50%", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center",
+                    background: otherSelected ? C.brand : "transparent", border: `2px solid ${otherSelected ? C.brand : C.border}`,
+                  }}>
+                    {otherSelected && (
+                      <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+                        <path d="M2 6l3 3 5-5" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
                   </div>
-                  <span className="font-medium text-sm text-white">
-                    {getAnswer(current.id) && !["Brasil","Argentina"].includes(getAnswer(current.id) as string)
-                      ? getAnswer(current.id) as string
-                      : "Outro país"}
+                  <span style={{ fontSize: 14, fontWeight: otherSelected ? 600 : 400, color: otherSelected ? C.brand : C.text }}>
+                    {otherSelected ? getAnswer(current.id) as string : "Outro país"}
                   </span>
                 </div>
-                <ChevronDown className="w-4 h-4 text-gray-500" />
+                <ChevronDown width={16} height={16} color={C.dim} />
               </button>
             </>
           )}
 
-          {/* ── Texto livre ── */}
+          {/* Free text */}
           {current.type === "text" && (
             <textarea
               value={(getAnswer(current.id) as string) ?? ""}
               onChange={(e) => setAnswer(current.id, e.target.value)}
               placeholder={current.placeholder}
               rows={4}
-              className="w-full p-4 rounded-2xl outline-none text-white placeholder-gray-500 resize-none text-sm"
               style={{
-                background: "rgba(255,255,255,0.05)",
-                backdropFilter: "blur(20px) saturate(200%)",
-                border: getAnswer(current.id) ? "2px solid rgba(0,210,106,0.4)" : "1px solid rgba(255,255,255,0.1)",
+                width: "100%", boxSizing: "border-box", padding: "14px 16px", borderRadius: 14,
+                fontSize: 14, background: C.surface, color: C.text, outline: "none",
+                border: `1px solid ${getAnswer(current.id) ? C.activeBorder : C.border}`,
+                resize: "none", lineHeight: 1.5,
               }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = C.brand }}
+              onBlur={(e)  => { e.currentTarget.style.borderColor = getAnswer(current.id) ? C.activeBorder : C.border }}
             />
           )}
 
-          {/* ── Múltipla escolha ── */}
-          {current.type === "multiple" &&
-            current.options.map((option) => {
-              const sel = isSelected(current.id, option)
-              return (
-                <OptionButton key={option} label={option} selected={sel}
-                  onClick={() => toggleMultiple(current.id, option)} />
-              )
-            })
-          }
+          {/* Multiple choice */}
+          {current.type === "multiple" && current.options.map((option) => (
+            <OptionButton key={option} label={option} selected={isSelected(current.id, option)} onClick={() => toggleMultiple(current.id, option)} />
+          ))}
         </div>
 
-        {/* Botão avançar */}
-        <div className="mt-8">
+        {/* Next button */}
+        <div style={{ marginTop: 28 }}>
           <button
             onClick={handleNext}
             disabled={!canAdvance()}
-            className={`w-full py-4 rounded-2xl font-bold text-black flex items-center justify-center gap-2 transition-all duration-300 ${
-              canAdvance() ? "hover:scale-[1.02] active:scale-[0.98]" : "opacity-40 cursor-not-allowed"
-            }`}
             style={{
-              background: "#00D26A",
-              boxShadow: canAdvance() ? "0 8px 32px rgba(0,210,106,0.3)" : "none",
+              width: "100%", padding: "15px 0", borderRadius: 16,
+              fontWeight: 700, fontSize: 15, color: "#fff",
+              background: canAdvance() ? C.brand : C.dim,
+              border: "none", cursor: canAdvance() ? "pointer" : "not-allowed",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
             }}
           >
             {isLast ? "Entrar no True Deal" : "Próximo"}
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight width={18} height={18} />
           </button>
         </div>
       </div>
 
-      {/* ── Modal lista de países ── */}
+      {/* Country modal */}
       {showCountryModal && (
         <div
-          className="fixed inset-0 z-50 flex items-end justify-center"
-          style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center", background: "rgba(0,0,0,0.4)" }}
           onClick={() => setShowCountryModal(false)}
         >
           <div
-            className="w-full max-w-md rounded-t-3xl flex flex-col"
-            style={{
-              background: "rgba(255,255,255,0.97)",
-              backdropFilter: "blur(40px)",
-              boxShadow: "0 -16px 64px rgba(0,0,0,0.2)",
-              maxHeight: "75vh",
-            }}
+            style={{ width: "100%", maxWidth: 480, background: C.surface, borderRadius: "24px 24px 0 0", display: "flex", flexDirection: "column", maxHeight: "75vh", boxShadow: "0 -16px 64px rgba(0,0,0,0.12)" }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header do modal */}
-            <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
-              <h3 className="text-lg font-bold text-gray-800">Selecione seu país</h3>
-              <button onClick={() => setShowCountryModal(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.08)" }}>
-                <X className="w-4 h-4 text-gray-600" />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 20px 16px", flexShrink: 0 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 800, color: C.text }}>Selecione seu país</h3>
+              <button onClick={() => setShowCountryModal(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: C.surface2, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <X width={14} height={14} color={C.mid} />
               </button>
             </div>
 
-            {/* Busca */}
-            <div className="px-6 pb-3 flex-shrink-0">
+            <div style={{ padding: "0 20px 14px", flexShrink: 0 }}>
               <input
-                autoFocus
-                type="text"
-                value={countrySearch}
+                autoFocus type="text" value={countrySearch}
                 onChange={(e) => setCountrySearch(e.target.value)}
                 placeholder="Buscar país…"
-                className="w-full px-4 py-3 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
-                style={{ background: "rgba(0,0,0,0.05)", border: "1.5px solid rgba(22,163,74,0.2)" }}
+                style={{ width: "100%", boxSizing: "border-box", padding: "12px 16px", borderRadius: 12, fontSize: 14, background: C.surface2, border: `1px solid ${C.border}`, color: C.text, outline: "none" }}
+                onFocus={(e) => { e.currentTarget.style.borderColor = C.brand }}
+                onBlur={(e)  => { e.currentTarget.style.borderColor = C.border }}
               />
             </div>
 
-            {/* Lista scrollável */}
-            <div className="overflow-y-auto flex-1 px-6 pb-6">
+            <div style={{ overflowY: "auto", flex: 1, padding: "0 20px 24px" }}>
               {filteredCountries.length === 0 ? (
-                <p className="text-center text-gray-400 py-8 text-sm">Nenhum país encontrado</p>
+                <p style={{ textAlign: "center", color: C.dim, padding: "32px 0", fontSize: 13 }}>Nenhum país encontrado</p>
               ) : (
-                <div className="space-y-1">
-                  {filteredCountries.map((country) => (
-                    <button
-                      key={country}
-                      onClick={() => {
-                        setAnswer(current.id, country)
-                        setShowCountryModal(false)
-                        setCountrySearch("")
-                      }}
-                      className="w-full text-left px-4 py-3 rounded-xl text-sm font-medium transition-all hover:scale-[1.01]"
-                      style={{
-                        background: getAnswer(current.id) === country
-                          ? "rgba(22,163,74,0.1)" : "transparent",
-                        color: getAnswer(current.id) === country ? "#16A34A" : "#374151",
-                      }}
-                    >
-                      {country}
-                    </button>
-                  ))}
+                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                  {filteredCountries.map((country) => {
+                    const sel = getAnswer(current.id) === country
+                    return (
+                      <button key={country}
+                        onClick={() => { setAnswer(current.id, country); setShowCountryModal(false); setCountrySearch("") }}
+                        style={{
+                          textAlign: "left", padding: "12px 16px", borderRadius: 10,
+                          fontSize: 14, fontWeight: sel ? 600 : 400,
+                          background: sel ? C.activeLight : "transparent",
+                          color: sel ? C.brand : C.text, border: "none", cursor: "pointer",
+                        }}
+                      >
+                        {country}
+                      </button>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -347,40 +313,5 @@ export default function SurveyPage() {
         </div>
       )}
     </div>
-  )
-}
-
-// ── Componente reutilizável de opção ─────────────────────────────────────────
-function OptionButton({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {
-  return (
-    <button
-      onClick={onClick}
-      className="w-full p-4 rounded-2xl text-left transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
-      style={{
-        background: selected ? "rgba(0,210,106,0.12)" : "rgba(255,255,255,0.05)",
-        backdropFilter: "blur(20px) saturate(200%)",
-        border: selected ? "2px solid rgba(0,210,106,0.5)" : "1px solid rgba(255,255,255,0.1)",
-        boxShadow: selected ? "0 4px 20px rgba(0,210,106,0.15)" : "0 4px 16px rgba(0,0,0,0.1)",
-      }}
-    >
-      <div className="flex items-center gap-3">
-        <div
-          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center transition-all"
-          style={{
-            background: selected ? "#00D26A" : "rgba(255,255,255,0.2)",
-            border: selected ? "none" : "2px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          {selected && (
-            <svg className="w-3 h-3 text-black" viewBox="0 0 12 12" fill="none">
-              <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
-        </div>
-        <span className="font-medium text-sm" style={{ color: selected ? "#00D26A" : "#FFFFFF" }}>
-          {label}
-        </span>
-      </div>
-    </button>
   )
 }
