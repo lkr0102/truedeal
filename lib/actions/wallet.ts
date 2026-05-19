@@ -85,6 +85,31 @@ export async function getMyWallet(): Promise<{ publicKey: string | null }> {
   return { publicKey: data?.public_key ?? null }
 }
 
+// ── Manual devnet USDC faucet — for testers only ─────────────────────────────
+export async function claimDevnetUSDC(): Promise<{ success: boolean; error?: string }> {
+  if (process.env.NEXT_PUBLIC_SOLANA_NETWORK === "mainnet-beta") {
+    return { success: false, error: "Not available on mainnet" }
+  }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: "Não autenticado" }
+
+  const { data } = await (supabase.from("user_wallets") as any)
+    .select("public_key")
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  if (!data?.public_key) return { success: false, error: "Wallet não encontrada" }
+
+  try {
+    await grantDevnetUSDC(data.public_key)
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+}
+
 // ── Fetch SOL balance from the Solana RPC ─────────────────────────────────────
 export async function getSolBalance(publicKeyStr: string): Promise<number> {
   try {

@@ -487,7 +487,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
             : "Your performance is evaluated window by window — not just at the end. To win, you need to hit the goal in every window."}
         </p>
         <div style={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, color: C.forming, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 7 }}>
-          {language === "pt" ? "Exemplo: 1 post/dia · 4 semanas" : "Example: 1 post/day · 4 weeks"}
+          {language === "pt" ? "Exemplo: 7 posts/semana · 4 semanas" : "Example: 7 posts/week · 4 weeks"}
         </div>
         <div style={{ borderRadius: 10, overflow: "hidden", border: `1px solid ${C.border}` }}>
           {[

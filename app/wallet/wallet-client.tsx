@@ -6,9 +6,10 @@ import {
   Home, Compass, Wallet, User, Plus,
   Eye, EyeOff, ArrowDownToLine, ArrowUpFromLine,
   Trophy, X as XIcon, TrendingDown,
-  Copy, Check, ChevronRight,
+  Copy, Check, ChevronRight, FlaskConical, Loader2,
 } from "lucide-react"
 import type { Profile, TdpTransaction, TdpReason } from "@/lib/supabase/types"
+import { claimDevnetUSDC } from "@/lib/actions/wallet"
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
 const C = {
@@ -120,6 +121,17 @@ export default function WalletClient({
   const [activeModal, setActiveModal] = useState<ModalType>(null)
   const [copied,      setCopied]      = useState(false)
   const [pixAmount,   setPixAmount]   = useState("")
+  const [claimState,  setClaimState]  = useState<"idle" | "loading" | "ok" | "err">("idle")
+
+  const isDevnet = process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta"
+
+  async function handleClaimUSDC() {
+    if (claimState === "loading") return
+    setClaimState("loading")
+    const res = await claimDevnetUSDC()
+    setClaimState(res.success ? "ok" : "err")
+    if (res.success) setTimeout(() => setClaimState("idle"), 4000)
+  }
 
   function truncateAddr(addr: string) { return `${addr.slice(0,6)}...${addr.slice(-6)}` }
   function copyAddr() {
@@ -152,6 +164,7 @@ export default function WalletClient({
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Top bar */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
@@ -262,6 +275,35 @@ export default function WalletClient({
             </button>
           ))}
         </div>
+
+        {/* Devnet faucet */}
+        {isDevnet && (
+          <button
+            onClick={handleClaimUSDC}
+            disabled={claimState === "loading"}
+            style={{
+              width: "100%", marginBottom: 24, padding: "13px 0", borderRadius: 18,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              fontWeight: 700, fontSize: 13, cursor: claimState === "loading" ? "not-allowed" : "pointer",
+              background: claimState === "ok"  ? "rgba(0,184,82,0.10)"
+                        : claimState === "err" ? "rgba(220,38,38,0.08)"
+                        : "rgba(59,130,246,0.08)",
+              color: claimState === "ok"  ? C.brand
+                   : claimState === "err" ? "#DC2626"
+                   : "#3B82F6",
+              border: `1px dashed ${
+                claimState === "ok"  ? "rgba(0,184,82,0.35)"
+              : claimState === "err" ? "rgba(220,38,38,0.3)"
+              : "rgba(59,130,246,0.3)"}`,
+            }}>
+            {claimState === "loading"
+              ? <Loader2 style={{ width: 16, height: 16, stroke: "#3B82F6", fill: "none", animation: "spin 1s linear infinite" }} />
+              : <FlaskConical style={{ width: 16, height: 16, stroke: "currentColor", fill: "none" }} />}
+            {claimState === "ok"  ? "1000 USDC recebidos! ✓"
+           : claimState === "err" ? "Falha — tente novamente"
+           : "Claim 1000 USDC for testing"}
+          </button>
+        )}
 
         {/* Deal history */}
         <p style={{ fontSize: 14, fontWeight: 700, color: C.text, marginBottom: 12 }}>Extrato de Deals</p>
