@@ -35,10 +35,16 @@ export default async function WalletPage() {
     fetchSolUsdPrice(),
   ])
 
-  let { publicKey: managedPublicKey } = await getMyWallet()
-  if (!managedPublicKey) {
-    const created = await ensureUserWallet()
-    managedPublicKey = created.publicKey
+  let managedPublicKey: string | null = null
+  try {
+    const existing = await getMyWallet()
+    managedPublicKey = existing.publicKey
+    if (!managedPublicKey) {
+      const created = await ensureUserWallet()
+      managedPublicKey = created.publicKey
+    }
+  } catch (err) {
+    console.error("[wallet/page] wallet provisioning failed:", err)
   }
 
   const [solBalance, usdcBalance] = await Promise.all([
