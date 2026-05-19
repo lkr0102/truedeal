@@ -59,7 +59,7 @@ export async function POST(req: Request) {
     // 1. Buscar a participação do usuário no deal
     const { data: participant, error: fetchError } = await supabase
       .from("deal_participants")
-      .select("id, initial_snapshot")
+      .select("id, start_snapshot")
       .eq("deal_id", dealId)
       .eq("user_id", userId)
       .single()
@@ -68,13 +68,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Participante não encontrado" }, { status: 404 })
     }
 
-    // 2. Se for o primeiro snapshot, salva como initial_snapshot
-    if (!participant.initial_snapshot) {
+    // 2. Se for o primeiro snapshot, salva como start_snapshot
+    if (!participant.start_snapshot) {
       await supabase
         .from("deal_participants")
-        .update({ 
-          initial_snapshot: snapshotData,
-          current_snapshot: snapshotData 
+        .update({
+          start_snapshot: snapshotData,
+          current_snapshot: snapshotData
         })
         .eq("id", participant.id)
     } else {

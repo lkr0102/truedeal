@@ -15,13 +15,28 @@ export interface XPost {
   }
 }
 
-export async function fetchXUserPosts(accessToken: string, userId: string): Promise<XPost[]> {
+export interface XFetchOptions {
+  startTime?: string  // ISO 8601, e.g. "2025-01-01T00:00:00Z"
+  endTime?:   string  // ISO 8601
+}
+
+export async function fetchXUserPosts(
+  accessToken: string,
+  userId: string,
+  options: XFetchOptions = {},
+): Promise<XPost[]> {
   try {
-    const response = await fetch(`https://api.twitter.com/2/users/${userId}/tweets?tweet.fields=public_metrics`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
+    const params = new URLSearchParams({
+      "tweet.fields": "public_metrics",
+      max_results:    "100",
     })
+    if (options.startTime) params.set("start_time", options.startTime)
+    if (options.endTime)   params.set("end_time",   options.endTime)
+
+    const response = await fetch(
+      `https://api.twitter.com/2/users/${userId}/tweets?${params}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } },
+    )
 
     if (!response.ok) {
       throw new Error(`X API Error: ${response.statusText}`)

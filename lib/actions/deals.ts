@@ -7,7 +7,6 @@ import type {
   DealStatus, DealType, DealCategory,
 } from "@/lib/supabase/types"
 import { decryptSecret } from "@/lib/solana/keypair"
-import { PublicKey } from "@solana/web3.js"
 
 const CHANNEL_LABELS: Record<string, string> = {
   x: "X",
@@ -160,7 +159,7 @@ export async function createDeal(input: CreateDealInput) {
           .update({ solana_tx_signature: stakeTxSignature, short_id: txShortId })
           .eq("id", deal.id),
         (supabase.from("deal_participants") as any)
-          .update({ transaction_hash: stakeTxSignature, status: "staked" })
+          .update({ transaction_hash: stakeTxSignature })
           .eq("deal_id", deal.id)
           .eq("user_id", user.id),
       ])
@@ -468,7 +467,7 @@ export async function joinDeal(dealId: string) {
       txSignature = await stakeUsdc(userKeypair, feePayer, toUSDCUnits(deal.entry_amount))
 
       await (supabase.from("deal_participants") as any)
-        .update({ transaction_hash: txSignature, status: "staked" })
+        .update({ transaction_hash: txSignature })
         .eq("deal_id", dealId)
         .eq("user_id", user.id)
 
@@ -523,8 +522,8 @@ export async function activateDeal(dealId: string) {
   if (deal.status !== "formacao") return { error: "Deal já está ativo ou encerrado" }
 
   if (deal.participants.length < 2) {
-    await (supabase.from("deals") as any).update({ status: "cancelado" }).eq("id", dealId)
-    return { error: "Quorum insuficiente. Deal cancelado.", status: "cancelado" }
+    await (supabase.from("deals") as any).update({ status: "encerrado" }).eq("id", dealId)
+    return { error: "Quorum insuficiente. Deal encerrado.", status: "encerrado" }
   }
 
   await (supabase.from("deals") as any).update({ status: "ativo" }).eq("id", dealId)
@@ -534,7 +533,7 @@ export async function activateDeal(dealId: string) {
   transactions.push({
     user_id: deal.creator_id,
     amount:  500,
-    reason:  "deal_activate_creator",
+    reason:  "deal_create",
     deal_id: deal.id,
   })
 
@@ -543,7 +542,7 @@ export async function activateDeal(dealId: string) {
       transactions.push({
         user_id: p.user_id,
         amount:  200,
-        reason:  "deal_activate_participant",
+        reason:  "deal_join",
         deal_id: deal.id,
       })
     }
@@ -603,7 +602,7 @@ export async function depositToEscrow(dealId: string) {
     const txSignature = await joinAgreementUSDC(userKeypair, feePayer, dealId)
 
     await (supabase.from("deal_participants") as any)
-      .update({ status: "staked", transaction_hash: txSignature })
+      .update({ transaction_hash: txSignature })
       .eq("deal_id", dealId)
       .eq("user_id", user.id)
 
@@ -656,81 +655,19 @@ export async function declareWinner(dealId: string, winnerId: string) {
   return { success: true }
 }
 
-// ── Settlement: DealGuard Sovereign Payout (TX 3) ────────────────────────────
+// ── Settlement: DealGuard Sovereign Payout ───────────────────────────────────
 
-/**
- * Distributes USDC to winners via the on-chain Anchor settle instruction.
- * Economic logic (Slacker Tax 3%) is fully enforced by the smart contract.
- * Dual-oracle signatures (oracle1 + oracle2) authorize the settlement.
- */
-export async function withdrawFromEscrow(dealId: string, proofHash: string) {
-  const supabase = await createClient()
-
-  const { data: { user }, error: authErr } = await supabase.auth.getUser()
-  if (authErr || !user) return { error: "Não autenticado" }
-
+// Thin wrapper kept for API compatibility. All settlement logic lives in
+// lib/actions/settlement.ts and is also triggered by the cron at
+// /api/cron/settle-deals (runs hourly on Vercel).
+export async function withdrawFromEscrow(dealId: string) {
+  const { settleDealProtocol } = await import("@/lib/actions/settlement")
   try {
-    // 1. Fetch winners and their wallet pubkeys
-    const { data: winners, error: winErr } = await (supabase.from("deal_participants") as any)
-      .select("user_id, user_wallets(public_key)")
-      .eq("deal_id", dealId)
-      .eq("status", "winner")
-
-    if (winErr || !winners || winners.length === 0) {
-      return { error: "Nenhum vencedor encontrado para liquidação." }
-    }
-
-    // 2. Load dual-oracle keypairs
-    const { getFeePayer, getOracle2 } = await import("@/lib/solana/fee-payer")
-    const { settlePerformanceAgreement } = await import("@/lib/solana/anchor-client")
-    const { USDC_MINT } = await import("@/lib/solana/constants")
-    const { getAssociatedTokenAddress } = await import("@solana/spl-token")
-
-    const oracle1 = getFeePayer()
-    const oracle2 = getOracle2()
-
-    // 3. Collect winner wallet pubkeys
-    const winnerPubkeys = winners
-      .filter((w: any) => w.user_wallets?.public_key)
-      .map((w: any) => new PublicKey(w.user_wallets.public_key))
-
-    if (winnerPubkeys.length === 0) {
-      return { error: "Carteiras dos vencedores não encontradas." }
-    }
-
-    // 4. Treasury USDC ATA (oracle1 receives the 3% fee)
-    const treasuryUsdcATA = await getAssociatedTokenAddress(USDC_MINT, oracle1.publicKey)
-
-    // 5. Convert proof hash hex string → Uint8Array
-    const { createHash } = await import("crypto")
-    const proofHashBytes = Buffer.from(proofHash.replace("0x", ""), "hex")
-
-    console.log(`[Settlement] ${winnerPubkeys.length} winners for deal ${dealId}`)
-
-    // 6. On-chain settle — Rust contract handles all economic distribution
-    const txSignature = await settlePerformanceAgreement(
-      oracle1,
-      oracle2,
-      dealId,
-      winnerPubkeys,
-      treasuryUsdcATA,
-      proofHashBytes,
-      BigInt(winnerPubkeys.length),
-    )
-
-    // 7. Persist final settlement state
-    await (supabase.from("deals") as any)
-      .update({
-        status:              "encerrado",   // enum value added in migration 010
-        final_proof_hash:    proofHash,     // column added in migration 009
-        solana_tx_signature: txSignature,
-      })
-      .eq("id", dealId)
-
+    const result = await settleDealProtocol(dealId)
     revalidatePath(`/deal/${dealId}`)
-    return { success: true, txSignature }
+    return { success: true, txSignature: result.txSignature }
   } catch (err: any) {
     console.error("[Settlement] withdrawFromEscrow failed:", err)
-    return { error: `Erro na liquidação on-chain: ${err.message}` }
+    return { error: `Erro na liquidação: ${err.message}` }
   }
 }

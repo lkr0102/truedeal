@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, ChevronRight, ChevronDown,
-  Plus, Minus, Check, Info, X, AlertCircle, ShieldCheck, Lock, Globe,
+  Plus, Minus, Check, Info, X, AlertCircle, ShieldCheck, Lock, Globe, ExternalLink,
 } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
 import type { DealCategory, DealType } from "@/lib/supabase/types"
@@ -1326,13 +1326,16 @@ export default function CreateDealPage() {
           <div className="w-full rounded-t-3xl px-5 pt-6 pb-10"
             style={{ background: C.surface, boxShadow: "0 -20px 80px rgba(0,0,0,0.25)", maxHeight: "92vh", overflowY: "auto" }}>
 
+            {/* Handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 100, background: C.border, margin: "0 auto 22px" }} />
+
             {/* Icon + title */}
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 22 }}>
-              <div style={{ width: 68, height: 68, borderRadius: "50%", background: "rgba(0,184,82,0.1)", border: "2px solid rgba(0,184,82,0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-                <ShieldCheck style={{ width: 32, height: 32, stroke: C.brand, fill: "none" }} />
+              <div style={{ width: 52, height: 52, borderRadius: 16, background: "rgba(0,184,82,0.08)", border: "1.5px solid rgba(0,184,82,0.2)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+                <ShieldCheck style={{ width: 26, height: 26, stroke: C.brand, fill: "none" }} />
               </div>
-              <h2 style={{ fontSize: 21, fontWeight: 900, color: C.text, letterSpacing: "-0.03em", textAlign: "center" }}>
-                {language === "pt" ? "Depósito confirmado!" : "Deposit confirmed!"}
+              <h2 style={{ fontSize: 20, fontWeight: 800, color: C.text, letterSpacing: "-0.03em", textAlign: "center" }}>
+                {language === "pt" ? "Depósito confirmado" : "Deposit confirmed"}
               </h2>
               <p style={{ fontSize: 13, color: C.dim, marginTop: 4, textAlign: "center" }}>
                 {language === "pt" ? "Seu acordo foi registrado na blockchain Solana" : "Your agreement was registered on the Solana blockchain"}
@@ -1350,51 +1353,61 @@ export default function CreateDealPage() {
               <p style={{ fontSize: 12, color: C.mid, marginTop: 4, fontFamily: mono }}>USDC · Solana devnet</p>
             </div>
 
-            {/* TX signature */}
+            {/* TX signature — links directly to Solscan */}
             {confirmedDeal.txSignature && (
-              <div style={{ padding: "10px 14px", borderRadius: 12, background: C.surface2, border: `1px solid ${C.border}`, marginBottom: 16 }}>
-                <p style={{ fontSize: 10, color: C.dim, marginBottom: 3, fontFamily: mono }}>
-                  {language === "pt" ? "Transação on-chain" : "On-chain transaction"}
-                </p>
-                <p style={{ fontSize: 11, color: C.text, fontFamily: mono, wordBreak: "break-all", lineHeight: 1.4 }}>
-                  {confirmedDeal.txSignature.slice(0, 24)}…{confirmedDeal.txSignature.slice(-10)}
-                </p>
-              </div>
+              <a
+                href={`https://solscan.io/tx/${confirmedDeal.txSignature}${process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta" ? "?cluster=devnet" : ""}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12, background: C.surface2, border: `1px solid ${C.border}`, marginBottom: 16, textDecoration: "none" }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: 10, color: C.dim, marginBottom: 3, fontFamily: mono, textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                    {language === "pt" ? "Transação on-chain" : "On-chain transaction"}
+                  </p>
+                  <p style={{ fontSize: 11, color: C.text, fontFamily: mono, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {confirmedDeal.txSignature}
+                  </p>
+                </div>
+                <ExternalLink style={{ width: 14, height: 14, stroke: C.dim, flexShrink: 0 }} />
+              </a>
             )}
 
             {/* Deal conditions */}
-            <div style={{ padding: 14, borderRadius: 16, background: "rgba(0,0,0,0.02)", border: `1px solid ${C.border}`, marginBottom: 16 }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: C.mid, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12, fontFamily: mono }}>
-                {language === "pt" ? "Condições do acordo" : "Agreement conditions"}
-              </p>
+            <div style={{ borderRadius: 14, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 14 }}>
+              <div style={{ padding: "9px 12px", borderBottom: `1px solid ${C.border2}`, background: C.surface2 }}>
+                <span style={{ fontSize: 10, fontWeight: 700, color: C.mid, textTransform: "uppercase", letterSpacing: "0.1em", fontFamily: mono }}>
+                  {language === "pt" ? "Condições do acordo" : "Agreement conditions"}
+                </span>
+              </div>
               {[
-                { icon: "🎯", label: language === "pt" ? "Acordo"   : "Deal",        value: confirmedDeal.deal.title },
-                { icon: "📋", label: language === "pt" ? "Regra"    : "Rule",        value: ruleWithFreqLabel || "—" },
-                { icon: "🔗", label: language === "pt" ? "Canal"    : "Channel",     value: selectedChannels.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ") },
-                { icon: "📅", label: language === "pt" ? "Período"  : "Period",      value: `${fmtShort(startDate)} → ${fmtShort(endDate)}` },
-                { icon: "⚡", label: language === "pt" ? "Início"   : "Start",       value: language === "pt" ? `${fmtFull(startDate)} às 00h` : `${fmtFull(startDate)} at 00h` },
-                { icon: "👥", label: language === "pt" ? "Mínimo"   : "Minimum",     value: language === "pt" ? "2 participantes para activar" : "2 participants to activate" },
-                { icon: "💸", label: language === "pt" ? "Taxa"     : "Fee",         value: "3% (só se houver perdedor)" },
-              ].map((row, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingBottom: i < 6 ? 10 : 0, borderBottom: i < 6 ? `1px solid ${C.border2}` : "none", marginBottom: i < 6 ? 10 : 0 }}>
-                  <span style={{ fontSize: 14, lineHeight: "20px", flexShrink: 0 }}>{row.icon}</span>
-                  <span style={{ fontSize: 11, color: C.dim, minWidth: 54, lineHeight: "20px", flexShrink: 0 }}>{row.label}</span>
-                  <span style={{ fontSize: 12, fontWeight: 600, color: C.text, flex: 1, textAlign: "right", lineHeight: 1.4 }}>{row.value}</span>
+                { label: language === "pt" ? "Acordo"   : "Deal",    value: confirmedDeal.deal.title },
+                { label: language === "pt" ? "Regra"    : "Rule",    value: ruleWithFreqLabel || "—" },
+                { label: language === "pt" ? "Canal"    : "Channel", value: selectedChannels.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ") },
+                { label: language === "pt" ? "Período"  : "Period",  value: `${fmtShort(startDate)} → ${fmtShort(endDate)}` },
+                { label: language === "pt" ? "Início"   : "Start",   value: language === "pt" ? `${fmtFull(startDate)} às 00h` : `${fmtFull(startDate)} at 00h` },
+                { label: language === "pt" ? "Mínimo"   : "Minimum", value: language === "pt" ? "2 participantes para ativar" : "2 participants to activate" },
+                { label: language === "pt" ? "Taxa"     : "Fee",     value: language === "pt" ? "3% (só se houver perdedor)" : "3% (losers only)" },
+              ].map((row, i, arr) => (
+                <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "9px 12px", borderBottom: i < arr.length - 1 ? `1px solid ${C.border2}` : "none", fontSize: 12 }}>
+                  <span style={{ color: C.dim, flexShrink: 0, marginRight: 8 }}>{row.label}</span>
+                  <span style={{ fontWeight: 600, color: C.text, textAlign: "right", fontFamily: i === 0 ? undefined : mono, fontSize: i === 0 ? 12 : 11 }}>{row.value}</span>
                 </div>
               ))}
             </div>
 
             {/* Min participants warning */}
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.25)", marginBottom: 20 }}>
-              <p style={{ fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
-                ⏳ {language === "pt"
+            <div style={{ display: "flex", gap: 10, padding: "10px 12px", borderRadius: 12, background: "rgba(232,98,10,0.07)", border: `1px solid rgba(232,98,10,0.18)`, marginBottom: 20 }}>
+              <AlertCircle style={{ width: 15, height: 15, stroke: C.forming, flexShrink: 0, marginTop: 1 }} />
+              <p style={{ fontSize: 11, color: C.forming, lineHeight: 1.6, fontWeight: 600 }}>
+                {language === "pt"
                   ? "O deal só entra em vigor quando pelo menos 2 participantes confirmarem antes da data de início. Se não atingir o mínimo, o depósito é devolvido automaticamente."
                   : "The deal only activates when at least 2 participants confirm before the start date. If the minimum isn't reached, the deposit is automatically returned."}
               </p>
             </div>
 
             <button onClick={() => router.push("/")}
-              style={{ width: "100%", padding: "16px 0", borderRadius: 18, fontWeight: 700, fontSize: 15, color: "#fff", background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, border: "none", cursor: "pointer", boxShadow: "0 8px 32px rgba(0,184,82,0.35)" }}>
+              style={{ width: "100%", padding: "16px 0", borderRadius: 100, fontWeight: 700, fontSize: 15, color: "#fff", background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, border: "none", cursor: "pointer", boxShadow: "0 4px 18px rgba(0,184,82,0.3)" }}>
               {language === "pt" ? "Ver meu deal" : "See my deal"}
             </button>
           </div>

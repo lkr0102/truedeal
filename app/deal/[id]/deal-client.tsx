@@ -132,9 +132,9 @@ function getUserTag(username: string) {
 }
 
 function buildPrizeSlices(distribution: Distribution, netPot: number): PrizeSlice[] {
+  // netPot is already net of the 3% fee on losers — no additional fee slice here.
   if (distribution === "winner") return [
-    { label: "Vencedor",  pct: 0.95, color: "#F59E0B", amount: Math.round(netPot * 0.95) },
-    { label: "True Deal", pct: 0.05, color: "#16A34A", amount: Math.round(netPot * 0.05) },
+    { label: "Vencedor", pct: 1.0, color: "#F59E0B", amount: netPot },
   ]
   if (distribution === "top3") return [
     { label: "1º lugar", pct: 0.50, color: "#F59E0B", amount: Math.round(netPot * 0.50) },
@@ -145,7 +145,7 @@ function buildPrizeSlices(distribution: Distribution, netPot: number): PrizeSlic
 }
 
 function buildPotentialWin(distribution: Distribution, netPot: number, myRank: number): number | undefined {
-  if (distribution === "winner") return myRank === 1 ? Math.round(netPot * 0.95) : undefined
+  if (distribution === "winner") return myRank === 1 ? netPot : undefined
   if (distribution === "top3" && myRank <= 3) {
     const pcts = [0.50, 0.30, 0.20]
     return pcts[myRank - 1] ? Math.round(netPot * pcts[myRank - 1]) : undefined
@@ -162,7 +162,13 @@ function mapDeal(d: DealWithParticipants, userId: string | null, lang: "pt" | "e
   const daysGone  = Math.max(0, Math.min(daysTotal, differenceInCalendarDays(now, startDate)))
   const progress  = daysGone / daysTotal
 
-  const statusMap: Record<string, DealStatus> = { formacao: "pendente", ativo: "ativo", finalizado: "finalizado" }
+  const statusMap: Record<string, DealStatus> = {
+    formacao:   "pendente",
+    ativo:      "ativo",
+    finalizado: "finalizado",
+    liquidando: "finalizado",
+    encerrado:  "finalizado",
+  }
   const status    = statusMap[d.status] ?? "pendente"
   const prizeMap: Record<string, PrizeType> = { winner: "primeiro", top3: "ranking", proportional: "proporcional" }
   const prizeType = prizeMap[d.distribution] ?? "primeiro"
@@ -565,7 +571,7 @@ export default function DealClient({
   })()
 
   // ── Share link ───────────────────────────────────────────────────────────────
-  const shareUrl = `https://truedeal.app/deal/${dealData.id}`
+  const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/deal/${dealData.id}`
 
   function handleCopyLink() {
     navigator.clipboard.writeText(shareUrl).catch(() => {})

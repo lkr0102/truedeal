@@ -3,6 +3,33 @@ import { fetchStravaActivities, validateStravaRule } from "./strava"
 import { fetchXUserPosts, validateXRule } from "./x"
 import { analyzeEvidence } from "./sentinel-core"
 
+async function refreshStravaToken(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  connectionId: string,
+  refreshToken: string,
+): Promise<string | null> {
+  try {
+    const res = await fetch("https://www.strava.com/oauth/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id:     process.env.STRAVA_CLIENT_ID,
+        client_secret: process.env.STRAVA_CLIENT_SECRET,
+        grant_type:    "refresh_token",
+        refresh_token: refreshToken,
+      }),
+    })
+    if (!res.ok) return null
+    const { access_token, refresh_token, expires_at } = await res.json()
+    await (supabase.from("social_connections") as any)
+      .update({ access_token, refresh_token, token_expires_at: new Date(expires_at * 1000).toISOString() })
+      .eq("id", connectionId)
+    return access_token
+  } catch {
+    return null
+  }
+}
+
 /**
  * ⚡ DealGuard Engine: Audit Service
  * Orquestra a auditoria de acordos ativos com análise Sentinel AI.
@@ -59,25 +86,33 @@ export async function auditDeal(dealId: string) {
       let rawData: any[] = []
 
       if (channel === "strava") {
-        rawData = await fetchStravaActivities(conn.access_token, {
+        let token = conn.access_token
+        // Refresh if expired (token_expires_at is a unix timestamp)
+        const expiresAt = conn.token_expires_at ? Number(conn.token_expires_at) : 0
+        if (expiresAt > 0 && Date.now() / 1000 > expiresAt - 300 && conn.refresh_token) {
+          token = (await refreshStravaToken(supabase, conn.id, conn.refresh_token)) ?? token
+        }
+        rawData = await fetchStravaActivities(token, {
           after:  afterEpoch,
           before: beforeEpoch,
         })
         isSuccess = validateStravaRule(rawData, ruleType, ruleTarget)
 
       } else if (channel === "x") {
-        rawData = await fetchXUserPosts(conn.access_token, conn.external_id)
+        const startTime = deal.start_date ? new Date(deal.start_date).toISOString() : undefined
+        const endTime   = deal.end_date   ? new Date(deal.end_date).toISOString()   : undefined
+        rawData = await fetchXUserPosts(conn.access_token, conn.external_id, { startTime, endTime })
         isSuccess = validateXRule(rawData, ruleType, ruleTarget)
 
       } else if (channel === "wellhub" || channel === "totalpass") {
         // Wellhub / TotalPass: validate check-in count recorded in deal_checkins
         const { count, error: checkinErr } = await (supabase.from("deal_checkins") as any)
           .select("*", { count: "exact", head: true })
-          .eq("deal_id",  dealId)
-          .eq("user_id",  participant.user_id)
-          .eq("platform", channel)
-          .gte("checked_in_at", deal.start_date)
-          .lte("checked_in_at", deal.end_date)
+          .eq("deal_id",    dealId)
+          .eq("user_id",    participant.user_id)
+          .eq("source",     channel)
+          .gte("activity_at", deal.start_date)
+          .lte("activity_at", deal.end_date)
 
         if (!checkinErr) {
           isSuccess = (count ?? 0) >= ruleTarget
