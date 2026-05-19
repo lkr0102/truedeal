@@ -174,9 +174,8 @@ function LoginPageInner() {
     if (url?.includes("seu-projeto")) setIsDemoMode(true)
   }, [])
 
-  const { wallets, select, wallet, connected, publicKey, connecting } = useWallet()
-  const pendingRef          = useRef<string | null>(null)
-  const walletInitiatedRef  = useRef(false)
+  const { wallets, select, connect, wallet, connected, publicKey, connecting } = useWallet()
+  const pendingRef = useRef<string | null>(null)
 
   useEffect(() => {
     if (isDemoMode) {
@@ -189,20 +188,18 @@ function LoginPageInner() {
     })
   }, [router, isDemoMode])
 
+  // When wallet state changes after select(), connect and redirect
   useEffect(() => {
     if (!pendingRef.current || !wallet) return
     if (wallet.adapter.name !== pendingRef.current) return
     pendingRef.current = null
-    wallet.adapter.connect().catch(() => setWalletError("Conexão recusada. Tente novamente."))
-  }, [wallet])
-
-  useEffect(() => {
-    if (connected && publicKey && walletInitiatedRef.current) {
-      walletInitiatedRef.current = false
-      setShowWallets(false)
-      router.push("/")
-    }
-  }, [connected, publicKey, router])
+    connect()
+      .then(() => {
+        setShowWallets(false)
+        router.push("/")
+      })
+      .catch(() => setWalletError("Conexão recusada. Tente novamente."))
+  }, [wallet, connect, router])
 
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -243,14 +240,34 @@ function LoginPageInner() {
     setTimeout(() => router.push("/"), 800)
   }
 
-  function handleWalletConnect(adapterName: string) {
+  async function handleWalletConnect(adapterName: string) {
     const found = wallets.find((w) => w.adapter.name === adapterName)
     if (!found) {
       window.open(WALLET_INSTALL[adapterName as keyof typeof WALLET_INSTALL] ?? "#", "_blank")
       return
     }
     setWalletError(null)
-    walletInitiatedRef.current = true
+
+    // Already connected with the right wallet — go directly
+    if (connected && publicKey && wallet?.adapter.name === adapterName) {
+      setShowWallets(false)
+      router.push("/")
+      return
+    }
+
+    // Wallet already selected but not yet connected — call connect() directly
+    if (wallet?.adapter.name === adapterName && !connected) {
+      try {
+        await connect()
+        setShowWallets(false)
+        router.push("/")
+      } catch {
+        setWalletError("Conexão recusada. Tente novamente.")
+      }
+      return
+    }
+
+    // Different wallet selected — switch and let the effect call connect()
     pendingRef.current = adapterName
     select(found.adapter.name)
   }

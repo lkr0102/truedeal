@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { generateKeypair, encryptSecret } from "@/lib/solana/keypair"
+import { grantDevnetUSDC } from "@/lib/solana/devnet-faucet"
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -54,6 +55,13 @@ export async function GET(request: NextRequest) {
           await (supabase.from("profiles") as any)
             .update({ solana_public_key: publicKey })
             .eq("id", data.user.id)
+
+          // Grant devnet USDC so the user can test immediately (non-blocking)
+          if (process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta") {
+            grantDevnetUSDC(publicKey).catch((err) =>
+              console.error("[devnet] USDC grant failed:", err)
+            )
+          }
         }
       } catch (walletErr) {
         console.error("[auth/callback] wallet provisioning failed:", walletErr)
