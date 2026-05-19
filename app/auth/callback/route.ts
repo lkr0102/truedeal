@@ -34,25 +34,30 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error && data.user) {
-      const { data: existingWallet } = await (supabase.from("user_wallets") as any)
-        .select("public_key")
-        .eq("user_id", data.user.id)
-        .maybeSingle()
+      try {
+        const { data: existingWallet } = await (supabase.from("user_wallets") as any)
+          .select("public_key")
+          .eq("user_id", data.user.id)
+          .maybeSingle()
 
-      if (!existingWallet && process.env.WALLET_MASTER_KEY) {
-        const keypair         = generateKeypair()
-        const encryptedSecret = encryptSecret(keypair.secretKey)
-        const publicKey       = keypair.publicKey.toBase58()
+        if (!existingWallet && process.env.WALLET_MASTER_KEY) {
+          const keypair         = generateKeypair()
+          const encryptedSecret = encryptSecret(keypair.secretKey)
+          const publicKey       = keypair.publicKey.toBase58()
 
-        await (supabase.from("user_wallets") as any).insert({
-          user_id:          data.user.id,
-          public_key:       publicKey,
-          encrypted_secret: encryptedSecret,
-        })
+          await (supabase.from("user_wallets") as any).insert({
+            user_id:          data.user.id,
+            public_key:       publicKey,
+            encrypted_secret: encryptedSecret,
+          })
 
-        await (supabase.from("profiles") as any)
-          .update({ solana_public_key: publicKey })
-          .eq("id", data.user.id)
+          await (supabase.from("profiles") as any)
+            .update({ solana_public_key: publicKey })
+            .eq("id", data.user.id)
+        }
+      } catch (walletErr) {
+        console.error("[auth/callback] wallet provisioning failed:", walletErr)
+        // Auth succeeded — continue to app even if wallet creation failed
       }
 
       const onboardingDone = data.user.user_metadata?.onboarding_completed === true
