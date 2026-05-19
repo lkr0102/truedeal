@@ -68,6 +68,7 @@ export default async function WalletPage() {
       solBalance={solBalance}
       solUsdPrice={solUsdPrice}
       usdcBalance={usdcBalance}
+      isDevnet={process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta"}
     />
   )
 }

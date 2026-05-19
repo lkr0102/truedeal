@@ -109,12 +109,13 @@ interface WalletClientProps {
   solBalance:       number
   solUsdPrice:      number
   usdcBalance:      number
+  isDevnet:         boolean
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function WalletClient({
-  profile, tdpHistory, activeDealsValue, managedPublicKey, solBalance, solUsdPrice, usdcBalance,
+  profile, tdpHistory, activeDealsValue, managedPublicKey, solBalance, solUsdPrice, usdcBalance, isDevnet,
 }: WalletClientProps) {
   const [showBalance, setShowBalance] = useState(true)
   const [currency,    setCurrency]    = useState<Currency>("usd")
@@ -122,8 +123,6 @@ export default function WalletClient({
   const [copied,      setCopied]      = useState(false)
   const [pixAmount,   setPixAmount]   = useState("")
   const [claimState,  setClaimState]  = useState<"idle" | "loading" | "ok" | "err">("idle")
-
-  const isDevnet = process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta"
 
   async function handleClaimUSDC() {
     if (claimState === "loading") return
