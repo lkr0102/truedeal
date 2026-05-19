@@ -107,12 +107,13 @@ interface WalletClientProps {
   managedPublicKey: string | null
   solBalance:       number
   solUsdPrice:      number
+  usdcBalance:      number
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function WalletClient({
-  profile, tdpHistory, activeDealsValue, managedPublicKey, solBalance, solUsdPrice,
+  profile, tdpHistory, activeDealsValue, managedPublicKey, solBalance, solUsdPrice, usdcBalance,
 }: WalletClientProps) {
   const [showBalance, setShowBalance] = useState(true)
   const [currency,    setCurrency]    = useState<Currency>("usd")
@@ -127,14 +128,14 @@ export default function WalletClient({
     setCopied(true); setTimeout(() => setCopied(false), 2000)
   }
 
-  const totalUsd     = solBalance * solUsdPrice
+  const totalUsd     = usdcBalance                         // USDC is the deal currency (1 USDC ≈ $1)
   const frozenUsd    = activeDealsValue
-  const availableUsd = Math.max(0, totalUsd - frozenUsd)
+  const availableUsd = Math.max(0, usdcBalance - frozenUsd)
 
-  function fmtAmount(usdAmount: number, hide = false): string {
+  function fmtAmount(usdcAmt: number, hide = false): string {
     if (hide) return "••••"
-    if (currency === "sol") return `${(solUsdPrice > 0 ? usdAmount / solUsdPrice : 0).toFixed(4)} SOL`
-    return `$${usdAmount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    if (currency === "sol") return `${(solUsdPrice > 0 ? usdcAmt / solUsdPrice : 0).toFixed(4)} SOL`
+    return `$${usdcAmt.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const displayName = profile?.display_name ?? "Usuário"
@@ -142,7 +143,7 @@ export default function WalletClient({
   const initials    = getInitials(displayName)
   const dealHistory = tdpHistory.filter(tx => DEAL_REASONS.includes(tx.reason))
 
-  const CURRENCY_LABELS: Record<Currency, string> = { usd: "USD", sol: "SOL" }
+  const CURRENCY_LABELS: Record<Currency, string> = { usd: "USDC", sol: "SOL" }
   const CURRENCY_CYCLE: Currency[] = ["usd", "sol"]
   function cycleCurrency() {
     const idx = CURRENCY_CYCLE.indexOf(currency)
@@ -182,10 +183,17 @@ export default function WalletClient({
             {/* Balance row */}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 16 }}>
               <div>
-                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4, ...MONO }}>Saldo Total</p>
-                <p style={{ color: "#fff", fontSize: 30, fontWeight: 900, letterSpacing: "-0.03em" }}>
-                  {showBalance ? fmtAmount(totalUsd) : "••••"}
+                <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 4, ...MONO }}>
+                  {currency === "sol" ? "SOL Balance" : "USDC Balance"}
                 </p>
+                <p style={{ color: "#fff", fontSize: 30, fontWeight: 900, letterSpacing: "-0.03em" }}>
+                  {showBalance ? (currency === "sol" ? `${solBalance.toFixed(4)} SOL` : `${totalUsd.toFixed(2)} USDC`) : "••••"}
+                </p>
+                {currency === "usd" && (
+                  <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 11, marginTop: 2, ...MONO }}>
+                    {showBalance ? `${solBalance.toFixed(4)} SOL` : "•••• SOL"}
+                  </p>
+                )}
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button onClick={cycleCurrency} style={{ padding: "6px 10px", borderRadius: 8, fontSize: 11, fontWeight: 700, color: "#fff", background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.25)", cursor: "pointer", ...MONO }}>
@@ -201,12 +209,20 @@ export default function WalletClient({
             <div style={{ display: "flex", gap: 20, marginBottom: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.2)" }}>
               <div>
                 <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 2, ...MONO }}>Disponível</p>
-                <p style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>{fmtAmount(availableUsd, !showBalance)}</p>
+                <p style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>
+                  {!showBalance ? "••••" : currency === "sol"
+                    ? `${(solUsdPrice > 0 ? availableUsd / solUsdPrice : 0).toFixed(4)} SOL`
+                    : `${availableUsd.toFixed(2)} USDC`}
+                </p>
               </div>
               <div style={{ width: 1, background: "rgba(255,255,255,0.2)" }} />
               <div>
                 <p style={{ color: "rgba(255,255,255,0.6)", fontSize: 9, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 2, ...MONO }}>Em Deals</p>
-                <p style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>{fmtAmount(frozenUsd, !showBalance)}</p>
+                <p style={{ color: "#fff", fontWeight: 700, fontSize: 15 }}>
+                  {!showBalance ? "••••" : currency === "sol"
+                    ? `${(solUsdPrice > 0 ? frozenUsd / solUsdPrice : 0).toFixed(4)} SOL`
+                    : `${frozenUsd.toFixed(2)} USDC`}
+                </p>
               </div>
             </div>
 
@@ -309,8 +325,14 @@ export default function WalletClient({
                   </button>
                 </div>
                 <p style={{ fontSize: 12, color: C.dim, textAlign: "center", lineHeight: 1.5 }}>
-                  Envie SOL para esse endereço. O saldo é atualizado automaticamente.
+                  Envie USDC ou SOL para esse endereço. O saldo é atualizado automaticamente.
                 </p>
+                <div style={{ padding: "10px 14px", borderRadius: 10, background: "rgba(0,184,82,0.06)", border: "1px dashed rgba(0,184,82,0.3)" }}>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: C.brand, marginBottom: 2 }}>Devnet USDC (para deals)</p>
+                  <p style={{ fontSize: 10, color: C.mid, ...MONO, wordBreak: "break-all" }}>
+                    {process.env.NEXT_PUBLIC_USDC_MINT_DEVNET ?? "BpXHCSnxhbzSjzWeaTHG14g1zETtcZeDGk772Nvwjb99"}
+                  </p>
+                </div>
                 <a href="https://faucet.solana.com/" target="_blank" rel="noreferrer"
                   style={{ display: "block", textAlign: "center", padding: "10px 0", fontSize: 12, fontWeight: 700, color: "#3B82F6", borderRadius: 10, background: "rgba(59,130,246,0.06)", border: "1px dashed rgba(59,130,246,0.3)", textDecoration: "none" }}>
                   Precisa de SOL de teste? Use o Faucet da Solana →

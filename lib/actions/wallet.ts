@@ -1,9 +1,11 @@
 "use server"
 
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js"
+import { getAssociatedTokenAddress, getAccount } from "@solana/spl-token"
 import { createClient } from "@/lib/supabase/server"
 import { generateKeypair, encryptSecret } from "@/lib/solana/keypair"
 import { getConnection } from "@/lib/solana/fee-payer"
+import { USDC_MINT } from "@/lib/solana/constants"
 
 // ── Ensure wallet exists for the current user ─────────────────────────────────
 // Idempotent — safe to call on every login.
@@ -61,6 +63,18 @@ export async function getSolBalance(publicKeyStr: string): Promise<number> {
     const connection = getConnection()
     const lamports   = await connection.getBalance(new PublicKey(publicKeyStr))
     return lamports / LAMPORTS_PER_SOL
+  } catch {
+    return 0
+  }
+}
+
+// ── Fetch USDC balance (ATA) from the Solana RPC ──────────────────────────────
+export async function getUsdcBalance(publicKeyStr: string): Promise<number> {
+  try {
+    const connection = getConnection()
+    const ata        = await getAssociatedTokenAddress(USDC_MINT, new PublicKey(publicKeyStr))
+    const account    = await getAccount(connection, ata)
+    return Number(account.amount) / 1_000_000   // USDC has 6 decimals
   } catch {
     return 0
   }

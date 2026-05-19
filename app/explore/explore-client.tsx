@@ -525,7 +525,7 @@ export default function ExploreClient({
   const lang = useLanguageStore(s => s.language)
   const [subTab, setSubTab] = useState<SubTab>("points")
 
-  const SUB_TABS: { key: SubTab; labelKey: string; Icon: React.FC<{ className?: string }> }[] = [
+  const SUB_TABS: { key: SubTab; labelKey: string; Icon: React.FC<{ className?: string; style?: React.CSSProperties }> }[] = [
     { key: "points",     labelKey: "explore_tab_points", Icon: Handshake },
     { key: "halloffame", labelKey: "explore_tab_hof",    Icon: Trophy    },
   ]

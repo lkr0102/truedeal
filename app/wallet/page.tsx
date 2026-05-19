@@ -1,6 +1,6 @@
 import { getMyProfile, getTdpHistory } from "@/lib/actions/profile"
 import { fetchDeals } from "@/lib/actions/deals"
-import { getMyWallet, getSolBalance, ensureUserWallet } from "@/lib/actions/wallet"
+import { getMyWallet, getSolBalance, getUsdcBalance, ensureUserWallet } from "@/lib/actions/wallet"
 import { createClient } from "@/lib/supabase/server"
 import WalletClient from "./wallet-client"
 
@@ -41,7 +41,10 @@ export default async function WalletPage() {
     managedPublicKey = created.publicKey
   }
 
-  const solBalance = managedPublicKey ? await getSolBalance(managedPublicKey) : 0
+  const [solBalance, usdcBalance] = await Promise.all([
+    managedPublicKey ? getSolBalance(managedPublicKey)  : Promise.resolve(0),
+    managedPublicKey ? getUsdcBalance(managedPublicKey) : Promise.resolve(0),
+  ])
 
   const activeDealsValue = deals
     .filter((d: any) =>
@@ -58,6 +61,7 @@ export default async function WalletPage() {
       managedPublicKey={managedPublicKey}
       solBalance={solBalance}
       solUsdPrice={solUsdPrice}
+      usdcBalance={usdcBalance}
     />
   )
 }
