@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { ed25519 } from "@noble/curves/ed25519"
-import bs58 from "bs58"
+import { PublicKey } from "@solana/web3.js"
 import { createServiceClient } from "@/lib/supabase/server"
 
 // POST { publicKey: string, signature: number[], message: string }
@@ -21,12 +20,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Message expired — try again" }, { status: 401 })
     }
 
-    // ── 2. Verify ed25519 signature ──────────────────────────────────────────
-    const pubkeyBytes = bs58.decode(publicKey)
+    // ── 2. Verify ed25519 signature (Web Crypto API — no extra deps) ─────────
+    const pubkeyBytes = new PublicKey(publicKey).toBytes()
     const msgBytes    = new TextEncoder().encode(message)
     const sigBytes    = new Uint8Array(signature)
 
-    const valid = ed25519.verify(sigBytes, msgBytes, pubkeyBytes)
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw", pubkeyBytes, { name: "Ed25519" }, false, ["verify"],
+    )
+    const valid = await crypto.subtle.verify("Ed25519", cryptoKey, sigBytes, msgBytes)
     if (!valid) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
     }

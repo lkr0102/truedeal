@@ -2,7 +2,14 @@
   "name": "truedeal",
   "version": "0.1.0",
   "description": "TrueDeal — Honor your word. Get paid for it. Sovereign digital performance agreements on Solana.",
-  "keywords": ["solana", "anchor", "nextjs", "smart-contracts", "web3", "performance-agreements"],
+  "keywords": [
+    "solana",
+    "anchor",
+    "nextjs",
+    "smart-contracts",
+    "web3",
+    "performance-agreements"
+  ],
   "homepage": "https://truedeal.vercel.app",
   "private": true,
   "scripts": {
