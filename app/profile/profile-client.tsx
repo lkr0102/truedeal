@@ -44,6 +44,7 @@ function BottomNav({ active }: { active: string }) {
         <button onClick={() => router.push("/create")} style={{ width: 50, height: 50, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -14, boxShadow: "0 4px 14px rgba(0,184,82,0.35)", border: `3px solid ${C.bg}`, cursor: "pointer" }}>
           <Plus style={{ width: 22, height: 22, stroke: "#fff", fill: "none" }} />
         </button>
+        <span style={{ fontSize: 9, fontWeight: 500, color: C.brand, textTransform: "uppercase" as const, letterSpacing: "0.04em", ...MONO }}>New Deal</span>
       </div>
       {navItem(Wallet, "wallet",  "/wallet",  "Wallet")}
       {navItem(User,   "profile", "/profile", "Perfil")}

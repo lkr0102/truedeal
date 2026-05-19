@@ -515,6 +515,7 @@ function BottomNav({ active, lang, onCreateClick }: { active: string; lang: Lang
         <button onClick={onCreateClick} style={{ width: 50, height: 50, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -14, boxShadow: `0 4px 14px rgba(0,184,82,0.35)`, border: `3px solid ${C.bg}`, cursor: "pointer" }}>
           <Plus style={{ width: 22, height: 22, stroke: "#fff", fill: "none" }} />
         </button>
+        <span style={{ fontSize: 9, fontWeight: 500, color: C.brand, textTransform: "uppercase" as const, letterSpacing: "0.04em", ...MONO }}>New Deal</span>
       </div>
 
       {rightItems.map(i => navItem(i.icon, i.key, i.href))}
@@ -616,7 +617,7 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
             <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>
               TRUE<span style={{ color: C.brand }}>DEAL</span>
             </div>
-            <div style={{ fontSize: 7.5, fontWeight: 500, color: C.dim, letterSpacing: "0.06em", textTransform: "uppercase" as const, ...MONO, maxWidth: 220 }}>
+            <div style={{ fontSize: 7.5, fontWeight: 500, color: C.dim, letterSpacing: "0.06em", textTransform: "uppercase" as const, ...MONO, whiteSpace: "nowrap" as const }}>
               Set your goals. Honor your word. Get paid for it.
             </div>
           </div>
