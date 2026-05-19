@@ -550,9 +550,11 @@ interface HomeClientProps {
   initialDeals: DealWithParticipants[]
   profile: Profile | null
   userId: string | null
+  usdcBalance:      number
+  activeDealsValue: number
 }
 
-export default function HomeClient({ initialDeals, profile, userId }: HomeClientProps) {
+export default function HomeClient({ initialDeals, profile, userId, usdcBalance, activeDealsValue }: HomeClientProps) {
   const router = useRouter()
   const { language } = useLanguageStore()
   const lang = language
@@ -614,8 +616,8 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
             <div style={{ fontSize: 15, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>
               TRUE<span style={{ color: C.brand }}>DEAL</span>
             </div>
-            <div style={{ fontSize: 7.5, fontWeight: 500, color: C.dim, letterSpacing: "0.06em", textTransform: "uppercase" as const, ...MONO, maxWidth: 160 }}>
-              Set your goals. Honor your word.
+            <div style={{ fontSize: 7.5, fontWeight: 500, color: C.dim, letterSpacing: "0.06em", textTransform: "uppercase" as const, ...MONO, maxWidth: 220 }}>
+              Set your goals. Honor your word. Get paid for it.
             </div>
           </div>
         </div>
@@ -641,9 +643,17 @@ export default function HomeClient({ initialDeals, profile, userId }: HomeClient
           </h2>
           <p style={{ fontSize: 12, color: C.mid }}>{lang === "pt" ? "Pronto para vencer hoje?" : "Ready to win today?"}</p>
         </div>
-        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 13px", textAlign: "right" }}>
-          <div style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.12em" }}>Shakes</div>
-          <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>{shakes.toLocaleString("en-US")}</div>
+        <div style={{ display: "flex", gap: 6 }}>
+          {[
+            { label: "Shakes",    value: shakes.toLocaleString("en-US"),                                                  color: C.text  },
+            { label: "Portfolio", value: `$${(usdcBalance + activeDealsValue).toFixed(0)}`,                               color: C.brand },
+            { label: "Balance",   value: `$${Math.max(0, usdcBalance - activeDealsValue).toFixed(0)}`,                   color: C.mid   },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "7px 10px", textAlign: "right" }}>
+              <div style={{ fontSize: 7.5, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em" }}>{label}</div>
+              <div style={{ fontSize: 14, fontWeight: 800, letterSpacing: "-0.03em", color }}>{value}</div>
+            </div>
+          ))}
         </div>
       </div>
 
