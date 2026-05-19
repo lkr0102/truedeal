@@ -81,7 +81,7 @@ function secondsUntilNextCheckin(lastCheckin: string | null): number {
 // ── Avatar helpers ────────────────────────────────────────────────────────────
 
 function userColor(id: string): string {
-  const colors = ["#4AABFF", "#BF4ADF", "#16A34A", "#F59E0B", "#EF4444", "#10B981", "#8B5CF6", "#EC4899"]
+  const colors = ["#4AABFF", "#BF4ADF", C.brand, "#F59E0B", "#EF4444", "#10B981", "#8B5CF6", "#EC4899"]
   let hash = 0
   for (const c of id) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff
   return colors[Math.abs(hash) % colors.length]
@@ -151,7 +151,7 @@ function CheckInCard({
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-xl flex items-center justify-center"
             style={{ background: canCheckIn ? "rgba(22,163,74,0.12)" : "rgba(59,130,246,0.12)" }}>
-            <Handshake className="w-4 h-4" style={{ color: canCheckIn ? "#16A34A" : "#3B82F6" }} />
+            <Handshake className="w-4 h-4" style={{ color: canCheckIn ? C.brand : "#3B82F6" }} />
           </div>
           <div>
             <p className="font-bold text-gray-800 text-sm">{t("explore_checkin_title", lang)}</p>
@@ -173,8 +173,8 @@ function CheckInCard({
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-0.5">
                 <div className="w-full h-1 rounded-full transition-all"
-                  style={{ background: isCurrentOrPast ? "#16A34A" : isNext ? "rgba(22,163,74,0.3)" : "rgba(0,0,0,0.08)" }} />
-                <span className="text-[8px] font-bold" style={{ color: isCurrentOrPast ? "#16A34A" : isNext ? "#16A34A" : "#D1D5DB" }}>
+                  style={{ background: isCurrentOrPast ? C.brand : isNext ? "rgba(0,184,82,0.2)" : "rgba(0,0,0,0.08)" }} />
+                <span className="text-[8px] font-bold" style={{ color: isCurrentOrPast ? C.brand : isNext ? C.brand : "#D1D5DB" }}>
                   {reward}
                 </span>
               </div>
@@ -189,7 +189,7 @@ function CheckInCard({
 
       <div className="px-4 pb-4">
         {canCheckIn ? (
-          <p className="text-sm text-[#16A34A] font-semibold text-center mb-3">✅ {t("explore_available_now", lang)}</p>
+          <p style={{ fontSize: 13, fontWeight: 600, color: C.brand, textAlign: "center", marginBottom: 12 }}>✅ {t("explore_available_now", lang)}</p>
         ) : (
           <div className="flex items-center justify-center gap-1 mb-3">
             <Clock className="w-3.5 h-3.5 text-gray-400" />
@@ -200,7 +200,7 @@ function CheckInCard({
         <button onClick={handleCheckIn} disabled={!canCheckIn || loading}
           className="w-full py-3 rounded-xl font-semibold text-sm transition-all duration-300"
           style={{
-            background: canCheckIn ? "linear-gradient(135deg,#16A34A,#22C55E)" : "rgba(0,0,0,0.05)",
+            background: canCheckIn ? C.brand : "rgba(0,0,0,0.05)",
             color: canCheckIn ? "white" : "#9CA3AF",
             boxShadow: canCheckIn ? "0 4px 16px rgba(22,163,74,0.35)" : "none",
             cursor: canCheckIn ? "pointer" : "not-allowed",
@@ -252,7 +252,7 @@ function ShakesRankingList({
           return (
             <div key={u.id} style={{ borderRadius: 18, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12, background: isMe ? C.activeLight : C.surface, border: `${isMe ? "1.5px" : "1px"} solid ${isMe ? C.activeBorder : C.border}` }}>
               <p className="w-6 text-center font-black text-sm flex-shrink-0"
-                style={{ color: rank <= 3 ? "#16A34A" : "#9CA3AF" }}>
+                style={{ color: rank <= 3 ? C.brand : "#9CA3AF" }}>
                 {rank}
               </p>
               <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -264,7 +264,7 @@ function ShakesRankingList({
                   <p className="font-bold text-gray-800 text-sm truncate">{u.display_name || u.username}</p>
                   {isMe && (
                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full flex-shrink-0"
-                      style={{ background: "rgba(22,163,74,0.15)", color: "#16A34A" }}>
+                      style={{ background: C.activeLight, color: C.brand }}>
                       {t("hof_you", lang)}
                     </span>
                   )}
@@ -272,7 +272,7 @@ function ShakesRankingList({
                 <p className="text-[10px] text-gray-400">@{u.username}</p>
               </div>
               <div className="text-right flex-shrink-0">
-                <p className="font-bold text-sm" style={{ color: "#16A34A" }}>
+                <p className="font-bold text-sm" style={{ color: C.brand }}>
                   {u.tdp_points.toLocaleString()} 🤝
                 </p>
                 <div className="flex items-center justify-end gap-1 mt-0.5">
@@ -425,7 +425,7 @@ function HallOfFameTab({
               {/* Top row: rank + avatar + name + Shakes */}
               <div className="flex items-center gap-3 mb-3">
                 <p className="w-6 text-center font-black text-base flex-shrink-0"
-                  style={{ color: rank <= 3 ? "#16A34A" : "#9CA3AF" }}>
+                  style={{ color: rank <= 3 ? C.brand : "#9CA3AF" }}>
                   {rank}
                 </p>
                 <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -437,7 +437,7 @@ function HallOfFameTab({
                     <p className="font-bold text-gray-800 text-sm">{u.display_name || u.username}</p>
                     {isMe && (
                       <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                        style={{ background: "rgba(22,163,74,0.15)", color: "#16A34A" }}>
+                        style={{ background: C.activeLight, color: C.brand }}>
                         {t("hof_you", lang)}
                       </span>
                     )}
@@ -445,7 +445,7 @@ function HallOfFameTab({
                   <p className="text-[10px] text-gray-400">@{u.username}</p>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <p className="text-xs font-bold" style={{ color: "#16A34A" }}>{u.tdp_points.toLocaleString()} 🤝</p>
+                  <p className="text-xs font-bold" style={{ color: C.brand }}>{u.tdp_points.toLocaleString()} 🤝</p>
                   <div className="flex items-center justify-end gap-1 mt-0.5">
                     <Flame className="w-3 h-3 text-orange-400" />
                     <span className="text-[10px] text-gray-400">{u.streak_days}d</span>
@@ -462,7 +462,7 @@ function HallOfFameTab({
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 font-medium">{t("hof_wins", lang)}</p>
-                  <p className="text-xs font-bold" style={{ color: "#16A34A" }}>{u.wins}</p>
+                  <p className="text-xs font-bold" style={{ color: C.brand }}>{u.wins}</p>
                 </div>
                 <div>
                   <p className="text-[9px] text-gray-400 font-medium">{t("hof_losses", lang)}</p>
@@ -478,16 +478,16 @@ function HallOfFameTab({
               <div className="flex items-center justify-between mt-2 px-1">
                 <div className="flex items-center gap-1">
                   {pnlPos
-                    ? <TrendingUp className="w-3.5 h-3.5" style={{ color: "#16A34A" }} />
+                    ? <TrendingUp className="w-3.5 h-3.5" style={{ color: C.brand }} />
                     : <TrendingDown className="w-3.5 h-3.5" style={{ color: "#EF4444" }} />}
                   <span className="text-[10px] font-bold" style={{ color: "#6B7280" }}>{t("hof_pnl", lang)}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold" style={{ color: pnlPos ? "#16A34A" : "#EF4444" }}>
-                    {pnlPos ? "+" : ""}R${Math.abs(u.pnl_amount).toFixed(2)}
+                  <span className="text-xs font-bold" style={{ color: pnlPos ? C.brand : "#EF4444" }}>
+                    {pnlPos ? "+" : ""}${Math.abs(u.pnl_amount).toFixed(2)}
                   </span>
                   <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                    style={{ background: pnlPos ? "rgba(22,163,74,0.1)" : "rgba(239,68,68,0.1)", color: pnlPos ? "#16A34A" : "#EF4444" }}>
+                    style={{ background: pnlPos ? C.activeLight : "rgba(239,68,68,0.1)", color: pnlPos ? C.brand : "#EF4444" }}>
                     {pnlPos ? "+" : ""}{u.pnl_pct}%
                   </span>
                 </div>

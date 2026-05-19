@@ -340,14 +340,12 @@ interface ProfileClientProps {
 
 function AvatarPlaceholder({ size = 84, initials }: { size?: number; initials: string }) {
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <div className="w-full h-full rounded-full flex items-center justify-center"
-        style={{ background: "linear-gradient(135deg,#1A2E3A,#2A4E6A)", border: `3px solid ${C.brand}` }}>
-        <span className="font-bold text-white" style={{ fontSize: size * 0.3 }}>{initials}</span>
+    <div style={{ position: "relative", width: size, height: size }}>
+      <div style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.brand, border: `3px solid ${C.surface}` }}>
+        <span style={{ fontWeight: 800, color: "#fff", fontSize: size * 0.3 }}>{initials}</span>
       </div>
-      <div className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center"
-        style={{ background: "#ADFF2F", border: "2px solid white" }}>
-        <User className="w-3.5 h-3.5 text-green-900" />
+      <div style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", background: C.brandDark, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <User style={{ width: 11, height: 11, color: "#fff" }} />
       </div>
     </div>
   )
@@ -636,21 +634,21 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
         </div>
 
         {/* Stats card */}
-        <div style={{ width: "100%", borderRadius: 26, padding: 20, background: `linear-gradient(135deg,#003D22,${C.brandDark} 60%,${C.brand})`, boxShadow: "0 12px 40px rgba(0,184,82,0.35)", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ width: "100%", borderRadius: 20, padding: 20, background: C.surface, border: `1px solid ${C.border}` }}>
           <div style={{ display: "flex", justifyContent: "space-around" }}>
             {[
-              { label: "Volume", value: USER.volumeTotal },
-              { label: "Ganho", value: USER.totalWon },
-              { label: "PnL", value: USER.pnl, colored: true },
-              { label: `Deals · ${USER.winRateLabel}`, value: String(USER.totalDeals) },
-            ].map((s, i) => (
-              <>
-                {i > 0 && <div key={`div${i}`} style={{ width: 1, background: "rgba(255,255,255,0.1)" }} />}
-                <div key={s.label} style={{ textAlign: "center" }}>
-                  <p style={{ fontSize: 18, fontWeight: 900, color: s.colored ? (USER.pnlPositive ? "#ADFF2F" : "#FF4A4A") : "#ADFF2F" }}>{s.value}</p>
-                  <p style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", marginTop: 2, fontWeight: 500, textTransform: "uppercase" as const, letterSpacing: "0.08em", ...MONO }}>{s.label}</p>
+              { label: "Volume",              value: USER.volumeTotal, accent: C.text },
+              { label: "Ganho",               value: USER.totalWon,   accent: C.brand },
+              { label: "PnL",                 value: USER.pnl,        accent: USER.pnlPositive ? C.brand : "#DC2626" },
+              { label: `${USER.winRateLabel}`, value: String(USER.totalDeals), accent: C.text },
+            ].map((s, i, arr) => (
+              <div key={s.label} style={{ display: "flex", alignItems: "stretch" }}>
+                {i > 0 && <div style={{ width: 1, background: C.border, marginRight: 20 }} />}
+                <div style={{ textAlign: "center" }}>
+                  <p style={{ fontSize: 17, fontWeight: 900, color: s.accent, letterSpacing: "-0.03em" }}>{s.value}</p>
+                  <p style={{ fontSize: 9, color: C.dim, marginTop: 3, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: "0.08em", ...MONO }}>{s.label}</p>
                 </div>
-              </>
+              </div>
             ))}
           </div>
         </div>
@@ -685,7 +683,7 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
         </button>
       </div>
 
-      <BottomNav active="Perfil" />
+      <BottomNav active="profile" />
     </div>
   )
 }

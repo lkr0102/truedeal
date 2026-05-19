@@ -1,17 +1,32 @@
 "use client"
 
 import { useState, useEffect, useRef, Suspense } from "react"
-
 import { useRouter, useSearchParams } from "next/navigation"
 import { Eye, EyeOff, X } from "lucide-react"
 import { useWallet } from "@solana/wallet-adapter-react"
 import { createClient } from "@/lib/supabase/client"
-import { TrueDealAppIcon } from "@/components/TrueDealLogo"
 
-// ── Ícones ─────────────────────────────────────────────────────────────────────
+// ── Design tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg:           "#F0F3F0",
+  surface:      "#FFFFFF",
+  surface2:     "#E8EDE8",
+  border:       "#D8E0D8",
+  text:         "#0B1309",
+  mid:          "#4E614E",
+  dim:          "#8BA09A",
+  brand:        "#00B852",
+  brandDark:    "#008C3E",
+  activeLight:  "rgba(0,184,82,0.08)",
+  activeBorder: "rgba(0,184,82,0.2)",
+} as const
+
+const MONO: React.CSSProperties = { fontFamily: "var(--font-dm-mono,'DM Mono',monospace)" }
+
+// ── Wallet icons ──────────────────────────────────────────────────────────────
 
 const IconGoogle = () => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24">
+  <svg width="16" height="16" viewBox="0 0 24 24">
     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
     <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
@@ -20,7 +35,7 @@ const IconGoogle = () => (
 )
 
 const IconPhantom = () => (
-  <svg className="w-5 h-5" viewBox="0 0 128 128" fill="none">
+  <svg width="20" height="20" viewBox="0 0 128 128" fill="none">
     <rect width="128" height="128" rx="24" fill="#9945FF" />
     <path d="M110.5 64c0 25.68-20.82 46.5-46.5 46.5S17.5 89.68 17.5 64 38.32 17.5 64 17.5 110.5 38.32 110.5 64z" fill="url(#phantom_g)" />
     <ellipse cx="51" cy="63" rx="7" ry="9" fill="white" />
@@ -37,7 +52,7 @@ const IconPhantom = () => (
 )
 
 const IconSolflare = () => (
-  <svg className="w-5 h-5" viewBox="0 0 128 128" fill="none">
+  <svg width="20" height="20" viewBox="0 0 128 128" fill="none">
     <rect width="128" height="128" rx="24" fill="#FC8C00" />
     <path d="M64 20 L108 64 L64 108 L20 64 Z" fill="white" fillOpacity="0.2" />
     <path d="M64 32 L96 64 L64 96 L32 64 Z" fill="white" fillOpacity="0.4" />
@@ -45,73 +60,142 @@ const IconSolflare = () => (
   </svg>
 )
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 const WALLET_INSTALL = {
   Phantom:  "https://phantom.app/",
   Solflare: "https://solflare.com/",
 } as const
 
+// ── Input field ───────────────────────────────────────────────────────────────
+
+function Field({
+  type, value, onChange, placeholder, right,
+}: {
+  type: string
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  right?: React.ReactNode
+}) {
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        required
+        style={{
+          width: "100%", boxSizing: "border-box",
+          padding: right ? "13px 44px 13px 16px" : "13px 16px",
+          borderRadius: 12, fontSize: 14,
+          background: C.surface2, border: `1px solid ${C.border}`,
+          color: C.text, outline: "none",
+        }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = C.brand }}
+        onBlur={(e) =>  { e.currentTarget.style.borderColor = C.border }}
+      />
+      {right && (
+        <div style={{ position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)" }}>
+          {right}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Divider ───────────────────────────────────────────────────────────────────
+
+function Divider({ label }: { label: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "4px 0" }}>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
+      <span style={{ fontSize: 11, color: C.dim }}>{label}</span>
+      <div style={{ flex: 1, height: 1, background: C.border }} />
+    </div>
+  )
+}
+
+// ── Social row button ─────────────────────────────────────────────────────────
+
+function SocialBtn({
+  icon, title, sub, accent, onClick,
+}: {
+  icon: React.ReactNode
+  title: string
+  sub?: string
+  accent?: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: "100%", display: "flex", alignItems: "center", gap: 12,
+        padding: "12px 14px", borderRadius: 12,
+        background: C.surface, border: `1px solid ${C.border}`,
+        cursor: "pointer", textAlign: "left",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = C.surface2 }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = C.surface }}
+    >
+      <div style={{ width: 36, height: 36, borderRadius: 10, background: C.surface2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+        {icon}
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: accent ?? C.text }}>{title}</div>
+        {sub && <div style={{ fontSize: 11, color: C.dim, marginTop: 1 }}>{sub}</div>}
+      </div>
+      <span style={{ color: C.dim, fontSize: 14 }}>→</span>
+    </button>
+  )
+}
+
+// ── Main login component ──────────────────────────────────────────────────────
+
 function LoginPageInner() {
   const router       = useRouter()
   const searchParams = useSearchParams()
 
-  // ── Supabase auth state ──
-  const [email,        setEmail]        = useState("")
-  const [password,     setPassword]     = useState("")
-  const [showPwd,      setShowPwd]      = useState(false)
-  const [isSignUp,     setIsSignUp]     = useState(false)
-  const [isLoading,    setIsLoading]    = useState(false)
-  const [authError,    setAuthError]    = useState<string | null>(
+  const [email,       setEmail]       = useState("")
+  const [password,    setPassword]    = useState("")
+  const [showPwd,     setShowPwd]     = useState(false)
+  const [isSignUp,    setIsSignUp]    = useState(false)
+  const [isLoading,   setIsLoading]   = useState(false)
+  const [authError,   setAuthError]   = useState<string | null>(
     searchParams.get("error") ? "Falha na autenticação. Tente novamente." : null
   )
+  const [showWallets, setShowWallets] = useState(false)
+  const [walletError, setWalletError] = useState<string | null>(null)
+  const [isDemoMode,  setIsDemoMode]  = useState(false)
 
-  // ── Wallet state ──
-  const [showWallets,  setShowWallets]  = useState(false)
-  const [walletError,  setWalletError]  = useState<string | null>(null)
-
-  // ── Demo / Placeholder check ──
-  const [isDemoMode, setIsDemoMode] = useState(false)
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     if (url?.includes("seu-projeto")) setIsDemoMode(true)
   }, [])
 
-  // ── Solana wallet adapter ──
   const { wallets, select, wallet, connected, publicKey, connecting } = useWallet()
+  const pendingRef          = useRef<string | null>(null)
+  const walletInitiatedRef  = useRef(false)
 
-  // Referência para saber qual carteira o usuário escolheu e acionar o connect()
-  // após o estado do WalletProvider atualizar com a nova seleção.
-  const pendingRef = useRef<string | null>(null)
-  // Só redireciona se o usuário clicou explicitamente — evita redirect pelo autoConnect
-  const walletInitiatedRef = useRef(false)
-
-  // Redireciona se já há sessão Supabase ativa (login anterior por e-mail/Google)
   useEffect(() => {
     if (isDemoMode) {
-      // Se estamos em demo mode, verificamos o cookie manualmente
-      const hasDemoCookie = document.cookie.includes("truedeal-demo-session=true")
-      if (hasDemoCookie) router.push("/")
+      if (document.cookie.includes("truedeal-demo-session=true")) router.push("/")
       return
     }
-
     const supabase = createClient()
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) router.push("/")
     })
   }, [router, isDemoMode])
 
-  // Quando o wallet muda (após select()), dispara connect()
   useEffect(() => {
     if (!pendingRef.current || !wallet) return
     if (wallet.adapter.name !== pendingRef.current) return
     pendingRef.current = null
-    wallet.adapter.connect().catch(() => {
-      setWalletError("Conexão recusada. Tente novamente.")
-    })
+    wallet.adapter.connect().catch(() => setWalletError("Conexão recusada. Tente novamente."))
   }, [wallet])
 
-  // Quando conectado com sucesso → redireciona apenas se foi o usuário quem iniciou
   useEffect(() => {
     if (connected && publicKey && walletInitiatedRef.current) {
       walletInitiatedRef.current = false
@@ -120,24 +204,15 @@ function LoginPageInner() {
     }
   }, [connected, publicKey, router])
 
-  // ── Handlers ──
-
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault()
     if (!email || !password) return
-    setIsLoading(true)
-    setAuthError(null)
-
+    setIsLoading(true); setAuthError(null)
     if (isDemoMode) {
-      if (email === "demo@truedeal.io" && password === "truedeal123") {
-        handleDemoOverride()
-      } else {
-        setAuthError("Modo Demo: use demo@truedeal.io ou o botão de Override.")
-        setIsLoading(false)
-      }
-      return
+      if (email === "demo@truedeal.io" && password === "truedeal123") { handleDemoOverride(); return }
+      setAuthError("Modo Demo: use demo@truedeal.io ou o botão de Override.")
+      setIsLoading(false); return
     }
-
     const supabase = createClient()
     if (isSignUp) {
       const { error } = await supabase.auth.signUp({ email, password })
@@ -162,20 +237,14 @@ function LoginPageInner() {
 
   function handleDemoOverride() {
     setIsLoading(true)
-    // Auto-fill for visual feedback and fallback
     setEmail("demo@truedeal.io")
     setPassword("truedeal123")
-    
-    // Injeta o cookie de sessão demo
     document.cookie = "truedeal-demo-session=true; path=/; max-age=3600"
-    // Redireciona para a home que agora vai ler esse cookie via createClient() do server
-    setTimeout(() => {
-      router.push("/")
-    }, 800)
+    setTimeout(() => router.push("/"), 800)
   }
 
   function handleWalletConnect(adapterName: string) {
-    const found = wallets.find(w => w.adapter.name === adapterName)
+    const found = wallets.find((w) => w.adapter.name === adapterName)
     if (!found) {
       window.open(WALLET_INSTALL[adapterName as keyof typeof WALLET_INSTALL] ?? "#", "_blank")
       return
@@ -186,259 +255,204 @@ function LoginPageInner() {
     select(found.adapter.name)
   }
 
-  // ── Styles ──
-
-  const glass = {
-    background:    "rgba(255,255,255,0.4)",
-    backdropFilter: "blur(20px)",
-    border:        "1px solid rgba(255,255,255,0.5)",
-  } as const
-
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-4"
-      style={{
-        backgroundImage:    "url('/images/gradient-background.jpg')",
-        backgroundSize:     "cover",
-        backgroundPosition: "center",
-        backgroundRepeat:   "no-repeat",
-      }}
-    >
-      {/* Orbs decorativos */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-32 h-32 rounded-full opacity-50 animate-pulse"
-          style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(20px)", border: "2px solid rgba(255,255,255,0.3)" }} />
-        <div className="absolute top-3/4 right-1/4 w-24 h-24 rounded-full opacity-40 animate-pulse"
-          style={{ background: "rgba(255,255,255,0.15)", backdropFilter: "blur(20px)", border: "2px solid rgba(255,255,255,0.3)", animationDelay: "1s" }} />
-      </div>
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 400 }}>
 
-      <div
-        className="w-full max-w-md p-8 rounded-3xl relative z-10"
-        style={{
-          background:    "rgba(255,255,255,0.25)",
-          backdropFilter: "blur(40px) saturate(250%)",
-          border:        "1px solid rgba(255,255,255,0.4)",
-          boxShadow:     "0 32px 80px rgba(0,0,0,0.3), inset 0 3px 0 rgba(255,255,255,0.6)",
-        }}
-      >
-        {/* Logo */}
-        <div className="text-center mb-7">
-          <div className="flex justify-center mb-4">
-            <TrueDealAppIcon size={80} />
+        {/* Brand */}
+        <div style={{ textAlign: "center", marginBottom: 32 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 56, height: 56, background: C.brand, borderRadius: 16, marginBottom: 14 }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 13l4 4L19 7" />
+            </svg>
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">True Deal</h1>
-          <p className="text-gray-600 text-sm mt-1 font-medium">Set your goals. Honor your word. Get paid for it.</p>
+          <div style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>
+            TRUE<span style={{ color: C.brand }}>DEAL</span>
+          </div>
+          <div style={{ fontSize: 12, color: C.dim, marginTop: 4 }}>
+            Set your goals. Honor your word. Get paid for it.
+          </div>
         </div>
 
-        {/* ── E-mail / senha ── */}
-        <form onSubmit={handleEmailLogin} className="space-y-3 mb-4">
-          <input
-            type="email" value={email} onChange={e => setEmail(e.target.value)}
-            placeholder="seu@email.com"
-            className="w-full px-4 py-3 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
-            style={glass} required
-          />
-          <div className="relative">
-            <input
+        {/* Card */}
+        <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 24, padding: 24 }}>
+
+          {/* Email form */}
+          <form onSubmit={handleEmailLogin} style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
+            <Field type="email" value={email} onChange={setEmail} placeholder="seu@email.com" />
+            <Field
               type={showPwd ? "text" : "password"}
-              value={password} onChange={e => setPassword(e.target.value)}
+              value={password}
+              onChange={setPassword}
               placeholder={isSignUp ? "Criar senha (mín. 6 caracteres)" : "Senha"}
-              className="w-full px-4 py-3 pr-12 rounded-xl outline-none text-gray-800 placeholder-gray-400 text-sm"
-              style={glass} required
+              right={
+                <button type="button" onClick={() => setShowPwd((v) => !v)} style={{ background: "none", border: "none", cursor: "pointer", color: C.dim, display: "flex" }}>
+                  {showPwd ? <EyeOff width={16} height={16} /> : <Eye width={16} height={16} />}
+                </button>
+              }
             />
-            <button type="button" onClick={() => setShowPwd(v => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+
+            {!isSignUp && (
+              <div style={{ textAlign: "right", marginTop: -4 }}>
+                <button type="button" style={{ fontSize: 11, color: C.brand, background: "none", border: "none", cursor: "pointer" }}>
+                  Esqueci minha senha
+                </button>
+              </div>
+            )}
+
+            {authError && (
+              <p style={{ fontSize: 12, color: "#DC2626", textAlign: "center", padding: "6px 10px", background: "rgba(220,38,38,0.06)", borderRadius: 8 }}>
+                {authError}
+              </p>
+            )}
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              style={{
+                width: "100%", padding: "13px 0", borderRadius: 12,
+                fontSize: 14, fontWeight: 700, color: "#fff",
+                background: isLoading ? C.dim : C.brand, border: "none",
+                cursor: isLoading ? "not-allowed" : "pointer",
+                marginTop: 2,
+              }}
+            >
+              {isLoading
+                ? (isSignUp ? "Criando conta…" : "Entrando…")
+                : (isSignUp ? "Criar conta" : "Entrar com e-mail")}
             </button>
+
+            <p style={{ textAlign: "center", fontSize: 12, color: C.dim }}>
+              {isSignUp ? "Já tem conta?" : "Não tem conta?"}{" "}
+              <button type="button" onClick={() => { setIsSignUp((v) => !v); setAuthError(null) }}
+                style={{ color: C.brand, fontWeight: 600, background: "none", border: "none", cursor: "pointer" }}>
+                {isSignUp ? "Entrar" : "Cadastre-se"}
+              </button>
+            </p>
+          </form>
+
+          <Divider label="ou" />
+
+          {/* Social logins */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+            <SocialBtn
+              icon={<IconGoogle />}
+              title="Continuar com Google"
+              sub="Gmail · Google Account"
+              onClick={handleGoogleLogin}
+            />
+
+            <SocialBtn
+              icon={
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(153,69,255,0.12)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#9945FF">
+                    <path d="M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
+                  </svg>
+                </div>
+              }
+              title="Carteira Solana"
+              sub="Phantom · Solflare"
+              accent="#9945FF"
+              onClick={() => setShowWallets(true)}
+            />
           </div>
 
-          {!isSignUp && (
-            <div className="text-right -mt-1">
-              <button type="button" className="text-xs text-[#00D26A] hover:underline">
-                Esqueci minha senha
+          {/* Demo mode */}
+          {isDemoMode && (
+            <div style={{ marginTop: 16, padding: "14px 16px", borderRadius: 12, background: C.activeLight, border: `1px dashed ${C.activeBorder}` }}>
+              <p style={{ fontSize: 10, color: C.brand, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", textAlign: "center", marginBottom: 8, ...MONO }}>
+                Sovereign Demo Mode
+              </p>
+              <button
+                onClick={handleDemoOverride}
+                style={{ width: "100%", padding: "9px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, color: C.brand, background: "transparent", border: `1px solid ${C.brand}`, cursor: "pointer" }}
+              >
+                {isLoading ? "Acessando..." : "PROTOCOL OVERRIDE (DEMO ACCESS)"}
               </button>
             </div>
           )}
-
-          {authError && <p className="text-xs text-red-500 text-center px-2">{authError}</p>}
-
-          <button type="submit" disabled={isLoading}
-            className="w-full py-3 rounded-xl font-bold text-black transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
-            style={{ background: "#00D26A", boxShadow: "0 8px 24px rgba(0,210,106,0.25)" }}>
-            {isLoading
-              ? (isSignUp ? "Criando conta…" : "Entrando…")
-              : (isSignUp ? "Criar conta" : "Entrar com e-mail")}
-          </button>
-
-          <p className="text-center text-xs text-gray-500">
-            {isSignUp ? "Já tem conta?" : "Não tem conta?"}{" "}
-            <button type="button" onClick={() => { setIsSignUp(v => !v); setAuthError(null) }}
-              className="text-[#00D26A] font-medium hover:underline">
-              {isSignUp ? "Entrar" : "Cadastre-se"}
-            </button>
-          </p>
-        </form>
-
-        {/* ── Google ── */}
-        <button
-          onClick={handleGoogleLogin}
-          className="w-full flex items-center gap-3 p-3 rounded-xl mb-5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-          style={glass}
-        >
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-white">
-            <IconGoogle />
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-semibold text-gray-800">Continuar com Google</p>
-            <p className="text-xs text-gray-400">Gmail · Google Account</p>
-          </div>
-          <span className="text-gray-400 text-sm">→</span>
-        </button>
-
-        {/* ── Divisor ── */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.4)" }} />
-          <span className="text-gray-400 text-xs">ou conecte sua carteira</span>
-          <div className="flex-1 h-px" style={{ background: "rgba(255,255,255,0.4)" }} />
         </div>
 
-        {/* ── Solana wallet button ── */}
-        <button
-          onClick={() => setShowWallets(true)}
-          className="w-full flex items-center gap-3 p-3 rounded-xl mb-5 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
-          style={{ background: "rgba(153,69,255,0.1)", backdropFilter: "blur(20px)", border: "1px solid rgba(153,69,255,0.25)" }}
-        >
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: "linear-gradient(135deg,#9945FF,#FC8C00)" }}>
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="white">
-              <path d="M21 18v1c0 1.1-.9 2-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14c1.1 0 2 .9 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z" />
-            </svg>
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-sm font-semibold" style={{ color: "#9945FF" }}>Carteira Solana</p>
-            <div className="flex gap-1.5 mt-0.5">
-              <span className="text-[10px] font-bold text-gray-500 px-1.5 py-0.5 rounded-full bg-purple-100">Phantom</span>
-              <span className="text-[10px] font-bold text-gray-500 px-1.5 py-0.5 rounded-full bg-orange-100">Solflare</span>
-            </div>
-          </div>
-          <span style={{ color: "#9945FF" }}>→</span>
-        </button>
-
-        {/* ── Protocol Override (Apenas em modo Demo) ── */}
-        {isDemoMode && (
-          <div className="mt-4 p-4 rounded-xl border border-dashed border-[#00D26A]/30 bg-[#00D26A]/5">
-            <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest text-center mb-2">
-              Sovereign Demo Mode Active
-            </p>
-            <button
-              onClick={handleDemoOverride}
-              className="w-full py-2 rounded-lg text-xs font-bold transition-all duration-300 hover:bg-[#00D26A]/10 active:scale-[0.98]"
-              style={{ color: "#00D26A", border: "1px solid #00D26A" }}
-            >
-              {isLoading ? "Bypassing Protocol..." : "PROTOCOL OVERRIDE (DEMO ACCESS)"}
-            </button>
-          </div>
-        )}
-
-        {/* Termos */}
-        <div className="text-center mt-6">
-          <p className="text-[10px] text-gray-400">
-            Ao continuar, você aceita os{" "}
-            <a href="#" className="text-blue-600 hover:underline">Termos de Uso</a> e a{" "}
-            <a href="#" className="text-blue-600 hover:underline">Política de Privacidade</a>
-          </p>
-        </div>
+        {/* Terms */}
+        <p style={{ textAlign: "center", fontSize: 11, color: C.dim, marginTop: 16 }}>
+          Ao continuar, você aceita os{" "}
+          <a href="#" style={{ color: C.brand }}>Termos de Uso</a>{" "}e a{" "}
+          <a href="#" style={{ color: C.brand }}>Política de Privacidade</a>
+        </p>
       </div>
 
-      {/* ── Modal carteiras Solana ── */}
+      {/* Wallet bottom sheet */}
       {showWallets && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center"
-          style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)" }}
-          onClick={() => setShowWallets(false)}>
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", justifyContent: "center", background: "rgba(0,0,0,0.4)" }}
+          onClick={() => setShowWallets(false)}
+        >
           <div
-            className="w-full max-w-md p-6 rounded-t-3xl"
-            style={{ background: "rgba(255,255,255,0.97)", backdropFilter: "blur(40px)", boxShadow: "0 -16px 64px rgba(0,0,0,0.2)" }}
-            onClick={e => e.stopPropagation()}
+            style={{ width: "100%", maxWidth: 480, background: C.surface, borderRadius: "24px 24px 0 0", padding: "24px 20px 40px", boxShadow: "0 -16px 64px rgba(0,0,0,0.12)" }}
+            onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
-            <div className="flex items-center justify-between mb-2">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
               <div>
-                <h3 className="text-lg font-bold text-gray-800">Carteira Solana</h3>
-                <p className="text-xs text-gray-400 mt-0.5">Conecte sua carteira para continuar</p>
+                <h3 style={{ fontSize: 16, fontWeight: 800, color: C.text }}>Carteira Solana</h3>
+                <p style={{ fontSize: 12, color: C.dim, marginTop: 2 }}>Conecte sua carteira para continuar</p>
               </div>
-              <button onClick={() => setShowWallets(false)}
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{ background: "rgba(0,0,0,0.08)" }}>
-                <X className="w-4 h-4 text-gray-600" />
+              <button onClick={() => setShowWallets(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: C.surface2, border: `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                <X width={14} height={14} color={C.mid} />
               </button>
             </div>
 
-            {/* Solana strip */}
-            <div className="flex items-center gap-2 mb-5 px-3 py-2 rounded-xl"
-              style={{ background: "linear-gradient(135deg,rgba(153,69,255,0.06),rgba(252,140,0,0.06))" }}>
-              <div className="w-5 h-5 rounded-full flex items-center justify-center"
-                style={{ background: "linear-gradient(135deg,#9945FF,#FC8C00)" }}>
-                <span className="text-white text-[9px] font-black">◎</span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: C.surface2, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+              <div style={{ width: 18, height: 18, borderRadius: "50%", background: "linear-gradient(135deg,#9945FF,#FC8C00)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: "#fff", fontSize: 9, fontWeight: 900 }}>◎</span>
               </div>
-              <span className="text-xs font-semibold text-gray-600">Rede Solana</span>
-              <span className="ml-auto text-[10px] font-bold px-2 py-0.5 rounded-full"
-                style={{ background: "rgba(153,69,255,0.1)", color: "#9945FF" }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: C.mid }}>Rede Solana</span>
+              <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 100, background: "rgba(153,69,255,0.1)", color: "#9945FF", ...MONO }}>
                 {process.env.NEXT_PUBLIC_SOLANA_NETWORK ?? "devnet"}
               </span>
             </div>
 
             {walletError && (
-              <p className="text-xs text-red-500 text-center mb-3 px-2">{walletError}</p>
+              <p style={{ fontSize: 12, color: "#DC2626", textAlign: "center", marginBottom: 12 }}>{walletError}</p>
             )}
 
-            {/* Wallet buttons */}
-            <div className="space-y-3">
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { name: "Phantom",  icon: <IconPhantom />,  bg: "#9945FF", desc: "Solana · Wallet mais popular" },
-                { name: "Solflare", icon: <IconSolflare />, bg: "#FC8C00", desc: "Solana · Suporte multi-conta" },
-              ].map(w => {
-                const found        = wallets.find(a => a.adapter.name === w.name)
-                const isInstalled  = !!found  // Wallet Standard: se está em wallets[], está instalada
+                { name: "Phantom",  Icon: IconPhantom,  bg: "#9945FF", desc: "Solana · Wallet mais popular" },
+                { name: "Solflare", Icon: IconSolflare, bg: "#FC8C00", desc: "Solana · Suporte multi-conta" },
+              ].map((w) => {
+                const found       = wallets.find((a) => a.adapter.name === w.name)
+                const isInstalled = !!found
                 const isConnecting = connecting && wallet?.adapter.name === w.name
-
                 return (
-                  <button key={w.name}
+                  <button
+                    key={w.name}
                     onClick={() => handleWalletConnect(w.name)}
                     disabled={isConnecting}
-                    className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60"
-                    style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.06)" }}
+                    style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, background: C.surface2, border: `1px solid ${C.border}`, cursor: "pointer", textAlign: "left" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.brand }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.border }}
                   >
-                    <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-                      style={{ background: w.bg }}>
-                      {w.icon}
+                    <div style={{ width: 44, height: 44, borderRadius: 14, background: w.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <w.Icon />
                     </div>
-                    <div className="flex-1 text-left">
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-gray-800">{w.name}</p>
-                        {isInstalled && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{ background: "rgba(0,210,106,0.1)", color: "#00D26A" }}>
-                            Instalado
-                          </span>
-                        )}
-                        {!isInstalled && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full"
-                            style={{ background: "rgba(0,0,0,0.06)", color: "#9CA3AF" }}>
-                            Instalar
-                          </span>
-                        )}
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{w.name}</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 100, ...MONO,
+                          background: isInstalled ? C.activeLight : C.surface2,
+                          color: isInstalled ? C.brand : C.dim }}>
+                          {isInstalled ? "Instalado" : "Instalar"}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-0.5">{w.desc}</p>
+                      <p style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>{w.desc}</p>
                     </div>
-                    <span className="text-gray-400 text-lg">
-                      {isConnecting ? "…" : "→"}
-                    </span>
+                    <span style={{ color: C.dim }}>{isConnecting ? "…" : "→"}</span>
                   </button>
                 )
               })}
             </div>
 
-            <p className="text-center text-xs text-gray-400 mt-5">
+            <p style={{ textAlign: "center", fontSize: 11, color: C.dim, marginTop: 16 }}>
               Ao conectar, você confirma ser titular desta carteira
             </p>
           </div>
