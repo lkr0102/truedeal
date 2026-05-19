@@ -83,7 +83,32 @@ async function main() {
   const connection = new Connection(RPC_URL, "confirmed")
   const feePayer   = getFeePayer()
 
-  // Find all users without a wallet
+  // ── Phase 1: Grant USDC to wallets that exist but never received it ───────────
+  if (!IS_MAINNET) {
+    const { data: ungrantedWallets } = await supabase
+      .from("user_wallets")
+      .select("user_id, public_key")
+      .eq("usdc_granted", false)
+
+    if (ungrantedWallets?.length) {
+      console.log(`Found ${ungrantedWallets.length} wallet(s) with usdc_granted = false:`)
+      for (const w of ungrantedWallets) {
+        console.log(`  • ${w.public_key} (user: ${w.user_id})`)
+        try {
+          const sig = await grantUSDC(connection, feePayer, w.public_key)
+          if (sig) {
+            console.log(`    ✓ Granted 1000 USDC — tx: ${sig}`)
+            await supabase.from("user_wallets").update({ usdc_granted: true }).eq("user_id", w.user_id)
+          }
+        } catch (grantErr) {
+          console.warn(`    ⚠ USDC grant failed: ${grantErr.message}`)
+        }
+      }
+      console.log()
+    }
+  }
+
+  // ── Phase 2: Create wallets for users who don't have one ─────────────────────
   const { data: walletRows } = await supabase.from("user_wallets").select("user_id")
   const walletUserIds = (walletRows ?? []).map(r => r.user_id)
 
