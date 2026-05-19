@@ -136,51 +136,39 @@ export async function createDeal(input: CreateDealInput) {
     status:  "active",
   })
 
-  // ── On-chain: TX 1 (create vault) + TX 2 (stake creator USDC) ───────────────
+  // ── On-chain: stake creator USDC → fee payer escrow ─────────────────────────
   // Non-blocking — deal exists in Supabase regardless of on-chain success.
   let stakeTxSignature: string | undefined
   try {
-    const { createHash } = await import("crypto")
     const { getFeePayer } = await import("@/lib/solana/fee-payer")
-    const { initPerformanceAgreement, joinAgreementUSDC, deriveAgreementPDA } = await import("@/lib/solana/anchor-client")
+    const { stakeUsdc }   = await import("@/lib/solana/escrow")
     const { toUSDCUnits } = await import("@/lib/solana/constants")
 
-    const feePayer      = getFeePayer()
-    const ruleHash      = createHash("sha256")
-      .update(`${input.verification_type}:${input.verification_channels.join(",")}:${input.rule_target}:${input.rule_frequency}`)
-      .digest()
-    const guaranteeUSDC = toUSDCUnits(input.entry_amount)
-
-    // TX 1 — create AgreementAccount PDA + USDC vault
-    const initTx = await initPerformanceAgreement(feePayer, deal.id, guaranteeUSDC, ruleHash)
-    const [pda]  = deriveAgreementPDA(deal.id)
-
-    const txShortId = initTx.slice(-8).toUpperCase()
-    await (supabase.from("deals") as any)
-      .update({ solana_tx_signature: initTx, pda_address: pda.toString(), short_id: txShortId })
-      .eq("id", deal.id)
-
-    console.log(`[Anchor] Deal ${deal.id} registered on-chain: ${initTx}`)
-
-    // TX 2 — stake creator's USDC into vault (same as joinDeal for other participants)
     const { data: walletData } = await (supabase.from("user_wallets") as any)
       .select("encrypted_secret")
       .eq("user_id", user.id)
       .single()
 
     if (walletData?.encrypted_secret && input.entry_amount > 0) {
-      const userKeypair   = decryptSecret(walletData.encrypted_secret)
-      stakeTxSignature    = await joinAgreementUSDC(userKeypair, feePayer, deal.id)
+      const feePayer    = getFeePayer()
+      const userKeypair = decryptSecret(walletData.encrypted_secret)
+      stakeTxSignature  = await stakeUsdc(userKeypair, feePayer, toUSDCUnits(input.entry_amount))
 
-      await (supabase.from("deal_participants") as any)
-        .update({ transaction_hash: stakeTxSignature, status: "staked" })
-        .eq("deal_id", deal.id)
-        .eq("user_id", user.id)
+      const txShortId = stakeTxSignature.slice(-8).toUpperCase()
+      await Promise.all([
+        (supabase.from("deals") as any)
+          .update({ solana_tx_signature: stakeTxSignature, short_id: txShortId })
+          .eq("id", deal.id),
+        (supabase.from("deal_participants") as any)
+          .update({ transaction_hash: stakeTxSignature, status: "staked" })
+          .eq("deal_id", deal.id)
+          .eq("user_id", user.id),
+      ])
 
-      console.log(`[USDC] Creator ${user.id} staked for deal ${deal.id}: ${stakeTxSignature}`)
+      console.log(`[USDC] Creator staked for deal ${deal.id}: ${stakeTxSignature}`)
     }
   } catch (err) {
-    console.error("[Anchor] on-chain setup failed (non-blocking):", err)
+    console.error("[USDC] stakeUsdc failed (non-blocking):", err)
   }
 
   revalidatePath("/")
@@ -460,7 +448,7 @@ export async function joinDeal(dealId: string) {
     return { error: (insertErr as any).message }
   }
 
-  // ── On-chain: stake USDC to vault PDA (TX 2) ─────────────────────────────────
+  // ── On-chain: stake USDC → fee payer escrow ───────────────────────────────────
   // Non-blocking — participant is registered in DB regardless of on-chain result.
   let txSignature: string | undefined
   try {
@@ -471,12 +459,13 @@ export async function joinDeal(dealId: string) {
 
     if (walletData?.encrypted_secret && deal.entry_amount > 0) {
       const { getFeePayer } = await import("@/lib/solana/fee-payer")
-      const { joinAgreementUSDC } = await import("@/lib/solana/anchor-client")
+      const { stakeUsdc }   = await import("@/lib/solana/escrow")
+      const { toUSDCUnits } = await import("@/lib/solana/constants")
 
       const userKeypair = decryptSecret(walletData.encrypted_secret)
       const feePayer    = getFeePayer()
 
-      txSignature = await joinAgreementUSDC(userKeypair, feePayer, dealId)
+      txSignature = await stakeUsdc(userKeypair, feePayer, toUSDCUnits(deal.entry_amount))
 
       await (supabase.from("deal_participants") as any)
         .update({ transaction_hash: txSignature, status: "staked" })
@@ -486,7 +475,7 @@ export async function joinDeal(dealId: string) {
       console.log(`[USDC] Participant ${user.id} staked for deal ${dealId}: ${txSignature}`)
     }
   } catch (err) {
-    console.error("[Solana] joinAgreementUSDC failed (non-blocking):", err)
+    console.error("[USDC] stakeUsdc failed (non-blocking):", err)
   }
 
   revalidatePath("/")
