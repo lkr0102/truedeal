@@ -528,6 +528,7 @@ export default function DealClient({
   const [showShareSheet,   setShowShareSheet]   = useState(false)
   const [showMoreMenu,     setShowMoreMenu]     = useState(false)
   const [linkCopied,       setLinkCopied]       = useState(false)
+  const [joinedDeal,       setJoinedDeal]       = useState<{ amount: number; txSignature?: string } | null>(null)
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const entryAmount    = dealData.entry_amount
@@ -637,7 +638,7 @@ export default function DealClient({
       setJoinError(result.error)
       return
     }
-    router.refresh()
+    setJoinedDeal({ amount: entryAmount, txSignature: result.txSignature })
   }
 
   // ── Tabs config ─────────────────────────────────────────────────────────────
@@ -1129,6 +1130,85 @@ export default function DealClient({
                 <p style={{ fontSize: 13, color: C.dim }}>{language === "pt" ? "Transação blockchain não disponível." : "Blockchain transaction not available."}</p>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── JOIN CONFIRMATION MODAL ── */}
+      {joinedDeal && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", background: "rgba(0,0,0,0.5)", backdropFilter: "blur(6px)" }}
+        >
+          <div
+            style={{ width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", background: C.surface, boxShadow: "0 -16px 64px rgba(0,0,0,0.22)", padding: "24px 20px 48px" }}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 100, background: C.border, margin: "0 auto 22px" }} />
+
+            {/* Header */}
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <div style={{ width: 52, height: 52, borderRadius: 16, background: C.activeLight, border: `1.5px solid ${C.activeBorder}`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+                <ShieldCheck style={{ width: 26, height: 26, stroke: C.brand, fill: "none" }} />
+              </div>
+              <p style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.03em", color: C.text, marginBottom: 4 }}>
+                {language === "pt" ? "Depósito confirmado!" : "Deposit confirmed!"}
+              </p>
+              <p style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.04em", color: C.brand }}>
+                ${joinedDeal.amount.toFixed(2)} USDC
+              </p>
+            </div>
+
+            {/* TX hash */}
+            {joinedDeal.txSignature && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 10, background: C.surface2, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: C.dim, fontFamily: "monospace", letterSpacing: "0.08em", textTransform: "uppercase", flexShrink: 0 }}>TX</span>
+                <span style={{ fontSize: 11, color: C.mid, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                  {joinedDeal.txSignature.slice(0, 20)}…{joinedDeal.txSignature.slice(-8)}
+                </span>
+              </div>
+            )}
+
+            {/* Conditions table */}
+            <div style={{ borderRadius: 14, border: `1px solid ${C.border}`, overflow: "hidden", marginBottom: 14 }}>
+              {[
+                { label: language === "pt" ? "Acordo" : "Deal", value: dealData.title },
+                {
+                  label: language === "pt" ? "Regra" : "Rule",
+                  value: [
+                    dealData.rule_target,
+                    getRuleLabels(language)[dealData.verification_type] ?? dealData.verification_type,
+                    freqLabel,
+                  ].filter(Boolean).join(" · ") || "—",
+                },
+                {
+                  label: language === "pt" ? "Canal" : "Channel",
+                  value: (dealData.verification_channels ?? []).map(c => CHANNEL_LABELS[c] ?? c).join(" + ") || "—",
+                },
+                { label: language === "pt" ? "Período" : "Period", value: `${deal.startDate} → ${deal.endDate}` },
+                { label: language === "pt" ? "Participantes" : "Participants", value: language === "pt" ? "Mín. 2 para ativar" : "Min. 2 to activate" },
+                { label: language === "pt" ? "Taxa" : "Fee", value: language === "pt" ? "3% (só perdedores)" : "3% (losers only)" },
+              ].map((row, i, arr) => (
+                <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "9px 12px", borderBottom: i < arr.length - 1 ? `1px solid ${C.border2}` : "none", fontSize: 12 }}>
+                  <span style={{ color: C.dim, flexShrink: 0, marginRight: 8 }}>{row.label}</span>
+                  <span style={{ fontWeight: 600, color: C.text, textAlign: "right", fontFamily: i === 0 ? undefined : "monospace", fontSize: i === 0 ? 12 : 11 }}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Warning */}
+            <div style={{ padding: "10px 12px", borderRadius: 12, background: "rgba(232,98,10,0.07)", border: `1px solid rgba(232,98,10,0.18)`, fontSize: 11, color: C.forming, fontWeight: 600, lineHeight: 1.5, marginBottom: 18 }}>
+              {language === "pt"
+                ? "O deal só inicia se atingir 2 participantes antes da data de início. Caso contrário, seu USDC é devolvido automaticamente."
+                : "The deal only starts if it reaches 2 participants before the start date. Otherwise, your USDC is returned automatically."}
+            </div>
+
+            <button
+              onClick={() => { setJoinedDeal(null); router.refresh() }}
+              style={{ width: "100%", padding: 16, borderRadius: 100, fontWeight: 700, fontSize: 14, color: "#fff", background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, border: "none", cursor: "pointer", boxShadow: "0 4px 18px rgba(0,184,82,0.3)" }}
+            >
+              {language === "pt" ? "Ver meu deal" : "View my deal"}
+            </button>
           </div>
         </div>
       )}
