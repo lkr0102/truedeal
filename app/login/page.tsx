@@ -175,7 +175,8 @@ function LoginPageInner() {
   }, [])
 
   const { wallets, select, connect, wallet, connected, publicKey, connecting } = useWallet()
-  const pendingRef = useRef<string | null>(null)
+  const pendingRef   = useRef<string | null>(null)
+  const [isSigningIn, setIsSigningIn] = useState(false)
 
   useEffect(() => {
     if (isDemoMode) {
@@ -188,18 +189,67 @@ function LoginPageInner() {
     })
   }, [router, isDemoMode])
 
-  // When wallet state changes after select(), connect and redirect
+  // Sign a message with the connected wallet and establish a Supabase session
+  async function signAndAuth() {
+    const adapter = wallet?.adapter
+    if (!adapter?.publicKey) {
+      setWalletError("Carteira não conectada.")
+      return
+    }
+    if (typeof (adapter as any).signMessage !== "function") {
+      setWalletError("Sua carteira não suporta assinatura de mensagens.")
+      return
+    }
+    setIsSigningIn(true)
+    try {
+      const message  = `TrueDeal Sign-In\nTimestamp: ${Date.now()}`
+      const msgBytes = new TextEncoder().encode(message)
+      const signature: Uint8Array = await (adapter as any).signMessage(msgBytes)
+
+      const res = await fetch("/api/auth/wallet/verify", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({
+          publicKey: adapter.publicKey.toBase58(),
+          signature: Array.from(signature),
+          message,
+        }),
+      })
+
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? "Falha na verificação")
+
+      const supabase = createClient()
+      const { error: otpError } = await supabase.auth.verifyOtp({
+        token_hash: json.token_hash,
+        type:       "email",
+      })
+      if (otpError) throw new Error(otpError.message)
+
+      setShowWallets(false)
+      router.push("/")
+    } catch (err: any) {
+      const msg = err.message ?? ""
+      if (/cancel|reject|denied/i.test(msg)) {
+        setWalletError("Assinatura recusada. Tente novamente.")
+      } else {
+        setWalletError(msg || "Erro ao autenticar. Tente novamente.")
+      }
+    } finally {
+      setIsSigningIn(false)
+    }
+  }
+
+  // When wallet switches (after select()), connect then sign
   useEffect(() => {
     if (!pendingRef.current || !wallet) return
     if (wallet.adapter.name !== pendingRef.current) return
     pendingRef.current = null
     connect()
-      .then(() => {
-        setShowWallets(false)
-        router.push("/")
-      })
+      .then(() => signAndAuth())
       .catch(() => setWalletError("Conexão recusada. Tente novamente."))
-  }, [wallet, connect, router])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wallet])
 
   async function handleEmailLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -225,9 +275,13 @@ function LoginPageInner() {
   async function handleGoogleLogin() {
     setAuthError(null)
     const supabase = createClient()
+    const next = searchParams.get("next") ?? "/"
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        queryParams: { access_type: "offline", prompt: "consent" },
+      },
     })
     if (error) setAuthError(error.message)
   }
@@ -248,26 +302,24 @@ function LoginPageInner() {
     }
     setWalletError(null)
 
-    // Already connected with the right wallet — go directly
+    // Already connected with this wallet — go straight to signing
     if (connected && publicKey && wallet?.adapter.name === adapterName) {
-      setShowWallets(false)
-      router.push("/")
+      await signAndAuth()
       return
     }
 
-    // Wallet already selected but not yet connected — call connect() directly
+    // Same wallet selected but not yet connected
     if (wallet?.adapter.name === adapterName && !connected) {
       try {
         await connect()
-        setShowWallets(false)
-        router.push("/")
+        await signAndAuth()
       } catch {
         setWalletError("Conexão recusada. Tente novamente.")
       }
       return
     }
 
-    // Different wallet selected — switch and let the effect call connect()
+    // Different wallet — select first, useEffect handles connect+sign
     pendingRef.current = adapterName
     select(found.adapter.name)
   }
@@ -439,14 +491,16 @@ function LoginPageInner() {
               ].map((w) => {
                 const found       = wallets.find((a) => a.adapter.name === w.name)
                 const isInstalled = !!found
-                const isConnecting = connecting && wallet?.adapter.name === w.name
+                const isThisWallet = wallet?.adapter.name === w.name
+                const isBusy = isThisWallet && (connecting || isSigningIn)
+                const statusLabel = isThisWallet && isSigningIn ? "Assinando…" : isThisWallet && connecting ? "Conectando…" : null
                 return (
                   <button
                     key={w.name}
                     onClick={() => handleWalletConnect(w.name)}
-                    disabled={isConnecting}
-                    style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, background: C.surface2, border: `1px solid ${C.border}`, cursor: "pointer", textAlign: "left" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.brand }}
+                    disabled={isBusy}
+                    style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 16, background: C.surface2, border: `1px solid ${C.border}`, cursor: isBusy ? "not-allowed" : "pointer", textAlign: "left" }}
+                    onMouseEnter={(e) => { if (!isBusy) e.currentTarget.style.borderColor = C.brand }}
                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.border }}
                   >
                     <div style={{ width: 44, height: 44, borderRadius: 14, background: w.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
@@ -461,9 +515,11 @@ function LoginPageInner() {
                           {isInstalled ? "Instalado" : "Instalar"}
                         </span>
                       </div>
-                      <p style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>{w.desc}</p>
+                      <p style={{ fontSize: 11, color: C.dim, marginTop: 2 }}>
+                        {statusLabel ?? w.desc}
+                      </p>
                     </div>
-                    <span style={{ color: C.dim }}>{isConnecting ? "…" : "→"}</span>
+                    <span style={{ color: C.dim }}>{isBusy ? "…" : "→"}</span>
                   </button>
                 )
               })}
