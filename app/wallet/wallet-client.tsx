@@ -123,13 +123,20 @@ export default function WalletClient({
   const [copied,      setCopied]      = useState(false)
   const [pixAmount,   setPixAmount]   = useState("")
   const [claimState,  setClaimState]  = useState<"idle" | "loading" | "ok" | "err">("idle")
+  const [claimError,  setClaimError]  = useState<string | null>(null)
 
   async function handleClaimUSDC() {
     if (claimState === "loading") return
     setClaimState("loading")
+    setClaimError(null)
     const res = await claimDevnetUSDC()
-    setClaimState(res.success ? "ok" : "err")
-    if (res.success) setTimeout(() => setClaimState("idle"), 4000)
+    if (res.success) {
+      setClaimState("ok")
+      setTimeout(() => setClaimState("idle"), 4000)
+    } else {
+      setClaimState("err")
+      setClaimError(res.error ?? null)
+    }
   }
 
   function truncateAddr(addr: string) { return `${addr.slice(0,6)}...${addr.slice(-6)}` }
@@ -299,7 +306,7 @@ export default function WalletClient({
               ? <Loader2 style={{ width: 16, height: 16, stroke: "#3B82F6", fill: "none", animation: "spin 1s linear infinite" }} />
               : <FlaskConical style={{ width: 16, height: 16, stroke: "currentColor", fill: "none" }} />}
             {claimState === "ok"  ? "1000 USDC recebidos! ✓"
-           : claimState === "err" ? "Falha — tente novamente"
+           : claimState === "err" ? (claimError ? `Erro: ${claimError.slice(0, 60)}` : "Falha — tente novamente")
            : "Claim 1000 USDC for testing"}
           </button>
         )}

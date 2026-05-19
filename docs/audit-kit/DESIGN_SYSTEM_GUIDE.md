@@ -1,89 +1,118 @@
-# 🎨 Guia de Design System: TrueDeal Premium UI
+# Design System Guide — TrueDeal
 
-Este guia documenta os princípios visuais e componentes criados por Lukas para garantir que qualquer expansão do TrueDeal mantenha a estética de **Alta Fidelidade e Glassmorphism**.
-
-> **Última atualização:** 2026-05-10 — Countdown urgency colors, ProfilePopover, compliance subrule checklists, aviso de janela estrita.
+> **Última atualização:** 2026-05-19 — Migração para DM Sans + DM Mono, remoção de glassmorphism, alinhamento com token object C do Tailwind v4.
 
 ---
 
-## 1. Princípios de Design
-- **Transparência e Confiança**: Uso extensivo de superfícies de vidro (`backdrop-filter: blur`).
-- **Feedback Vibrante**: Cores fortes para status (Verde Sucesso, Âmbar Formação).
-- **Modernismo Clean**: Fontes sem serifa (Inter) e bordas arredondadas (14px padrão).
+## 1. Princípios
+
+- **Clareza sobre ornamento**: UI clean, sem efeitos de blur excessivos. Informação financeira deve ser imediatamente legível.
+- **Tipografia como hierarquia**: DM Sans para texto de interface; DM Mono para valores numéricos e hashes.
+- **Status como linguagem**: Cada estado do deal tem cor e badge únicos — o usuário nunca precisa ler texto para saber o que está acontecendo.
+- **Mobile-first**: Todos os componentes são desenhados para 375px e escalam para desktop.
 
 ---
 
-## 2. Componentes Principais (`td-ui.tsx`)
+## 2. Tipografia
 
-### GlassCard
-O contêiner padrão para qualquer informação no app.
-- **Blur**: 30px.
-- **Saturação**: 200%.
-- **Uso**: Cartões de deal, perfis de usuário e cards de estatísticas.
-- **Accent**: Aceita uma cor lateral (ex: `accent="#16A34A"`) para indicar status ou categoria.
+| Papel | Fonte | Peso | Uso |
+|:------|:------|:-----|:----|
+| Display / Títulos | DM Sans | 700 | Títulos de página, nome do deal |
+| Body | DM Sans | 400–500 | Parágrafos, labels, descrições |
+| Valores numéricos | DM Mono | 500–600 | Balances USDC/SOL, timestamps, hashes |
+| Código / TxID | DM Mono | 400 | Endereços Solana, transaction signatures |
 
-### PrimaryBtn
+```css
+/* globals.css */
+font-family: 'DM Sans', system-ui, sans-serif;
+font-family: 'DM Mono', 'Courier New', monospace; /* valores e hashes */
+```
+
+---
+
+## 3. Paleta de Cores
+
+| Token | Valor | Aplicação |
+|:------|:------|:----------|
+| `brand-green` | `#16A34A` | Botões primários, sucesso, deals ativos |
+| `brand-green-light` | `#22C55E` | Hover states, badges de sucesso |
+| `alert-red` | `#EF4444` | Erros, fraude (Risk Guardian), janela estrita perdida |
+| `warning-amber` | `#F59E0B` | Countdown urgente (< 24h), avisos |
+| `info-blue` | `#3B82F6` | Banners informativos (ex: GMT-3 auto-start) |
+| `muted` | `oklch(var --muted)` | Texto secundário, labels |
+| `background` | `oklch(var --background)` | Fundo de página (Tailwind v4 oklch) |
+| `card` | `oklch(var --card)` | Fundo de cards e painéis |
+
+> Tokens seguem o sistema oklch do Tailwind v4 definido em `styles/globals.css`. Evitar valores hex hardcoded fora desse arquivo.
+
+---
+
+## 4. Componentes Principais
+
+### Card (base)
+Contêiner padrão para grupos de informação. Usa variável `--card` do Tailwind. Sem blur/glassmorphism.
+- Border-radius: `rounded-2xl` (16px)
+- Border: `border border-border`
+- Background: `bg-card`
+
+### PrimaryButton
 Botão de ação principal.
-- **Gradiente**: `#16A34A` para `#22C55E`.
-- **Sombra**: Sombra verde suave (`0 8px 24px rgba(22,163,74,0.35)`) que dá a sensação de flutuação.
-- **Uso**: "Criar Deal", "Participar", "Confirmar".
+- Background: `bg-green-600` → hover `bg-green-700`
+- Texto: `text-white font-semibold`
+- Uso: "Criar Deal", "Participar", "Confirmar"
 
-### TDStatusBadge
-Indicação visual do estado do contrato.
-- **Em Jogo**: Verde suave.
-- **Formação**: Laranja/Âmbar.
-- **Encerrado**: Cinza neutro.
+### StatusBadge
+Indica estado atual do deal/participante. Cores padronizadas:
+- `formacao`: âmbar (`bg-amber-100 text-amber-800`)
+- `ativo`: verde (`bg-green-100 text-green-800`)
+- `liquidando`: azul (`bg-blue-100 text-blue-800`)
+- `encerrado`: cinza (`bg-gray-100 text-gray-600`)
+- `cancelado`: vermelho (`bg-red-100 text-red-700`)
 
-### CountdownBadge (DealCards em formação)
-Exibido em cards com `status = "formacao"` no dashboard.
-- **Padrão** (> 24h): texto `#6B7280` (cinza), sem animação.
-- **Urgente** (< 24h): texto `#F59E0B` (âmbar).
-- **Crítico** (< 1h): texto `#EF4444` (vermelho) + classe Tailwind `animate-pulse`.
-- Atualização: `setInterval` de **10 segundos**.
-- Helpers: `getStartTarget(startDate)` e `formatCountdown(ms)`.
+### CountdownBadge
+Exibido em cards com `status = "formacao"`. Atualiza a cada 10s via `setInterval`.
+- > 24h: `text-muted-foreground`
+- < 24h: `text-amber-500`
+- < 1h: `text-red-500 animate-pulse`
 
 ### ProfilePopover
-Substituiu o balloon de configurações. Abre ao clicar no avatar/ícone do header.
-- Fundo: `GlassCard` padrão com blur 30px.
-- Itens: Ícone + label, separados por `<hr>` fino.
-- Toggle de idioma: chip PT/EN com bordas arredondadas, swap via `localStorage`.
-- Toggle dark mode: ícone sol (☀️) / lua (🌙), transição `transition-all 300ms`.
+Menu de usuário no header. Abre ao clicar no avatar.
+- Itens: Link para `/profile`, Invite & Earn (copy referral), Toggle idioma PT/EN, Toggle dark mode
+- Background: `bg-card border border-border rounded-2xl shadow-lg`
 
-### ComplianceSubrulesCard
-Card de sub-regras presente em `/create`, `/deal/[id]` e `/tracking`.
-- Título: `"Regras de Verificação"` + ícone 📋.
-- Lista de sub-regras com prefixo `✅` para cada critério.
-- Banner de alerta (borda vermelha, fundo `rgba(239,68,68,0.08)`): `"Atenção: 1 janela perdida = eliminação permanente."`
+### ComplianceCard
+Card de sub-regras em `/create`, `/deal/[id]` e `/tracking`.
+- Lista de critérios com ✅ por critério
+- Banner de alerta (borda vermelha): "Atenção: 1 janela perdida = eliminação permanente."
 
 ---
 
-## 3. Guia de Cores (Paleta AETHEL)
+## 5. Iconografia
 
-| Cor | Hex | Aplicação |
-| :--- | :--- | :--- |
-| **Brand Green** | `#16A34A` | Logotipo, Botões de Ação, Sucesso. |
-| **Background Dark** | `#0B0B10` | Fundo principal do modo escuro. |
-| **Glass White** | `rgba(255,255,255,0.42)` | Fundo dos cards (com blur). |
-| **Alert Red** | `#EF4444` | Erros, Fraudes (Risk Guardian), Countdown crítico (< 1h), borda de janela estrita. |
-| **Warning Amber** | `#F59E0B` | Countdown urgente (< 24h), avisos de atenção. |
-| **Info Blue** | `#3B82F6` | Banner de início automático GMT-3 na criação de deals. |
+Biblioteca: Lucide React. Usar ícones semânticos:
+- `Wallet` — saldo e carteira
+- `TrendingUp` — deals em formação / crescimento
+- `Shield` — DealGuard / segurança
+- `Zap` — Shakes / reputação
+- `ExternalLink` — links para Solana Explorer
 
 ---
 
-## 4. Estilos Globais e Tipografia
-- **Font-Family**: `Inter, system-ui, sans-serif`.
-- **Text Sizing**:
-    - Títulos: `tracking-tighter`, `font-bold`.
-    - Labels: `text-[10px]`, `font-bold`, `uppercase`.
+## 6. Como Estender
+
+1. Criar novo componente em `components/ui/` (baseado em Shadcn/ui quando disponível)
+2. Usar tokens CSS do `globals.css` — nunca hardcodar hex fora da paleta
+3. Usar DM Mono para qualquer valor numérico financeiro ou endereço on-chain
+4. Manter border-radius consistente (`rounded-2xl` para cards, `rounded-full` para badges)
+5. Não usar `backdrop-filter: blur` — a UI é clean, não glassmorphism
 
 ---
 
-## 5. Como Estender a UI
-Para criar uma nova tela:
-1. Comece com um layout centrado e limpo.
-2. Use o componente `GlassCard` para agrupar informações relacionadas.
-3. Utilize os ícones customizados (`TDIcon`) para reforçar a marca.
-4. Mantenha os paddings generosos (`padding: 13px 24px` em botões).
+## 7. Design Debt & Pendências
 
----
-**"A estética premium não é luxo; é o sinal visual de que o código por trás é seguro."** 🖖
+| Item | Status | Nota |
+|:-----|:-------|:-----|
+| Migração glassmorphism → tokens | ✅ Concluído | commit b56c3062 |
+| DM Sans + DM Mono | ✅ Aplicado | Fontes carregadas via next/font |
+| Dark mode | ✅ Funcional | Toggle no ProfilePopover, persiste localStorage |
+| Internacionalização (i18n) | ⏳ Pendente | Strings hardcoded em PT-BR; inglês como próxima etapa |

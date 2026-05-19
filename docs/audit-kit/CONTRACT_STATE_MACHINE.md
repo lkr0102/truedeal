@@ -1,42 +1,61 @@
-# 🤖 On-Chain Logic: Contract State Machine
+# On-Chain Logic & State Machine — TrueDeal
 
-Este documento detalha o fluxo lógico e financeiro do Smart Contract TrueDeal na Solana, servindo de base para auditorias técnicas e integrações de backend.
-
-> **Última atualização:** 2026-05-10 — Regras de compliance por janela documentadas; UX de sub-regras sincronizado com a máquina de estados.
+> **Última atualização:** 2026-05-19 — Anchor program deprecated; fluxo atual usa SPL transfers diretos. State machine de negócio permanece igual.
 
 ---
 
-## 1. Fluxo de Vida do Acordo (State Machine)
+## 1. Estado Atual da Arquitetura On-Chain
+
+> **Decisão arquitetural (2026-05-19):** O Anchor Program foi substituído por **transferências SPL Token diretas** entre managed wallets. O fluxo financeiro acontece via `@solana/spl-token` (sem PDAs Anchor). O estado do deal é gerenciado no Supabase.
+
+**O que mudou:**
+- Antes: `initPerformanceAgreement` + PDA vault + `joinAgreement` + `settlePerformanceAgreement`
+- Agora: SPL transfer direto `user ATA → fee payer ATA` no join; SPL transfer `fee payer ATA → winner ATAs` no settle
+
+**O que permanece:**
+- State machine de negócio (formacao → ativo → liquidando → encerrado)
+- Lógica econômica (Slacker Tax 3%)
+- Provas criptográficas (SHA-256 proof hash)
+- Multi-oracle consensus (lógica off-chain via DealGuard)
+
+---
+
+## 2. Máquina de Estados do Acordo
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Formation: init_performance_agreement
-    Formation --> Active: Scheduler (Quorum Reached)
-    Formation --> Cancelled: Scheduler (Quorum Failed)
-    Active --> Settled: settle_performance_agreement (Success/Audit)
-    Cancelled --> [*]
-    Settled --> [*]
+    [*] --> formacao: createDeal()
+    formacao --> ativo: Scheduler 00h GMT-3 (≥ 2 participantes)
+    formacao --> cancelado: Scheduler 00h GMT-3 (< 2 participantes)
+    ativo --> liquidando: DealGuard Engine inicia auditoria
+    liquidando --> encerrado: settle() — fundos distribuídos
+    cancelado --> [*]: Refund via SPL transfer
+    encerrado --> [*]
 ```
 
-### Detalhes dos Estados:
-- **Formation**: O contrato aceita `join_agreement`. Os fundos ficam travados no PDA.
-- **Active**: O período de performance começou. Nenhum novo participante pode entrar.
-- **Settled**: A auditoria foi concluída. O Slacker Tax foi retido e os prêmios distribuídos.
-- **Cancelled**: Fundos devolvidos integralmente aos participantes.
+### Detalhes dos Estados
+
+| Estado | Descrição | Transição |
+|:-------|:----------|:----------|
+| `formacao` | Aceita participantes; stake coletado via SPL transfer | Scheduler automático |
+| `ativo` | Período de performance em curso | DealGuard Engine |
+| `cancelado` | Quórum não atingido; refund total via SPL | Automático |
+| `liquidando` | Auditoria em execução; fundos retidos | DealGuard → settle |
+| `encerrado` | Payout executado; protocolo encerrado | Final |
 
 ---
 
-## 1b. Regras de Compliance por Janela (Strict Window Model)
+## 3. Regras de Compliance por Janela (Strict Window Model)
 
-O DealGuard Engine avalia o cumprimento de forma **estrita por janela de frequência**. A UI de todas as telas de deal espelha esta lógica desde 2026-05-10.
+O DealGuard Engine avalia cumprimento de forma **estrita por janela de frequência**:
 
-### Princípio
 ```
 Para cada janela de frequência no período do deal:
   SE cumprimento_da_janela < quantidade_configurada:
-    → participante = PERDEDOR (irreversível)
+    → participante = PERDEDOR (irreversível naquela janela)
 ```
-Uma janela perdida = eliminado, independente de qualquer outra janela.
+
+Uma janela perdida = eliminado, independente de outras janelas.
 
 ### Sub-regras por Tipo de Verificação
 
@@ -44,60 +63,60 @@ Uma janela perdida = eliminado, independente de qualquer outra janela.
 |:--------------------|:------|:-----------------------|
 | `post_feito` | X | Conta pública; post > 100 chars; conteúdo único no período |
 | `seguidores_recebidos` | X, Instagram, TikTok, LinkedIn, YouTube | Delta líquido por janela (ganhos − perdas) ≥ N |
-| `impressoes` | X, Instagram, TikTok, LinkedIn, YouTube | Total de impressões das publicações da janela ≥ N |
-| `reposts_recebidos` | X, Instagram, TikTok | Total de reposts/compartilhamentos na janela ≥ N |
+| `impressoes` | X, Instagram, TikTok, LinkedIn, YouTube | Total de impressões na janela ≥ N |
+| `reposts_recebidos` | X, Instagram, TikTok | Total de reposts na janela ≥ N |
 | `comentarios` | X, Instagram, TikTok, LinkedIn, YouTube | Total de comentários recebidos na janela ≥ N |
-| `km_corridos` | Strava | Soma de distâncias de atividades `Run` na janela ≥ N km |
+| `km_corridos` | Strava | Soma de atividades `Run` na janela ≥ N km |
 | `horas_exercicio` | Strava | Tempo total de atividades na janela ≥ N horas |
 | `checkins` | Strava, Wellhub, TotalPass | Número de check-ins registrados na janela ≥ N |
-| `ambientes_diferentes` | Strava, Wellhub, TotalPass | Locais/academias distintos visitados na janela ≥ N |
-| `pace` | Strava | Pace médio das corridas da janela ≤ pace configurado (min/km) |
+| `ambientes_diferentes` | Strava, Wellhub, TotalPass | Locais distintos visitados na janela ≥ N |
+| `pace` | Strava | Pace médio das corridas ≤ pace configurado (min/km) |
 
-> **Nota Pace**: O valor configurado é o **limite máximo** — quanto menor o número, mais rápido. A UI exibe `"Pace máximo (min/km) — ← menor = mais rápido"` para deixar isso explícito.
-
-### Dados insuficientes
-Se o DealGuard não conseguir coletar dados de um participante em uma janela (token expirado, API indisponível, conta privada), o participante é tratado como **não-cumprimento** naquela janela.
+> **Dados insuficientes**: se o DealGuard não conseguir coletar dados (token expirado, API offline, conta privada), o participante é tratado como não-cumprimento.
 
 ---
 
-## 2. Lógica de Liquidação e Slacker Tax
+## 4. Lógica de Liquidação (Slacker Tax)
 
-A liquidação é o momento onde a "Lei do Código" é aplicada.
+```
+slacker_pool      = n_perdedores × entry_amount
+platform_fee      = slacker_pool × 0.03
+reward_per_winner = (slacker_pool − platform_fee) / n_vencedores
+payout_winner     = entry_amount + reward_per_winner
+```
 
-### Algoritmo de Distribuição:
-1. **Identificação**: O DealGuard fornece o `winners_count`.
-2. **Cálculo do Slacker Pool**:
-   `slacker_pool = (total_participants - winners_count) * guarantee_amount`
-3. **Taxa de Sustentabilidade (3%)**:
-   `platform_fee = slacker_pool * 0.03`
-4. **Prêmio Líquido**:
-   `reward_per_winner = (slacker_pool - platform_fee) / winners_count`
-5. **Payout Final**:
-   `total_payout = guarantee_amount + reward_per_winner`
-
----
-
-## 3. Segurança e Consenso (DealGuard)
-
-O contrato implementa uma camada de **Consenso Off-Chain para Execução On-Chain**.
-
-### Multi-Sig de Oráculos:
-Para que a função `settle_performance_agreement` execute, o contrato verifica:
-- `require!(ctx.accounts.oracle_1.is_signer && ctx.accounts.oracle_2.is_signer)`
-Isso garante que mesmo que uma chave de oráculo seja comprometida, o hacker não consegue liquidar o contrato sozinho.
-
-### Integridade dos Dados (Hashing):
-- **Rule Hash**: Hash SHA-256 das regras (Markdown/PDF) capturado no `init`.
-- **Proof Hash**: Hash SHA-256 do relatório forense da auditoria capturado no `settle`.
-Qualquer pessoa pode validar off-chain se os dados da auditoria batem com o que foi registrado no contrato.
+**Implementação atual (SPL direto):**
+```typescript
+// lib/actions/settlement.ts — settleDealProtocol()
+// 1. Calcula vencedores via DealGuard
+// 2. SPL transfer de entry_amount de volta para cada vencedor
+// 3. SPL transfer de reward_per_winner para cada vencedor
+// 4. 3% fica retido na protocol wallet (treasury)
+```
 
 ---
 
-## 4. Estrutura de Contas (PDAs)
+## 5. Segurança e Integridade
 
-O TrueDeal utiliza Program Derived Addresses para máxima segurança:
-- **Agreement Account**: `seeds = [b"agreement", agreement_id]`
-- **Vault Account**: A conta de token (SPL Token) que pertence ao PDA do acordo.
+### Provas Criptográficas
+- **Rule Hash**: SHA-256 das regras capturado no `createDeal`
+- **Proof Hash**: SHA-256 do relatório forense gerado pelo DealGuard no `settle`
+- Qualquer pessoa pode verificar off-chain se os dados batem com o hash registrado
+
+### Multi-Oracle (Off-Chain)
+O DealGuard Engine requer consenso de dois oráculos (`oracle_1` e `oracle_2`) antes de executar qualquer liquidação. Ambas as chaves devem assinar a transação SPL de settle.
+
+### Managed Wallets
+Keypairs de usuário são gerados server-side, encriptados com AES-256 e armazenados no Supabase. Nunca expostos ao browser.
 
 ---
-**"A confiança não é dada ao código; ela é extraída através de provas matemáticas de integridade."** 🖖
+
+## 6. Endereços de Referência (Devnet)
+
+| Recurso | Endereço |
+|:--------|:---------|
+| Anchor Program (legacy, não em uso) | `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp` |
+| USDC Mint (devnet) | `BpXHCSnxhbzSjzWeaTHG14g1zETtcZeDGk772Nvwjb99` |
+| USDC Mint (mainnet) | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
+| Oracle 1 / Fee Payer | Derivado de `APP_FEE_PAYER_KEY` |
+| Oracle 2 | Derivado de `ORACLE_2_PRIVATE_KEY` |

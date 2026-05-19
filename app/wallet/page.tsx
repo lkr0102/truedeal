@@ -4,7 +4,8 @@ import { getMyWallet, getSolBalance, getUsdcBalance, ensureUserWallet } from "@/
 import { createClient } from "@/lib/supabase/server"
 import WalletClient from "./wallet-client"
 
-export const dynamic = "force-dynamic"
+export const dynamic    = "force-dynamic"
+export const maxDuration = 60
 
 async function fetchSolUsdPrice(): Promise<number> {
   try {
@@ -55,7 +56,7 @@ export default async function WalletPage() {
   const activeDealsValue = deals
     .filter((d: any) =>
       (d.status === "ativo" || d.status === "formacao") &&
-      d.participants.some((p: any) => p.user_id === user?.id && p.status === "staked"),
+      d.participants.some((p: any) => p.user_id === user?.id && (p.status === "active" || p.status === "staked")),
     )
     .reduce((sum: number, d: any) => sum + d.entry_amount, 0)
 

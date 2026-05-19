@@ -1,82 +1,135 @@
-# 🗺️ Master System Map: TrueDeal App
+# System Map Master — TrueDeal
 
-Este documento é o guia definitivo para desenvolvedores e auditores entenderem a anatomia do TrueDeal, desde a interface premium até a liquidação on-chain.
-
-> **Última atualização:** 2026-05-16 — **Sovereign Build Stabilization**, Devnet Deployment, CI/CD Autônomo.
+> **Última atualização:** 2026-05-19 — Anchor program substituído por SPL transfers diretos; managed wallet; design system atualizado; estado de devnet atual.
 
 ---
 
 ## 1. Stack Tecnológica
-- **Frontend**: Next.js 15 (App Router) + TypeScript.
-- **Styling**: Tailwind CSS + Glassmorphism Custom System (`td-ui.tsx`).
-- **Backend/Orquestração**: Supabase (PostgreSQL, Auth, Realtime).
-- **Blockchain**: Solana (**Anchor Framework 0.29.0**).
-- **IA/Monitoramento**: Risk Guardian (Sentinel AI) + DealGuard Engine.
+
+| Camada | Tecnologia | Versão |
+|:-------|:-----------|:-------|
+| Frontend | Next.js (App Router) | 15 |
+| Estilização | Tailwind CSS v4 + Shadcn/ui | — |
+| Auth & Database | Supabase (PostgreSQL + Auth) | — |
+| Blockchain | Solana (SPL Token direto) | Devnet |
+| Wallet | Managed keypairs (AES-256 encrypted) | — |
+| AI/Verificação | Risk Guardian (Sentinel AI) + DealGuard Engine | — |
+
+> **Nota arquitetural (2026-05-19):** O Anchor Program (`HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp`) foi substituído por **transferências SPL diretas** entre managed wallets. O programa ainda existe no devnet mas não é chamado em produção.
 
 ---
 
-## 2. Anatomia da Interface (UI/UX)
+## 2. Arquitetura de Wallet
 
-A interface foi desenhada por Lukas com foco em **fidelidade visual e confiança**.
+Cada usuário possui um **managed wallet** — um keypair Solana gerado e gerenciado pelo protocolo:
 
-### Diretórios de UI:
-- `/app`: Contém as rotas da aplicação.
-- `/components/ui`: Componentes base (Shadcn/UI).
-- `/components/td-ui.tsx`: O **Coração Visual**. Contém os componentes customizados (GlassCard, StatusBadge, TDIcon).
-- `/styles/globals.css`: Variáveis de cor e efeitos de blur.
+```
+┌─────────────────────────────────────────────┐
+│                 Supabase DB                 │
+│  user_wallets                               │
+│  ├── user_id        → auth.users.id         │
+│  ├── public_key     → Solana pubkey (base58)│
+│  └── encrypted_secret → AES-256(secretKey)  │
+└─────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────────────────────────────────┐
+│           Fee Payer (Oracle 1)              │
+│  APP_FEE_PAYER_KEY (base64)                 │
+│  ├── Paga taxas SOL de todas as TXs         │
+│  ├── USDC_MINT_AUTHORITY_KEY → minta USDC   │
+│  └── Armazena USDC da treasury              │
+└─────────────────────────────────────────────┘
+```
 
-### Fluxos do Usuário (User Journey):
-1. **The Hook (Dashboard)**: `page.tsx` (Home) -> Uso de **Hero Banners** saturados, **Live Status Dots** e **Countdown Timer** para criar urgência.
-2. **The Rule Engine (Creation)**: `/create` -> Configuração modular de regras com conectores lógicos + checklist de verificação.
-3. **Engagement Loop (Explore)**: `/explore` -> Sistema de **Shakes (🤝)** + **Hall of Fame** visual.
-4. **Live Accountability**: `/deal/[id]` -> Timeline visual da jornada + links de evidência auditáveis.
-5. **Sovereign Finance**: `/wallet` -> Gestão de saldo multi-moeda (SOL/USD/BRL).
+**Fluxo de depósito (Join Deal):**
+`User USDC ATA → (SPL transfer) → Treasury/Protocol ATA`
 
----
-
-## 3. Lógica de Contratos (On-Chain)
-
-O contrato `truedeal` na Solana gerencia o estado financeiro e a verdade dos acordos.
-
-### Deployment (Devnet):
-- **Program ID:** `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp`
-- **Audit Info:** [Solscan Link](https://solscan.io/account/HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp?cluster=devnet)
-
-### Máquina de Estados (AgreementStatus):
-- `Formation`: Deal aberto para entrada de participantes.
-- `Active`: Deal em andamento (pós-quórum).
-- `Settled`: Deal encerrado e fundos distribuídos.
-- `Cancelled`: Deal falhou no quórum e fundos foram devolvidos.
-
-### Sovereign Build Pipeline (CI/CD):
-O projeto utiliza um pipeline de deploy autônomo que:
-1. Aplica patches cirúrgicos no diretório `vendor/` para compatibilidade com o compilador SBF (Legacy Rust).
-2. Gera uma identidade única (Keypair) por build, injetando o ID dinamicamente no código-fonte.
+**Fluxo de saque (Settle):**
+`Treasury/Protocol ATA → (SPL transfer) → Winners' USDC ATAs`
 
 ---
 
-## 4. O "Slacker Tax" (Motor Econômico)
+## 3. Fluxos do Usuário
 
-Localizado em `contracts/solana/programs/truedeal/src/lib.rs`:
-1. O sistema identifica os **Perdedores** (quem não atingiu a meta).
-2. O montante dos perdedores forma o `slacker_pool`.
-3. **3%** desse pool é enviado para a `treasury_token_account` (Taxa do Protocolo).
-4. O restante é dividido igualmente entre os **Ganhadores**.
-
----
-
-## 5. Gamificação e Retenção (A Economia de Shakes)
-
-O TrueDeal utiliza o conceito de **Sovereign Reputation**:
-- **Daily Check-ins**: Recompensas progressivas em Shakes.
-- **Social Proof**: O Hall of Fame utiliza deltas de ranking para incentivar a competitividade.
+| # | Rota | Objetivo |
+|:--|:-----|:---------|
+| 1 | `/` (Dashboard) | Visualizar deals, ver saldo, filtrar por tipo |
+| 2 | `/create` | Configurar regras de um novo deal |
+| 3 | `/deal/[id]` | Acompanhar deal ativo, ver prova on-chain |
+| 4 | `/wallet` | Gerenciar saldo USDC/SOL, ver stake em deals |
+| 5 | `/explore` | Ranking, Shakes, check-in diário |
+| 6 | `/profile` | Conectar redes sociais (X, Strava), editar perfil |
+| 7 | `/onboarding` | Setup inicial — nome, avatar, wallet auto-criada |
 
 ---
 
-## 6. Manutenção e Extensibilidade
+## 4. Ciclo de Vida On-Chain
 
-- **Para novos desenvolvedores**: Sempre utilize os componentes de `td-ui.tsx` para manter a estética de vidro.
-- **Sincronia de ID**: O ID do contrato no repositório local é gerenciado pelo CI. Consulte sempre o último Release para o ID real de produção.
+```
+Usuário join deal
+       │
+       ▼
+SPL Transfer: user USDC → protocol wallet
+       │
+       ▼
+Deal ativado (00h GMT-3 auto-scheduler)
+       │
+       ▼
+DealGuard Engine: verifica janelas de compliance
+       │
+       ├── Vencedores: SPL transfer de volta + reward
+       └── Perdedores: 3% fee retido, resto distribuído
+```
 
 ---
-**TrueDeal Protocol - Mantendo a integridade do código e a soberania dos acordos.** 🖖
+
+## 5. Motor Econômico (Slacker Tax)
+
+```
+slacker_pool     = (n_perdedores × entry_amount)
+platform_fee     = slacker_pool × 0.03          ← 3% protocol fee
+reward_per_winner = (slacker_pool − platform_fee) / n_vencedores
+payout_winner     = entry_amount + reward_per_winner
+```
+
+---
+
+## 6. Gamificação (Shakes)
+
+| Evento | Shakes |
+|:-------|:-------|
+| Deal ativado (criador) | +500 |
+| Deal ativado (participante) | +200 |
+| Daily check-in | progressivo |
+| Referral | bônus fixo |
+
+---
+
+## 7. Segurança e Infraestrutura
+
+| Aspecto | Implementação |
+|:--------|:--------------|
+| Keypairs de usuário | AES-256 encrypted no Supabase |
+| Fee payer key | `APP_FEE_PAYER_KEY` env var (JSON array format) |
+| Mint authority | `USDC_MINT_AUTHORITY_KEY` env var (JSON array format) |
+| USDC mint (devnet) | `BpXHCSnxhbzSjzWeaTHG14g1zETtcZeDGk772Nvwjb99` |
+| USDC mint (mainnet) | `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v` |
+| RPC | `SOLANA_RPC_URL` env var (fallback: `clusterApiUrl("devnet")`) |
+| OAuth X | `X_CLIENT_ID` + `X_CLIENT_SECRET` (PKCE, sem refresh token) |
+| OAuth Strava | `STRAVA_CLIENT_ID` + `STRAVA_CLIENT_SECRET` |
+
+---
+
+## 8. Diagnóstico Rápido (Devnet)
+
+```bash
+# Verificar saldo do fee payer
+solana balance <APP_FEE_PAYER_PUBKEY> --url devnet
+
+# Verificar USDC mint authority
+spl-token display BpXHCSnxhbzSjzWeaTHG14g1zETtcZeDGk772Nvwjb99 --url devnet
+
+# Testar faucet localmente
+node -e "require('./lib/solana/devnet-faucet').grantDevnetUSDC('<pubkey>').then(console.log)"
+```

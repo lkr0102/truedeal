@@ -23,7 +23,7 @@ export default async function HomePage() {
   const activeDealsValue = deals
     .filter((d: any) =>
       (d.status === "ativo" || d.status === "formacao") &&
-      d.participants.some((p: any) => p.user_id === user?.id && p.status === "staked"),
+      d.participants.some((p: any) => p.user_id === user?.id && (p.status === "active" || p.status === "staked")),
     )
     .reduce((sum: number, d: any) => sum + d.entry_amount, 0)
 

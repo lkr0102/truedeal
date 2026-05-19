@@ -106,7 +106,8 @@ export async function claimDevnetUSDC(): Promise<{ success: boolean; error?: str
     await grantDevnetUSDC(data.public_key)
     return { success: true }
   } catch (err: any) {
-    return { success: false, error: err.message }
+    console.error("[claimDevnetUSDC] grant failed:", err?.message ?? err)
+    return { success: false, error: err?.message ?? "Erro desconhecido" }
   }
 }
 

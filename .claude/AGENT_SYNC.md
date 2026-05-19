@@ -1,29 +1,135 @@
-# TrueDeal: Technical Handover & Agent Sync
+# TrueDeal — Technical Handover & Agent Sync
 
-Este documento fornece o contexto técnico imediato para agentes de IA operando no repositório TrueDeal.
+> **Última atualização:** 2026-05-19 — Arquitetura migrada para SPL direto; faucet corrigido; design system atualizado.
 
-## 1. Estado Atual da Infraestrutura (Build & Deploy)
-- **Toolchain:** Solana 1.18.26 / Anchor 0.29.0 / Rust Edition 2021 (SBF Legacy).
-- **Build System:** **Sovereign Build Pipeline** estável. Dependências transitivas (`indexmap`, `hashbrown`, `toml_datetime`) patcheadas cirurgicamente no `vendor/` para compatibilidade com o compilador SBF (Rust 1.75/1.79).
-- **Deploy:** Sistema de **ID Dinâmico Autônomo**. O CI gera uma chave nova, injeta o ID no código e faz o deploy.
-- **Release Oficial:** `v0.1.0-alpha.1` (Contém o binário `.so` e o `idl.json` auditáveis).
-- **Program ID Atual:** `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp` (Devnet).
+---
 
-## 2. Componentes Principais e Localização
-- **Smart Contract:** `contracts/solana/programs/truedeal/src/lib.rs` (Lógica de Escrow e Liquidação).
-- **Frontend Core:** `app/` e `components/` (Interface Next.js).
-- **Escopo Técnico:** `.agents/task_master_scope.md` (O guia definitivo de regras e intervenções institucionais).
+## 1. Estado Atual da Infraestrutura
 
-## 3. Comandos de Verificação e Sincronia
-- **Build do Contrato:** `cd contracts/solana && anchor build` (Use o script `zero_checksums.py` se alterar o vendor).
-- **Sincronia de ID:** Sempre verifique o ID mais recente no último GitHub Release antes de atualizar o frontend.
-- **Saldo da Carteira:** A carteira pagadora `1ZixuegY1EPvDeybLLGXW29aM2WuC4kA8dcfXbSNoNW` deve estar abastecida na Devnet.
+| Aspecto | Valor atual |
+|:--------|:------------|
+| Blockchain | Solana Devnet |
+| SPL Runtime | `@solana/spl-token` (sem Anchor) |
+| USDC Mint (devnet) | `BpXHCSnxhbzSjzWeaTHG14g1zETtcZeDGk772Nvwjb99` |
+| Fee Payer | `APP_FEE_PAYER_KEY` (JSON array no Vercel) |
+| Mint Authority | `USDC_MINT_AUTHORITY_KEY` (JSON array no Vercel, mesma key que fee payer em devnet) |
+| Oracle 2 | `ORACLE_2_PRIVATE_KEY` (JSON array ou base64) |
+| RPC | `SOLANA_RPC_URL` env var (fallback: `clusterApiUrl("devnet")`) |
+| Frontend | Vercel — `truedeal-lkr0102s-projects.vercel.app` |
+| DB | Supabase PostgreSQL |
+| Anchor Program | `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp` — DEPRECATED, não em uso |
 
-## 4. Handover para Lukas (Frontend Engineer)
-1. **Blockchain Integration:** Use o `idl.json` anexado ao Release `v0.1.0-alpha.1` para regenerar os tipos se necessário.
-2. **Program ID:** O ID oficial para o frontend é `HdMnEf5jc3q6tws2vYLZgFgwFWKkKpNaK5CRKnF3a7mp`.
-3. **Settle Hook:** Lukas deve garantir que a chamada para `settleDealProtocol` no frontend aponte para este ID e use os oráculos corretos definidos no contrato.
+---
 
-> [!IMPORTANT]
-> **Soberania de ID:** O ID do programa no repositório local é temporário. O **ID Verdadeiro** é o que o CI gera e injeta. **NUNCA** tente fixar um ID manualmente sem sincronizar com o workflow de deploy.
-> **Manutenção:** Mantenha a Fee Payer Wallet abastecida para evitar falhas de deploy por "insufficient funds".
+## 2. Componentes Principais
+
+| Função | Arquivo |
+|:-------|:--------|
+| Smart Contract (SPL direto) | `lib/actions/deals.ts` — `joinDeal`, `createDeal` |
+| Settlement Engine | `lib/actions/settlement.ts` — `settleDealProtocol` |
+| Managed Wallets | `lib/actions/wallet.ts` + `lib/solana/keypair.ts` |
+| Devnet Faucet | `lib/solana/devnet-faucet.ts` — `grantDevnetUSDC` |
+| Fee Payer | `lib/solana/fee-payer.ts` — `getFeePayer`, `getConnection` |
+| USDC Constants | `lib/solana/constants.ts` — `USDC_MINT`, `toUSDCUnits`, `formatUSDC` |
+| DealGuard Engine | `lib/actions/dealguard.ts` |
+| Auth / OAuth | `app/api/auth/[provider]/route.ts`, `app/api/auth/callback/[provider]/route.ts` |
+
+---
+
+## 3. Fluxo Financeiro (SPL Direto)
+
+```
+CRIAR DEAL:
+  Server Action createDeal()
+  → SPL transfer: creator USDC ATA → protocol USDC ATA
+  → DB insert: deals + deal_participants (status: "active")
+
+ENTRAR EM DEAL:
+  Server Action joinDeal()
+  → Decrypt user keypair do Supabase
+  → SPL transfer: user USDC ATA → protocol USDC ATA
+  → DB insert: deal_participants (status: "active")
+  → DB update: tx_hash na tabela deal_participants
+
+LIQUIDAR (DealGuard):
+  settleDealProtocol(dealId)
+  → Coleta winners do DB
+  → SPL transfer: protocol ATA → winner ATAs (entry + reward)
+  → 3% do slacker_pool fica na protocol wallet
+  → DB update: deal status → "encerrado"
+```
+
+---
+
+## 4. Keypair Format (IMPORTANTE)
+
+Keypairs Solana são armazenados no Vercel como **JSON array** `[114,111,190,...]` (64 bytes).
+O código em `lib/solana/fee-payer.ts` e `lib/solana/devnet-faucet.ts` aceita:
+- JSON array: `if (raw.startsWith("[")) Keypair.fromSecretKey(Uint8Array.from(JSON.parse(raw)))`
+- Base64: `Keypair.fromSecretKey(new Uint8Array(Buffer.from(raw, "base64")))`
+
+> **Por que JSON array?** A CLI do Vercel corrompe caracteres `+` e `/` da base64 (URL encoding). JSON array usa apenas dígitos e vírgulas — sem ambiguidade.
+
+---
+
+## 5. Design System
+
+| Elemento | Valor |
+|:---------|:------|
+| Font principal | DM Sans |
+| Font numérica/código | DM Mono |
+| Tokens de cor | Tailwind v4 oklch — `globals.css` |
+| Verde primário | `#16A34A` / `green-600` |
+| Glassmorphism | ❌ Removido — não usar |
+| Cards | `bg-card border border-border rounded-2xl` |
+
+---
+
+## 6. Comandos de Verificação
+
+```bash
+# Verificar saldo do fee payer no devnet
+solana balance <FEE_PAYER_PUBKEY> --url devnet
+
+# Verificar mint authority do USDC devnet
+spl-token display BpXHCSnxhbzSjzWeaTHG14g1zETtcZeDGk772Nvwjb99 --url devnet
+
+# Testar faucet localmente (com .env.local configurado)
+node -e "
+const { grantDevnetUSDC } = require('./lib/solana/devnet-faucet');
+grantDevnetUSDC('SEU_PUBKEY').then(console.log).catch(console.error);
+"
+
+# Deploy para produção
+npx vercel@latest --prod --archive=tgz
+
+# Setar keypair no Vercel (JSON array — sem risco de corrupção)
+python3 -c "
+import base64, json
+key = base64.b64decode(open('.env.local').read().split('APP_FEE_PAYER_KEY=')[1].split('\n')[0])
+print(json.dumps(list(key)), end='')
+" | npx vercel@latest env add APP_FEE_PAYER_KEY production
+```
+
+---
+
+## 7. Regras para Agentes
+
+1. **Nunca expor `secretKey` ao browser** — Server Actions apenas
+2. **`USDC_MINT`** sempre de `lib/solana/constants.ts`
+3. **Glassmorphism proibido** — usar tokens Tailwind v4
+4. **Keypairs no Vercel = JSON array** — não base64 (risco de corrupção de `+`)
+5. **`ensureUserWallet()`** é idempotente — seguro no login
+6. **`maxDuration = 60`** em páginas que fazem chamadas Solana (evitar timeout Hobby plan)
+7. **Anchor program é legacy** — não integrar sem aprovação explícita
+
+---
+
+## 8. Status dos Módulos OAuth
+
+| Provider | Client ID | Callback URL | Status |
+|:---------|:----------|:-------------|:-------|
+| X (Twitter) | `IYKkci0cdqHinaNX1bXkwrbbe` | `/api/auth/callback/x` | ✅ Configurado |
+| Strava | env: `STRAVA_CLIENT_ID` | `/api/auth/strava/callback` | ✅ Configurado |
+
+> X usa PKCE (code_verifier via cookie `x_code_verifier`). Strava usa redirect URI derivado de `NEXT_PUBLIC_APP_URL`.
