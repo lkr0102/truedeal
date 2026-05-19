@@ -132,34 +132,54 @@ export async function createDeal(input: CreateDealInput) {
     status:  "active",
   })
 
-  // ── On-chain: register AgreementAccount PDA + USDC vault (TX 1) ─────────────
+  // ── On-chain: TX 1 (create vault) + TX 2 (stake creator USDC) ───────────────
   // Non-blocking — deal exists in Supabase regardless of on-chain success.
+  let stakeTxSignature: string | undefined
   try {
     const { createHash } = await import("crypto")
     const { getFeePayer } = await import("@/lib/solana/fee-payer")
-    const { initPerformanceAgreement, deriveAgreementPDA } = await import("@/lib/solana/anchor-client")
+    const { initPerformanceAgreement, joinAgreementUSDC, deriveAgreementPDA } = await import("@/lib/solana/anchor-client")
     const { toUSDCUnits } = await import("@/lib/solana/constants")
 
     const feePayer      = getFeePayer()
     const ruleHash      = createHash("sha256")
       .update(`${input.verification_type}:${input.verification_channels.join(",")}:${input.rule_target}:${input.rule_frequency}`)
       .digest()
-    const guaranteeUSDC = toUSDCUnits(input.entry_amount)   // entry_amount treated as USD
+    const guaranteeUSDC = toUSDCUnits(input.entry_amount)
 
-    const txSig = await initPerformanceAgreement(feePayer, deal.id, guaranteeUSDC, ruleHash)
+    // TX 1 — create AgreementAccount PDA + USDC vault
+    const initTx = await initPerformanceAgreement(feePayer, deal.id, guaranteeUSDC, ruleHash)
     const [pda]  = deriveAgreementPDA(deal.id)
 
     await (supabase.from("deals") as any)
-      .update({ solana_tx_signature: txSig, pda_address: pda.toString() })
+      .update({ solana_tx_signature: initTx, pda_address: pda.toString() })
       .eq("id", deal.id)
 
-    console.log(`[Anchor] Deal ${deal.id} registered on-chain: ${txSig}`)
+    console.log(`[Anchor] Deal ${deal.id} registered on-chain: ${initTx}`)
+
+    // TX 2 — stake creator's USDC into vault (same as joinDeal for other participants)
+    const { data: walletData } = await (supabase.from("user_wallets") as any)
+      .select("encrypted_secret")
+      .eq("user_id", user.id)
+      .single()
+
+    if (walletData?.encrypted_secret && input.entry_amount > 0) {
+      const userKeypair   = decryptSecret(walletData.encrypted_secret)
+      stakeTxSignature    = await joinAgreementUSDC(userKeypair, feePayer, deal.id)
+
+      await (supabase.from("deal_participants") as any)
+        .update({ transaction_hash: stakeTxSignature, status: "staked" })
+        .eq("deal_id", deal.id)
+        .eq("user_id", user.id)
+
+      console.log(`[USDC] Creator ${user.id} staked for deal ${deal.id}: ${stakeTxSignature}`)
+    }
   } catch (err) {
-    console.error("[Anchor] initPerformanceAgreement failed (non-blocking):", err)
+    console.error("[Anchor] on-chain setup failed (non-blocking):", err)
   }
 
   revalidatePath("/")
-  return { deal }
+  return { deal, stakeTxSignature }
 }
 
 // ── Mock Data for Demo Mode ───────────────────────────────────────────────────

@@ -371,6 +371,7 @@ export default function CreateDealPage() {
   const [isSubmitting,   setIsSubmitting]   = useState(false)
   const [submitError,    setSubmitError]    = useState<string | null>(null)
   const [missingSocial,  setMissingSocial]  = useState<string[] | null>(null)
+  const [confirmedDeal,  setConfirmedDeal]  = useState<{ deal: any; amount: number; txSignature?: string } | null>(null)
 
   // ── Derived ──
   const channels       = category ? (CHANNELS[category] ?? []) : []
@@ -479,7 +480,7 @@ export default function CreateDealPage() {
       setSubmitError(result.error)
       return
     }
-    router.push("/")
+    setConfirmedDeal({ deal: result.deal, amount: effectiveAmount, txSignature: result.stakeTxSignature })
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -1313,6 +1314,88 @@ export default function CreateDealPage() {
             </button>
             <button onClick={() => setMissingSocial(null)} className="w-full mt-2.5 py-3 rounded-2xl font-semibold text-gray-500 text-sm" style={{ background: "rgba(0,0,0,0.04)" }}>
               {language === "pt" ? "Cancelar" : "Cancel"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Deal confirmed — deposit receipt ──────────────────────────────────── */}
+      {confirmedDeal && (
+        <div className="fixed inset-0 z-50 flex items-end"
+          style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)" }}>
+          <div className="w-full rounded-t-3xl px-5 pt-6 pb-10"
+            style={{ background: C.surface, boxShadow: "0 -20px 80px rgba(0,0,0,0.25)", maxHeight: "92vh", overflowY: "auto" }}>
+
+            {/* Icon + title */}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", marginBottom: 22 }}>
+              <div style={{ width: 68, height: 68, borderRadius: "50%", background: "rgba(0,184,82,0.1)", border: "2px solid rgba(0,184,82,0.3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+                <ShieldCheck style={{ width: 32, height: 32, stroke: C.brand, fill: "none" }} />
+              </div>
+              <h2 style={{ fontSize: 21, fontWeight: 900, color: C.text, letterSpacing: "-0.03em", textAlign: "center" }}>
+                {language === "pt" ? "Depósito confirmado!" : "Deposit confirmed!"}
+              </h2>
+              <p style={{ fontSize: 13, color: C.dim, marginTop: 4, textAlign: "center" }}>
+                {language === "pt" ? "Seu acordo foi registrado na blockchain Solana" : "Your agreement was registered on the Solana blockchain"}
+              </p>
+            </div>
+
+            {/* Amount hero */}
+            <div style={{ padding: "18px 0", borderTop: `1px solid ${C.border}`, borderBottom: `1px solid ${C.border}`, marginBottom: 18, textAlign: "center" }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: C.dim, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>
+                {language === "pt" ? "Valor depositado" : "Amount deposited"}
+              </p>
+              <p style={{ fontSize: 42, fontWeight: 900, color: C.brand, letterSpacing: "-0.04em", lineHeight: 1 }}>
+                ${confirmedDeal.amount.toFixed(2)}
+              </p>
+              <p style={{ fontSize: 12, color: C.mid, marginTop: 4, fontFamily: mono }}>USDC · Solana devnet</p>
+            </div>
+
+            {/* TX signature */}
+            {confirmedDeal.txSignature && (
+              <div style={{ padding: "10px 14px", borderRadius: 12, background: C.surface2, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+                <p style={{ fontSize: 10, color: C.dim, marginBottom: 3, fontFamily: mono }}>
+                  {language === "pt" ? "Transação on-chain" : "On-chain transaction"}
+                </p>
+                <p style={{ fontSize: 11, color: C.text, fontFamily: mono, wordBreak: "break-all", lineHeight: 1.4 }}>
+                  {confirmedDeal.txSignature.slice(0, 24)}…{confirmedDeal.txSignature.slice(-10)}
+                </p>
+              </div>
+            )}
+
+            {/* Deal conditions */}
+            <div style={{ padding: 14, borderRadius: 16, background: "rgba(0,0,0,0.02)", border: `1px solid ${C.border}`, marginBottom: 16 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: C.mid, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 12, fontFamily: mono }}>
+                {language === "pt" ? "Condições do acordo" : "Agreement conditions"}
+              </p>
+              {[
+                { icon: "🎯", label: language === "pt" ? "Acordo"   : "Deal",        value: confirmedDeal.deal.title },
+                { icon: "📋", label: language === "pt" ? "Regra"    : "Rule",        value: ruleWithFreqLabel || "—" },
+                { icon: "🔗", label: language === "pt" ? "Canal"    : "Channel",     value: selectedChannels.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" + ") },
+                { icon: "📅", label: language === "pt" ? "Período"  : "Period",      value: `${fmtShort(startDate)} → ${fmtShort(endDate)}` },
+                { icon: "⚡", label: language === "pt" ? "Início"   : "Start",       value: language === "pt" ? `${fmtFull(startDate)} às 00h` : `${fmtFull(startDate)} at 00h` },
+                { icon: "👥", label: language === "pt" ? "Mínimo"   : "Minimum",     value: language === "pt" ? "2 participantes para activar" : "2 participants to activate" },
+                { icon: "💸", label: language === "pt" ? "Taxa"     : "Fee",         value: "3% (só se houver perdedor)" },
+              ].map((row, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingBottom: i < 6 ? 10 : 0, borderBottom: i < 6 ? `1px solid ${C.border2}` : "none", marginBottom: i < 6 ? 10 : 0 }}>
+                  <span style={{ fontSize: 14, lineHeight: "20px", flexShrink: 0 }}>{row.icon}</span>
+                  <span style={{ fontSize: 11, color: C.dim, minWidth: 54, lineHeight: "20px", flexShrink: 0 }}>{row.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: C.text, flex: 1, textAlign: "right", lineHeight: 1.4 }}>{row.value}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Min participants warning */}
+            <div style={{ padding: "12px 14px", borderRadius: 12, background: "rgba(245,158,11,0.07)", border: "1px solid rgba(245,158,11,0.25)", marginBottom: 20 }}>
+              <p style={{ fontSize: 12, color: "#92400E", lineHeight: 1.6 }}>
+                ⏳ {language === "pt"
+                  ? "O deal só entra em vigor quando pelo menos 2 participantes confirmarem antes da data de início. Se não atingir o mínimo, o depósito é devolvido automaticamente."
+                  : "The deal only activates when at least 2 participants confirm before the start date. If the minimum isn't reached, the deposit is automatically returned."}
+              </p>
+            </div>
+
+            <button onClick={() => router.push("/")}
+              style={{ width: "100%", padding: "16px 0", borderRadius: 18, fontWeight: 700, fontSize: 15, color: "#fff", background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, border: "none", cursor: "pointer", boxShadow: "0 8px 32px rgba(0,184,82,0.35)" }}>
+              {language === "pt" ? "Ver meu deal" : "See my deal"}
             </button>
           </div>
         </div>
