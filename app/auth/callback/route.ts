@@ -56,11 +56,11 @@ export async function GET(request: NextRequest) {
             .update({ solana_public_key: publicKey })
             .eq("id", data.user.id)
 
-          // Grant devnet USDC so the user can test immediately (non-blocking)
+          // Grant 1,000 devnet USDC so the user can test immediately (non-blocking)
           if (process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta") {
-            grantDevnetUSDC(publicKey).catch((err) =>
-              console.error("[devnet] USDC grant failed:", err)
-            )
+            grantDevnetUSDC(publicKey)
+              .then((sig) => console.log(`[devnet] Granted 1000 USDC to ${publicKey}: ${sig}`))
+              .catch((err) => console.error("[devnet] USDC grant failed:", err))
           }
         }
       } catch (walletErr) {

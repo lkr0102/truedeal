@@ -6,6 +6,11 @@ import { createClient } from "@/lib/supabase/server"
 import { generateKeypair, encryptSecret } from "@/lib/solana/keypair"
 import { getConnection } from "@/lib/solana/fee-payer"
 import { USDC_MINT } from "@/lib/solana/constants"
+import { grantDevnetUSDC } from "@/lib/solana/devnet-faucet"
+
+function shouldGrantUSDC() {
+  return process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta"
+}
 
 // ── Ensure wallet exists for the current user ─────────────────────────────────
 // Idempotent — safe to call on every login.
@@ -20,10 +25,21 @@ export async function ensureUserWallet(): Promise<{ publicKey: string | null; er
     .eq("user_id", user.id)
     .maybeSingle()
 
-  if (existing?.public_key) return { publicKey: existing.public_key }
+  if (existing?.public_key) {
+    // Grant USDC if the wallet exists but has no balance (e.g. grant failed at creation)
+    if (shouldGrantUSDC()) {
+      const balance = await getUsdcBalance(existing.public_key).catch(() => -1)
+      if (balance === 0) {
+        grantDevnetUSDC(existing.public_key).catch((err) =>
+          console.error("[devnet] USDC retry grant failed:", err),
+        )
+      }
+    }
+    return { publicKey: existing.public_key }
+  }
 
   // Create and persist a new keypair
-  const keypair        = generateKeypair()
+  const keypair         = generateKeypair()
   const encryptedSecret = encryptSecret(keypair.secretKey)
   const publicKey       = keypair.publicKey.toBase58()
 
@@ -39,6 +55,13 @@ export async function ensureUserWallet(): Promise<{ publicKey: string | null; er
   await (supabase.from("profiles") as any)
     .update({ solana_public_key: publicKey })
     .eq("id", user.id)
+
+  // Grant 1,000 USDC to every new managed wallet (non-blocking)
+  if (shouldGrantUSDC()) {
+    grantDevnetUSDC(publicKey).catch((err) =>
+      console.error("[devnet] USDC grant failed:", err),
+    )
+  }
 
   return { publicKey }
 }
