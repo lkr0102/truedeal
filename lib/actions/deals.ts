@@ -125,6 +125,10 @@ export async function createDeal(input: CreateDealInput) {
 
   if (error || !deal) return { error: (error as any)?.message ?? "Erro ao criar acordo institucional" }
 
+  // Set short_id from UUID immediately (will be upgraded to tx hash after on-chain success)
+  const uuidShortId = deal.id.replace(/-/g, "").slice(-8).toUpperCase()
+  await (supabase.from("deals") as any).update({ short_id: uuidShortId }).eq("id", deal.id)
+
   // Criador entra automaticamente como participante
   await (supabase.from("deal_participants") as any).insert({
     deal_id: deal.id,
@@ -151,8 +155,9 @@ export async function createDeal(input: CreateDealInput) {
     const initTx = await initPerformanceAgreement(feePayer, deal.id, guaranteeUSDC, ruleHash)
     const [pda]  = deriveAgreementPDA(deal.id)
 
+    const txShortId = initTx.slice(-8).toUpperCase()
     await (supabase.from("deals") as any)
-      .update({ solana_tx_signature: initTx, pda_address: pda.toString() })
+      .update({ solana_tx_signature: initTx, pda_address: pda.toString(), short_id: txShortId })
       .eq("id", deal.id)
 
     console.log(`[Anchor] Deal ${deal.id} registered on-chain: ${initTx}`)
@@ -210,6 +215,7 @@ const MOCK_DEALS: DealWithParticipants[] = [
     rule_frequency: null,
     pda_address: null,
     solana_tx_signature: null,
+    short_id: "MOCK0001",
     proof_hash: null,
     final_proof_hash: null,
     audit_logs: null,
@@ -259,6 +265,7 @@ const MOCK_DEALS: DealWithParticipants[] = [
     rule_frequency: null,
     pda_address: null,
     solana_tx_signature: null,
+    short_id: "MOCK0002",
     proof_hash: null,
     final_proof_hash: null,
     audit_logs: null,

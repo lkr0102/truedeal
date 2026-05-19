@@ -97,6 +97,7 @@ export interface Deal {
   // Solana on-chain fields (migration 009)
   pda_address:          string | null
   solana_tx_signature:  string | null
+  short_id:             string | null
   proof_hash:           string | null
   final_proof_hash:     string | null
   audit_logs:           Record<string, unknown>[] | null

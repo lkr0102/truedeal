@@ -63,6 +63,7 @@ interface Deal {
   ruleTarget: number | null
   ruleFrequency: string | null
   verificationType: string | null
+  shortId: string
 }
 
 // ── Mapping DB → UI ───────────────────────────────────────────────────────────
@@ -100,6 +101,7 @@ function toDealUI(d: DealWithParticipants, userId: string | null): Deal {
     daysToStart:  uiStatus === "pendente" ? daysToStart : undefined,
     startDateISO: d.start_date,
     ruleTarget:   d.rule_target, ruleFrequency: d.rule_frequency, verificationType: d.verification_type,
+    shortId:      (d.short_id ?? d.id.replace(/-/g, "").slice(-8)).toUpperCase(),
   }
 }
 
@@ -202,18 +204,23 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
             {prizeLabel}
           </span>
         </div>
-        {deal.verifications.length > 0 && (
-          <div style={{ display: "flex" }}>
-            {deal.verifications.map((v, i) => {
-              const m = VERIF[v]
-              return (
-                <div key={v} style={{ width: 20, height: 20, borderRadius: "50%", background: m.bg, border: `2px solid ${C.surface}`, marginLeft: i > 0 ? -5 : 0, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  {m.Icon ? <m.Icon className="w-2.5 h-2.5 text-white" /> : <span style={{ fontSize: 9, fontWeight: 700, color: "#fff" }}>{m.text}</span>}
-                </div>
-              )
-            })}
-          </div>
-        )}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
+          {deal.verifications.length > 0 && (
+            <div style={{ display: "flex" }}>
+              {deal.verifications.map((v, i) => {
+                const m = VERIF[v]
+                return (
+                  <div key={v} style={{ width: 20, height: 20, borderRadius: "50%", background: m.bg, border: `2px solid ${C.surface}`, marginLeft: i > 0 ? -5 : 0, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {m.Icon ? <m.Icon className="w-2.5 h-2.5 text-white" /> : <span style={{ fontSize: 9, fontWeight: 700, color: "#fff" }}>{m.text}</span>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+          <span style={{ fontSize: 9, fontWeight: 600, color: C.dim, ...MONO, letterSpacing: "0.05em" }}>
+            #{deal.shortId}
+          </span>
+        </div>
       </div>
 
       {/* Title */}

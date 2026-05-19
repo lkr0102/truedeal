@@ -107,6 +107,7 @@ interface DealView {
   myRank?: number
   potentialWin?: number
   statusBorder: string
+  shortId: string
 }
 
 // ── Color palette ─────────────────────────────────────────────────────────────
@@ -239,6 +240,7 @@ function mapDeal(d: DealWithParticipants, userId: string | null, lang: "pt" | "e
     myRank,
     potentialWin,
     statusBorder:        borderMap[status],
+    shortId:             (d.short_id ?? d.id.replace(/-/g, "").slice(-8)).toUpperCase(),
   }
 }
 
@@ -703,9 +705,12 @@ export default function DealClient({
           <h1 style={{ fontSize: 24, fontWeight: 800, letterSpacing: "-0.04em", color: "#fff", lineHeight: 1.1, marginBottom: 5, position: "relative" }}>
             {deal.title}
           </h1>
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 14, position: "relative" }}>
+          <p style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 4, position: "relative" }}>
             {deal.description || deal.subtitle}
           </p>
+          <span style={{ fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.35)", fontFamily: "monospace", letterSpacing: "0.1em", display: "block", marginBottom: 14, position: "relative" }}>
+            #{deal.shortId}
+          </span>
 
           {/* 4-stat grid */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 7, position: "relative" }}>
