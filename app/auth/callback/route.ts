@@ -56,10 +56,16 @@ export async function GET(request: NextRequest) {
             .update({ solana_public_key: publicKey })
             .eq("id", data.user.id)
 
-          // Grant 1,000 devnet USDC so the user can test immediately (non-blocking)
+          // Grant 1,000 devnet USDC so the user can test immediately (non-blocking).
+          // On success, mark usdc_granted so the wallet page doesn't retry unnecessarily.
           if (process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta") {
             grantDevnetUSDC(publicKey)
-              .then((sig) => console.log(`[devnet] Granted 1000 USDC to ${publicKey}: ${sig}`))
+              .then((sig) => {
+                console.log(`[devnet] Granted 1000 USDC to ${publicKey}: ${sig}`)
+                return (supabase.from("user_wallets") as any)
+                  .update({ usdc_granted: true })
+                  .eq("user_id", data.user.id)
+              })
               .catch((err) => console.error("[devnet] USDC grant failed:", err))
           }
         }

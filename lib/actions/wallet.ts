@@ -21,19 +21,20 @@ export async function ensureUserWallet(): Promise<{ publicKey: string | null; er
 
   // Check for existing wallet
   const { data: existing } = await (supabase.from("user_wallets") as any)
-    .select("public_key")
+    .select("public_key, usdc_granted")
     .eq("user_id", user.id)
     .maybeSingle()
 
   if (existing?.public_key) {
-    // Grant USDC if the wallet exists but has no balance (e.g. grant failed at creation)
-    if (shouldGrantUSDC()) {
-      const balance = await getUsdcBalance(existing.public_key).catch(() => -1)
-      if (balance === 0) {
-        grantDevnetUSDC(existing.public_key).catch((err) =>
-          console.error("[devnet] USDC retry grant failed:", err),
+    // Retry USDC grant if the DB flag shows it never succeeded (no RPC balance check needed)
+    if (shouldGrantUSDC() && !existing.usdc_granted) {
+      grantDevnetUSDC(existing.public_key)
+        .then(() =>
+          (supabase.from("user_wallets") as any)
+            .update({ usdc_granted: true })
+            .eq("user_id", user.id),
         )
-      }
+        .catch((err) => console.error("[devnet] USDC retry grant failed:", err))
     }
     return { publicKey: existing.public_key }
   }
@@ -56,11 +57,15 @@ export async function ensureUserWallet(): Promise<{ publicKey: string | null; er
     .update({ solana_public_key: publicKey })
     .eq("id", user.id)
 
-  // Grant 1,000 USDC to every new managed wallet (non-blocking)
+  // Grant 1,000 USDC to every new managed wallet (non-blocking) and mark the flag on success
   if (shouldGrantUSDC()) {
-    grantDevnetUSDC(publicKey).catch((err) =>
-      console.error("[devnet] USDC grant failed:", err),
-    )
+    grantDevnetUSDC(publicKey)
+      .then(() =>
+        (supabase.from("user_wallets") as any)
+          .update({ usdc_granted: true })
+          .eq("user_id", user.id),
+      )
+      .catch((err) => console.error("[devnet] USDC grant failed:", err))
   }
 
   return { publicKey }

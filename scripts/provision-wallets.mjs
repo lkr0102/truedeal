@@ -114,10 +114,10 @@ async function main() {
       const publicKey       = keypair.publicKey.toBase58()
       const encryptedSecret = encryptSecret(keypair.secretKey)
 
-      // Insert wallet
+      // Insert wallet (usdc_granted starts as false; updated below if grant succeeds)
       const { error: insertErr } = await supabase
         .from("user_wallets")
-        .insert({ user_id: user.id, public_key: publicKey, encrypted_secret: encryptedSecret })
+        .insert({ user_id: user.id, public_key: publicKey, encrypted_secret: encryptedSecret, usdc_granted: false })
 
       if (insertErr) throw new Error(`Insert failed: ${insertErr.message}`)
 
@@ -126,11 +126,14 @@ async function main() {
 
       console.log(`  ✓ Wallet created: ${publicKey}`)
 
-      // Grant USDC (devnet only)
+      // Grant USDC (devnet only) and mark the flag on success
       if (!IS_MAINNET) {
         try {
           const sig = await grantUSDC(connection, feePayer, publicKey)
-          if (sig) console.log(`  ✓ Granted 1000 USDC — tx: ${sig}`)
+          if (sig) {
+            console.log(`  ✓ Granted 1000 USDC — tx: ${sig}`)
+            await supabase.from("user_wallets").update({ usdc_granted: true }).eq("user_id", user.id)
+          }
         } catch (grantErr) {
           console.warn(`  ⚠ USDC grant failed: ${grantErr.message}`)
         }
