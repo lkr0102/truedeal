@@ -95,7 +95,10 @@ export async function joinAgreementUSDC(
   agreementId: string,
 ): Promise<string> {
   const connection = getConnection()
-  const provider   = getProvider(participant)
+  // feePayer is the provider wallet so it covers SOL transaction fees.
+  // participant has USDC but 0 SOL, so it can't be the fee payer.
+  // participant is added via .signers() to satisfy the IDL signer: true constraint.
+  const provider   = getProvider(feePayer)
   const program    = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
   const [vault]            = deriveVaultPDA(agreementId)
@@ -114,6 +117,7 @@ export async function joinAgreementUSDC(
       usdcMint:               USDC_MINT,
       tokenProgram:           TOKEN_PROGRAM_ID,
     })
+    .signers([participant])
     .rpc()
 
   console.log(`[Anchor] Participant staked USDC: ${txSignature}`)
