@@ -18,6 +18,13 @@ export const PROGRAM_ID = new PublicKey(
 const AGREEMENT_SEED = Buffer.from("agreement")
 const VAULT_SEED     = Buffer.from("vault")
 
+// UUIDs with dashes are 36 bytes — Solana seeds are capped at 32.
+// The Rust program uses agreement_id.as_bytes() as seed, so we must strip dashes
+// to get 32 bytes (exactly at the limit) before any PDA derivation.
+function idBytes(id: string): Buffer {
+  return Buffer.from(id.replace(/-/g, ""))
+}
+
 // ── Provider / Program factory ───────────────────────────────────────────────
 
 export function getProvider(signer: Keypair): AnchorProvider {
@@ -38,7 +45,7 @@ export function getProgram(provider: AnchorProvider): Program {
 
 export function deriveAgreementPDA(agreementId: string): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [AGREEMENT_SEED, Buffer.from(agreementId)],
+    [AGREEMENT_SEED, idBytes(agreementId)],
     PROGRAM_ID
   )
 }
@@ -46,7 +53,7 @@ export function deriveAgreementPDA(agreementId: string): [PublicKey, number] {
 /** Vault PDA — seeds: [b"vault", agreement_id.as_bytes()] */
 export function deriveVaultPDA(agreementId: string): [PublicKey, number] {
   return PublicKey.findProgramAddressSync(
-    [VAULT_SEED, Buffer.from(agreementId)],
+    [VAULT_SEED, idBytes(agreementId)],
     PROGRAM_ID
   )
 }
@@ -67,7 +74,7 @@ export async function initPerformanceAgreement(
 
   const txSignature = await program.methods
     .initPerformanceAgreement(
-      agreementId,
+      agreementId.replace(/-/g, ""),
       new BN(guaranteeAmountUSDC.toString()),
       Array.from(ruleHash),
     )

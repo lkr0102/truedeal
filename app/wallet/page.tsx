@@ -48,8 +48,8 @@ export default async function WalletPage() {
 
   const activeDealsValue = deals
     .filter((d: any) =>
-      d.status === "ativo" &&
-      d.participants.some((p: any) => p.user_id === user?.id),
+      (d.status === "ativo" || d.status === "formacao") &&
+      d.participants.some((p: any) => p.user_id === user?.id && p.status === "staked"),
     )
     .reduce((sum: number, d: any) => sum + d.entry_amount, 0)
 
