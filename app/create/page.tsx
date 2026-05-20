@@ -262,10 +262,15 @@ function fmtShort(d: Date): string {
 function fmtFull(d: Date): string {
   return `${String(d.getDate()).padStart(2, "0")} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
 }
+// Formation window closes at 03:00 UTC (midnight BRT = UTC-3).
+// If we're past that cutoff, today's window is already closed — minimum start is tomorrow.
+function getMinStartDate(): Date {
+  return TODAY.getUTCHours() >= 3 ? addDays(TODAY, 1) : TODAY
+}
 function isPast(d: Date): boolean {
-  const t = new Date(TODAY); t.setHours(0, 0, 0, 0)
-  const x = new Date(d);     x.setHours(0, 0, 0, 0)
-  return x < t
+  const min = getMinStartDate(); min.setHours(0, 0, 0, 0)
+  const x   = new Date(d);      x.setHours(0, 0, 0, 0)
+  return x < min
 }
 function sameDay(a: Date, b: Date): boolean {
   return a.getDate() === b.getDate() && a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear()
@@ -355,8 +360,8 @@ export default function CreateDealPage() {
   const [frequency,        setFrequency]        = useState<string | null>(null)
 
   const [periodPreset, setPeriodPreset] = useState("1m")
-  const [startDate,    setStartDate]    = useState<Date>(TODAY)
-  const [endDate,      setEndDate]      = useState<Date>(addDays(TODAY, 30))
+  const [startDate,    setStartDate]    = useState<Date>(() => getMinStartDate())
+  const [endDate,      setEndDate]      = useState<Date>(() => addDays(getMinStartDate(), 30))
   const [showCal,      setShowCal]      = useState<"start" | "end" | null>(null)
   const [calMonth,     setCalMonth]     = useState(new Date(TODAY.getFullYear(), TODAY.getMonth(), 1))
 

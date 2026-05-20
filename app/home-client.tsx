@@ -60,6 +60,7 @@ interface Deal {
   potentialWin?: number
   daysToStart?: number
   startDateISO?: string
+  endDateISO?: string
   ruleTarget: number | null
   ruleFrequency: string | null
   verificationType: string | null
@@ -100,6 +101,7 @@ function toDealUI(d: DealWithParticipants, userId: string | null): Deal {
     potentialWin: myP != null ? Math.round(d.net_pot * 0.9) : undefined,
     daysToStart:  uiStatus === "pendente" ? daysToStart : undefined,
     startDateISO: d.start_date,
+    endDateISO:   d.end_date,
     ruleTarget:   d.rule_target, ruleFrequency: d.rule_frequency, verificationType: d.verification_type,
     shortId:      (d.short_id ?? d.id.replace(/-/g, "").slice(-8)).toUpperCase(),
   }
@@ -258,11 +260,36 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
       {/* Stats row + footer */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 9, borderTop: `1px solid ${C.border2}` }}>
         <div style={{ fontSize: 11, color: C.mid, display: "flex", gap: 8, alignItems: "center" }}>
-          <span>${deal.valuePerPerson}</span>
+          {/* Entry */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Entry</span>
+            <span style={{ fontWeight: 600, color: C.text }}>${deal.valuePerPerson}</span>
+          </div>
           <span style={{ color: C.border }}>·</span>
-          <span>{deal.participants} players</span>
+          {/* Participants */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Players</span>
+            <span style={{ fontWeight: 600, color: C.text }}>{deal.participants}</span>
+          </div>
           <span style={{ color: C.border }}>·</span>
-          <span>{timeVal} {timeLabel}</span>
+          {/* Period */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Period</span>
+            <span style={{ fontWeight: 600, color: C.text, fontSize: 10 }}>
+              {deal.startDateISO && deal.endDateISO
+                ? (() => {
+                    const fmt = (iso: string) => { const d = new Date(iso); return `${d.getUTCDate()}/${String(d.getUTCMonth() + 1).padStart(2, "0")}` }
+                    return `${fmt(deal.startDateISO)}–${fmt(deal.endDateISO)}`
+                  })()
+                : `${deal.daysTotal}d`}
+            </span>
+          </div>
+          <span style={{ color: C.border }}>·</span>
+          {/* Prize Pot */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Prize Pot</span>
+            <span style={{ fontWeight: 700, color: deal.pot > 0 ? C.brand : C.dim }}>${deal.pot}</span>
+          </div>
         </div>
         <button
           onClick={(e) => { e.stopPropagation(); onClick() }}
