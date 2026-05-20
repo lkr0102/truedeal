@@ -12,6 +12,7 @@ import {
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
 import { useLanguageStore } from "@/lib/i18n"
 import { joinDeal } from "@/lib/actions/deals"
+import { recordDealCheckin } from "@/lib/actions/checkins"
 
 // ── Design tokens (inline — not yet in globals.css) ───────────────────────────
 const C = {
@@ -37,7 +38,7 @@ const C = {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type VerifType  = "x" | "strava" | "gympass"
+type VerifType  = "x" | "strava" | "gympass" | "wellhub" | "totalpass"
 type PrizeType  = "proporcional" | "primeiro" | "ranking"
 type DealStatus = "ativo" | "pendente" | "finalizado"
 
@@ -173,7 +174,7 @@ function mapDeal(d: DealWithParticipants, userId: string | null, lang: "pt" | "e
   const prizeMap: Record<string, PrizeType> = { winner: "primeiro", top3: "ranking", proportional: "proporcional" }
   const prizeType = prizeMap[d.distribution] ?? "primeiro"
 
-  const knownVerifs = ["x", "strava", "gympass"]
+  const knownVerifs = ["x", "strava", "gympass", "wellhub", "totalpass"]
   const verifications = (d.verification_channels ?? []).filter(c => knownVerifs.includes(c)) as VerifType[]
 
   const participants_list: Participant[] = d.participants.map((p, i) => {
@@ -253,9 +254,11 @@ function mapDeal(d: DealWithParticipants, userId: string | null, lang: "pt" | "e
 // ── Static data ───────────────────────────────────────────────────────────────
 
 const VERIF_META: Record<VerifType, { bg: string; label: string; text?: string; Icon?: React.FC<{ className?: string }> }> = {
-  x:       { bg: "#000000", label: "X",       text: "𝕏" },
-  strava:  { bg: "#FC4C02", label: "Strava",  Icon: Activity },
-  gympass: { bg: "#00A651", label: "Gympass", text: "GP" },
+  x:         { bg: "#000000", label: "X",         text: "𝕏"  },
+  strava:    { bg: "#FC4C02", label: "Strava",     Icon: Activity },
+  gympass:   { bg: "#00A651", label: "Gympass",    text: "GP" },
+  wellhub:   { bg: "#00A651", label: "Wellhub",    text: "W"  },
+  totalpass: { bg: "#0047AB", label: "TotalPass",  text: "T"  },
 }
 
 const CHANNEL_LABELS: Record<string, string> = {
@@ -321,14 +324,14 @@ const getVerificationSubrules = (lang: "pt" | "en"): Record<string, { title: str
   checkin: {
     title: lang === "pt" ? "Como funciona — Check-in em Academia" : "How it works — Gym Check-in",
     items: [
-      { text: lang === "pt" ? "Check-in presencial em academia parceira Wellhub ou TotalPass" : "In-person check-in at a Wellhub or TotalPass partner gym", valid: true },
-      { text: lang === "pt" ? "Verificação automática via API — sem nenhuma ação manual no app" : "Automatic verification via API — no manual action needed", valid: true },
-      { text: lang === "pt" ? "Apenas academias credenciadas na rede parceira são aceitas" : "Only credentialed partner network gyms are accepted", valid: true },
-      { text: lang === "pt" ? "Prazo: até 23h59 (horário de Brasília) de cada janela" : "Deadline: by 11:59 PM (Brasília time) of each window", valid: true },
-      { text: lang === "pt" ? "Máximo 1 check-in válido por dia — múltiplos na mesma unidade não acumulam" : "Max 1 valid check-in per day — multiple at same location don't stack", valid: false },
-      { text: lang === "pt" ? "Check-ins de dias anteriores à data de início não são contabilizados" : "Check-ins from before deal start date are not counted", valid: false },
+      { text: lang === "pt" ? "Vá à academia e registre seu check-in no botão dentro do deal no app" : "Go to the gym and tap the check-in button inside the deal in the app", valid: true },
+      { text: lang === "pt" ? "Máximo 1 check-in por dia — o sistema bloqueia duplicatas automaticamente" : "Max 1 check-in per day — duplicates are blocked automatically", valid: true },
+      { text: lang === "pt" ? "Vinculação com conta Wellhub ou TotalPass obrigatória antes de participar" : "Wellhub or TotalPass account must be linked before joining", valid: true },
+      { text: lang === "pt" ? "Prazo: registre antes de meia-noite (horário de Brasília)" : "Deadline: register before midnight (Brasília time)", valid: true },
+      { text: lang === "pt" ? "Check-ins fora do período do deal não são contabilizados" : "Check-ins outside the deal period do not count", valid: false },
+      { text: lang === "pt" ? "Check-ins de dias anteriores à data de início não são válidos" : "Check-ins before the deal start date are not valid", valid: false },
     ],
-    pinNote: lang === "pt" ? "Basta se exercitar e fazer check-in normalmente pelo Wellhub ou TotalPass — o True Deal sincroniza via API automaticamente." : "Just work out and check in normally via Wellhub or TotalPass — True Deal syncs via API automatically.",
+    pinNote: lang === "pt" ? "Vá à academia → abra o app → toque em 'Registrar check-in'. Simples assim." : "Go to the gym → open the app → tap 'Record check-in'. Simple as that.",
   },
 })
 
@@ -517,14 +520,21 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
 
 type TabId = "overview" | "participants" | "rules"
 
+interface CheckinStats {
+  count: number
+  checkedInToday: boolean
+}
+
 export default function DealClient({
   deal: dealData,
   userId,
   userSocialConnections,
+  checkinStats: initialCheckinStats,
 }: {
   deal: DealWithParticipants
   userId: string | null
   userSocialConnections?: SocialConnection[]
+  checkinStats?: CheckinStats | null
 }) {
   const router             = useRouter()
   const { language }       = useLanguageStore()
@@ -537,6 +547,31 @@ export default function DealClient({
   const [showMoreMenu,     setShowMoreMenu]     = useState(false)
   const [linkCopied,       setLinkCopied]       = useState(false)
   const [joinedDeal,       setJoinedDeal]       = useState<{ amount: number; txSignature?: string } | null>(null)
+  const [checkinStats,     setCheckinStats]     = useState<CheckinStats>(initialCheckinStats ?? { count: 0, checkedInToday: false })
+  const [checkinLoading,   setCheckinLoading]   = useState(false)
+  const [checkinFeedback,  setCheckinFeedback]  = useState<string | null>(null)
+
+  // ── Gym check-in helpers ────────────────────────────────────────────────────
+  const GYM_CHANNELS = ["wellhub", "totalpass"]
+  const isGymDeal = (dealData.verification_channels ?? []).some(c => GYM_CHANNELS.includes(c))
+
+  async function handleCheckin() {
+    if (!userId) { router.push("/login"); return }
+    setCheckinLoading(true)
+    setCheckinFeedback(null)
+    const res = await recordDealCheckin(dealData.id)
+    setCheckinLoading(false)
+    if (res.alreadyDone) {
+      setCheckinStats(s => ({ ...s, checkedInToday: true }))
+      setCheckinFeedback(language === "pt" ? "Você já fez check-in hoje!" : "You already checked in today!")
+    } else if (res.success) {
+      setCheckinStats(s => ({ count: s.count + 1, checkedInToday: true }))
+      setCheckinFeedback(language === "pt" ? "✓ Check-in registrado!" : "✓ Check-in recorded!")
+    } else {
+      setCheckinFeedback(res.error ?? (language === "pt" ? "Erro ao registrar check-in" : "Failed to record check-in"))
+    }
+    setTimeout(() => setCheckinFeedback(null), 3000)
+  }
 
   // ── Computed ────────────────────────────────────────────────────────────────
   const entryAmount    = dealData.entry_amount
@@ -822,8 +857,8 @@ export default function DealClient({
             </div>
           </div>
 
-          {/* Active: my progress block */}
-          {deal.status === "ativo" && isParticipant && (
+          {/* Active: time progress block (non-gym) */}
+          {deal.status === "ativo" && isParticipant && !isGymDeal && (
             <div style={{ background: C.activeLight, border: `1px solid ${C.activeBorder}`, borderRadius: 18, padding: 14, marginBottom: 7 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 7 }}>
                 <span style={{ fontSize: 12, color: C.mid }}>{language === "pt" ? "Seu progresso" : "Your progress"}</span>
@@ -837,6 +872,74 @@ export default function DealClient({
               <div style={{ fontSize: 10, color: C.mid, marginTop: 5, fontFamily: "monospace" }}>
                 {deal.daysGone} {language === "pt" ? "de" : "of"} {deal.daysTotal} {language === "pt" ? "dias" : "days"} · {daysLeft}d {language === "pt" ? "restantes" : "left"}
               </div>
+            </div>
+          )}
+
+          {/* Active: gym check-in block */}
+          {deal.status === "ativo" && isParticipant && isGymDeal && (
+            <div style={{ background: C.activeLight, border: `1px solid ${C.activeBorder}`, borderRadius: 18, padding: 14, marginBottom: 7 }}>
+              {/* Header row */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 9, fontFamily: "monospace", color: C.brand, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginBottom: 3 }}>
+                    {language === "pt" ? "Seus check-ins" : "Your check-ins"}
+                  </div>
+                  <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-0.03em", color: C.brand, lineHeight: 1 }}>
+                    {checkinStats.count}
+                    <span style={{ fontSize: 13, fontWeight: 500, color: C.mid, marginLeft: 4 }}>
+                      / {dealData.rule_target ?? "?"}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ textAlign: "right" as const }}>
+                  <div style={{ fontSize: 9, fontFamily: "monospace", color: C.mid, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 3 }}>
+                    {language === "pt" ? "Hoje" : "Today"}
+                  </div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: checkinStats.checkedInToday ? C.brand : C.dim }}>
+                    {checkinStats.checkedInToday ? "✓" : "—"}
+                  </div>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div style={{ height: 5, background: "rgba(0,184,82,0.15)", borderRadius: 100, overflow: "hidden", marginBottom: 10 }}>
+                <div style={{
+                  height: "100%", background: C.brand, borderRadius: 100,
+                  width: `${Math.min(100, Math.max(3, (checkinStats.count / (dealData.rule_target ?? 1)) * 100))}%`,
+                  transition: "width 0.4s ease",
+                }} />
+              </div>
+
+              {/* Time progress sub-line */}
+              <div style={{ fontSize: 10, color: C.mid, fontFamily: "monospace", marginBottom: 12 }}>
+                {language === "pt" ? `Dia ${deal.daysGone} de ${deal.daysTotal} · ${daysLeft}d restantes` : `Day ${deal.daysGone} of ${deal.daysTotal} · ${daysLeft}d left`}
+              </div>
+
+              {/* Check-in button */}
+              <button
+                onClick={handleCheckin}
+                disabled={checkinLoading || checkinStats.checkedInToday}
+                style={{
+                  width: "100%", padding: "11px", borderRadius: 100, fontSize: 13, fontWeight: 700, border: "none", cursor: checkinStats.checkedInToday ? "default" : "pointer",
+                  background: checkinStats.checkedInToday ? "rgba(0,184,82,0.15)" : C.brand,
+                  color: checkinStats.checkedInToday ? C.brand : "#fff",
+                  opacity: checkinLoading ? 0.7 : 1,
+                  transition: "all 0.2s",
+                }}
+              >
+                {checkinLoading
+                  ? (language === "pt" ? "Registrando..." : "Recording...")
+                  : checkinStats.checkedInToday
+                    ? (language === "pt" ? "✓ Check-in de hoje feito" : "✓ Today's check-in done")
+                    : (language === "pt" ? "Registrar check-in de hoje" : "Record today's check-in")}
+              </button>
+
+              {/* Feedback message */}
+              {checkinFeedback && (
+                <div style={{ fontSize: 11, fontWeight: 600, color: checkinFeedback.startsWith("✓") ? C.brand : C.forming, textAlign: "center" as const, marginTop: 8 }}>
+                  {checkinFeedback}
+                </div>
+              )}
             </div>
           )}
 
@@ -1030,7 +1133,22 @@ export default function DealClient({
               {joinLoading ? "..." : `${language === "pt" ? "Entrar" : "Join"} · $${entryAmount}`}
             </button>
           )}
-          {deal.status === "ativo" && (
+          {deal.status === "ativo" && isParticipant && isGymDeal && (
+            <button
+              onClick={handleCheckin}
+              disabled={checkinLoading || checkinStats.checkedInToday}
+              style={{
+                padding: "13px 20px", borderRadius: 100, fontSize: 12, fontWeight: 700, border: "none",
+                cursor: checkinStats.checkedInToday ? "default" : "pointer",
+                background: checkinStats.checkedInToday ? C.activeLight : C.brand,
+                color: checkinStats.checkedInToday ? C.brand : "#fff",
+                opacity: checkinLoading ? 0.7 : 1,
+              }}
+            >
+              {checkinLoading ? "..." : checkinStats.checkedInToday ? (language === "pt" ? "✓ Feito" : "✓ Done") : (language === "pt" ? "Check-in" : "Check-in")}
+            </button>
+          )}
+          {deal.status === "ativo" && !isGymDeal && (
             <button style={{ padding: "13px 20px", borderRadius: 100, fontSize: 12, fontWeight: 700, background: C.brand, color: "#fff", border: "none", cursor: "pointer" }}>
               {language === "pt" ? "Abrir" : "Open"} {deal.verificationChannels[0] ? CHANNEL_LABELS[deal.verificationChannels[0]] : "App"}
             </button>

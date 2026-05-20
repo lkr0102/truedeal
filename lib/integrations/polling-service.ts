@@ -87,8 +87,10 @@ export async function auditDeal(dealId: string) {
 
       if (channel === "strava") {
         let token = conn.access_token
-        // Refresh if expired (token_expires_at is a unix timestamp)
-        const expiresAt = conn.token_expires_at ? Number(conn.token_expires_at) : 0
+        // token_expires_at is stored as ISO string (TIMESTAMPTZ) — convert to unix seconds
+        const expiresAt = conn.token_expires_at
+          ? new Date(conn.token_expires_at).getTime() / 1000
+          : 0
         if (expiresAt > 0 && Date.now() / 1000 > expiresAt - 300 && conn.refresh_token) {
           token = (await refreshStravaToken(supabase, conn.id, conn.refresh_token)) ?? token
         }
