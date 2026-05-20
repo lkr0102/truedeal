@@ -312,79 +312,105 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
 
 // ── Hero Banner ───────────────────────────────────────────────────────────────
 
-const FEATURED_DEALS = [
-  {
-    id: "strava-week",
-    badge: "Oficial True Deal", badgeEn: "Official True Deal",
-    title: "Strava Week", titleEn: "Strava Week",
-    desc: "5 km/dia · Verificado via Strava", descEn: "5 km/day · Verified via Strava",
-    pot: "$5,000", entry: "$50", players: 98, daysLeft: 4,
-    gradient: `linear-gradient(135deg,#00523A,#00875A 60%,${C.brand})`,
-    ctaColor: C.brandDark,
-  },
-  {
-    id: "academia",
-    badge: "Oficial True Deal", badgeEn: "Official True Deal",
-    title: "Academia 30 Dias", titleEn: "30-Day Gym",
-    desc: "Check-in diário · Wellhub", descEn: "Daily check-in · Wellhub",
-    pot: "$1,200", entry: "$25", players: 48, daysLeft: 12,
-    gradient: `linear-gradient(135deg,#9E3700,#C94C0A 60%,${C.forming})`,
-    ctaColor: "#9E3700",
-  },
-]
-
-function HeroBanner({ onJoin, lang }: { onJoin: () => void; lang: Language }) {
+function HeroBanner({ lang }: { lang: Language }) {
+  const router = useRouter()
   const [current, setCurrent] = useState(0)
-  const deal = FEATURED_DEALS[current]
+  const [shareFeedback, setShareFeedback] = useState(false)
+
+  async function handleShare() {
+    const text = lang === "pt"
+      ? "Alguns desafios são mais fáceis com amigos. Me junte no TrueDeal!"
+      : "Some challenges are more easy with friends. Join me on TrueDeal!"
+    const url = typeof window !== "undefined" ? window.location.origin : ""
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try { await navigator.share({ title: "TrueDeal", text, url }) } catch {}
+    } else {
+      try {
+        await navigator.clipboard.writeText(`${text} ${url}`)
+        setShareFeedback(true)
+        setTimeout(() => setShareFeedback(false), 2000)
+      } catch {}
+    }
+  }
+
+  const TOTAL = 2
 
   return (
     <div style={{ padding: "0 20px 12px" }}>
-      <div
-        style={{ borderRadius: 26, padding: 20, position: "relative", overflow: "hidden", cursor: "pointer" }}
-        onClick={onJoin}
-      >
-        <div style={{ background: deal.gradient, position: "absolute", inset: 0, borderRadius: 26 }} />
-        <div style={{ position: "absolute", top: "-20%", right: "-10%", width: 200, height: 200, background: "rgba(255,255,255,0.1)", borderRadius: "50%", filter: "blur(30px)" }} />
-        <div style={{ position: "relative" }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(0,0,0,0.2)", borderRadius: 100, padding: "3px 10px", fontSize: 9, fontWeight: 600, color: "rgba(255,255,255,0.85)", ...MONO, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: 8 }}>
-            {lang === "pt" ? deal.badge : deal.badgeEn}
-          </div>
-          <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.03em", color: "#fff", marginBottom: 3 }}>
-            {lang === "pt" ? deal.title : deal.titleEn}
-          </div>
-          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", marginBottom: 13 }}>
-            {lang === "pt" ? deal.desc : deal.descEn}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 13 }}>
-            {[
-              { label: lang === "pt" ? "Prêmio" : "Prize", value: deal.pot },
-              { label: lang === "pt" ? "Entrada" : "Entry", value: deal.entry },
-              { label: "Players", value: String(deal.players) },
-              { label: lang === "pt" ? "Termina" : "Ends", value: `${deal.daysLeft}d` },
-            ].map(s => (
-              <div key={s.label}>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.5)", textTransform: "uppercase" as const, letterSpacing: "0.1em", ...MONO, display: "block", marginBottom: 2 }}>{s.label}</div>
-                <div style={{ fontSize: 14, fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>{s.value}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: 100, padding: 10, textAlign: "center", fontSize: 12, fontWeight: 700, color: deal.ctaColor }}>
-            {lang === "pt" ? "Ver progresso" : "View progress"}
-          </div>
-        </div>
-      </div>
+      {/* Banner 1 — Brand / Goals */}
+      {current === 0 && (
+        <div
+          onClick={() => router.push("/create")}
+          style={{ borderRadius: 26, padding: "20px 20px 18px", position: "relative", overflow: "hidden", cursor: "pointer", background: `linear-gradient(135deg, #00523A 0%, #008C3E 55%, ${C.brand} 100%)` }}
+        >
+          <div style={{ position: "absolute", top: "-30%", right: "-8%", width: 180, height: 180, background: "rgba(255,255,255,0.1)", borderRadius: "50%", filter: "blur(40px)", pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: "-25%", left: "35%", width: 120, height: 120, background: "rgba(0,0,0,0.12)", borderRadius: "50%", filter: "blur(30px)", pointerEvents: "none" }} />
 
-      {FEATURED_DEALS.length > 1 && (
-        <div style={{ display: "flex", justifyContent: "center", gap: 5, paddingTop: 10 }}>
-          {FEATURED_DEALS.map((_, idx) => (
-            <button key={idx} onClick={() => setCurrent(idx)} style={{
-              width: idx === current ? 18 : 6, height: 6, borderRadius: 3,
-              background: idx === current ? C.brand : C.border,
-              border: "none", cursor: "pointer", transition: "all 0.2s",
-            }} />
-          ))}
+          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 22 }}>
+            {/* Left: logo mark */}
+            <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
+              <div style={{ width: 52, height: 52, background: "rgba(255,255,255,0.15)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(255,255,255,0.22)" }}>
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+              </div>
+              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.01em", color: "#fff", textAlign: "center" as const, lineHeight: 1.1 }}>
+                TRUE<br /><span style={{ opacity: 0.65 }}>DEAL</span>
+              </div>
+            </div>
+
+            {/* Right: tagline + CTA */}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.025em", color: "#fff", lineHeight: 1.3, marginBottom: 16 }}>
+                <div>Set your goals.</div>
+                <div>Honor your word.</div>
+                <div style={{ opacity: 0.75 }}>Get paid for it.</div>
+              </div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.9)", borderRadius: 100, padding: "9px 16px", fontSize: 12, fontWeight: 700, color: C.brandDark, letterSpacing: "-0.01em" }}>
+                {lang === "pt" ? "Definir metas agora" : "Set your goals now"} →
+              </div>
+            </div>
+          </div>
         </div>
       )}
+
+      {/* Banner 2 — Invite / Social */}
+      {current === 1 && (
+        <div
+          onClick={handleShare}
+          style={{ borderRadius: 26, padding: "20px 20px 18px", position: "relative", overflow: "hidden", cursor: "pointer", background: C.surface, border: `1px solid ${C.border}` }}
+        >
+          <div style={{ position: "absolute", top: 0, right: 0, width: "45%", height: "100%", background: `linear-gradient(270deg, ${C.activeLight}, transparent)`, pointerEvents: "none" }} />
+          <div style={{ position: "absolute", bottom: "-20%", right: "15%", width: 100, height: 100, background: `radial-gradient(circle, rgba(0,184,82,0.08), transparent 70%)`, pointerEvents: "none" }} />
+
+          <div style={{ position: "relative" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.brand, ...MONO, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: 10 }}>
+              Community
+            </div>
+            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.035em", color: C.text, lineHeight: 1.2, marginBottom: 18 }}>
+              {lang === "pt" ? (
+                <>Alguns desafios são<br /><span style={{ color: C.brand }}>mais fáceis</span> com amigos.</>
+              ) : (
+                <>Some challenges are<br /><span style={{ color: C.brand }}>more easy</span> with friends.</>
+              )}
+            </div>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.brand, borderRadius: 100, padding: "9px 18px", fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: "-0.01em" }}>
+              {shareFeedback
+                ? (lang === "pt" ? "Link copiado!" : "Link copied!")
+                : (lang === "pt" ? "Convidar amigos agora" : "Invite your friends now")} →
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dot indicators */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 5, paddingTop: 10 }}>
+        {Array.from({ length: TOTAL }).map((_, idx) => (
+          <button key={idx} onClick={() => setCurrent(idx)} style={{
+            width: idx === current ? 18 : 6, height: 6, borderRadius: 3,
+            background: idx === current ? C.brand : C.border,
+            border: "none", cursor: "pointer", transition: "all 0.2s",
+          }} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -686,7 +712,7 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
       </div>
 
       {/* ── HERO BANNER ── */}
-      <HeroBanner onJoin={() => router.push("/explore")} lang={lang} />
+      <HeroBanner lang={lang} />
 
       {/* ── MAIN TABS ── */}
       <div style={{ display: "flex", gap: 6, padding: "0 20px 11px" }}>
