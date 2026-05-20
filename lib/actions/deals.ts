@@ -27,64 +27,68 @@ const CHANNEL_LABELS: Record<string, string> = {
 
 export async function sweepStaleDeals() {
   if (process.env.NEXT_PUBLIC_SUPABASE_URL?.includes("seu-projeto")) return
-  const supabase = await createServiceClient()
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return
 
-  const sweepDate = new Date(Date.now() - 3 * 3600 * 1000).toISOString().split("T")[0]
+  try {
+    const supabase = await createServiceClient()
 
-  const { data: stale } = await (supabase.from("deals") as any)
-    .select("id, entry_amount, deal_participants(id, user_id)")
-    .eq("status", "formacao")
-    .lte("start_date", sweepDate)
+    const sweepDate = new Date(Date.now() - 3 * 3600 * 1000).toISOString().split("T")[0]
 
-  if (!stale?.length) return
+    const { data: stale } = await (supabase.from("deals") as any)
+      .select("id, entry_amount, deal_participants(id, user_id)")
+      .eq("status", "formacao")
+      .lte("start_date", sweepDate)
 
-  const toActivate: string[] = (stale as any[])
-    .filter((d: any) => (d.deal_participants?.length ?? 0) >= 2)
-    .map((d: any) => d.id)
+    if (!stale?.length) return
 
-  const toCancel: { id: string; entry_amount: number; participants: any[] }[] = (stale as any[])
-    .filter((d: any) => (d.deal_participants?.length ?? 0) < 2)
-    .map((d: any) => ({ id: d.id, entry_amount: d.entry_amount ?? 0, participants: d.deal_participants ?? [] }))
+    const toActivate: string[] = (stale as any[])
+      .filter((d: any) => (d.deal_participants?.length ?? 0) >= 2)
+      .map((d: any) => d.id)
 
-  // Auto-activate deals that reached quorum
-  for (const dealId of toActivate) {
-    await activateDeal(dealId)
-  }
+    const toCancel: { id: string; entry_amount: number; participants: any[] }[] = (stale as any[])
+      .filter((d: any) => (d.deal_participants?.length ?? 0) < 2)
+      .map((d: any) => ({ id: d.id, entry_amount: d.entry_amount ?? 0, participants: d.deal_participants ?? [] }))
 
-  if (!toCancel.length) return
-
-  // Refund + cancel deals without quorum
-  const hasOracleKey = !!process.env.APP_FEE_PAYER_KEY
-  for (const deal of toCancel) {
-    try {
-      if (hasOracleKey && deal.entry_amount > 0 && deal.participants.length > 0) {
-        const userIds = deal.participants.map((p: any) => p.user_id)
-        const { data: wallets } = await (supabase.from("user_wallets") as any)
-          .select("public_key")
-          .in("user_id", userIds)
-
-        const pubkeys: PublicKey[] = (wallets ?? [])
-          .filter((w: any) => w.public_key)
-          .map((w: any) => new PublicKey(w.public_key))
-
-        if (pubkeys.length > 0) {
-          const { getFeePayer }       = await import("@/lib/solana/fee-payer")
-          const { refundUsdcDirect }  = await import("@/lib/solana/escrow")
-          const feePayer = getFeePayer()
-          const amountMicro = BigInt(Math.round(deal.entry_amount * 1_000_000))
-          await refundUsdcDirect(feePayer, pubkeys, amountMicro)
-        }
-      }
-    } catch (err: any) {
-      console.error(`[sweep] Refund failed for deal ${deal.id}:`, err.message)
+    for (const dealId of toActivate) {
+      await (supabase.from("deals") as any).update({ status: "ativo" }).eq("id", dealId)
     }
+
+    if (!toCancel.length) return
+
+    const hasOracleKey = !!process.env.APP_FEE_PAYER_KEY
+    for (const deal of toCancel) {
+      try {
+        if (hasOracleKey && deal.entry_amount > 0 && deal.participants.length > 0) {
+          const userIds = deal.participants.map((p: any) => p.user_id)
+          const { data: wallets } = await (supabase.from("user_wallets") as any)
+            .select("public_key")
+            .in("user_id", userIds)
+
+          const pubkeys: PublicKey[] = (wallets ?? [])
+            .filter((w: any) => w.public_key)
+            .map((w: any) => new PublicKey(w.public_key))
+
+          if (pubkeys.length > 0) {
+            const { getFeePayer }      = await import("@/lib/solana/fee-payer")
+            const { refundUsdcDirect } = await import("@/lib/solana/escrow")
+            const feePayer = getFeePayer()
+            const amountMicro = BigInt(Math.round(deal.entry_amount * 1_000_000))
+            await refundUsdcDirect(feePayer, pubkeys, amountMicro)
+          }
+        }
+      } catch (err: any) {
+        console.error(`[sweep] Refund failed for deal ${deal.id}:`, err.message)
+      }
+    }
+
+    await (supabase.from("deals") as any)
+      .update({ status: "encerrado" })
+      .in("id", toCancel.map((d) => d.id))
+
+    revalidatePath("/")
+  } catch (err: any) {
+    console.error("[sweep] sweepStaleDeals failed:", err.message)
   }
-
-  await (supabase.from("deals") as any)
-    .update({ status: "encerrado" })
-    .in("id", toCancel.map((d) => d.id))
-
-  revalidatePath("/")
 }
 
 // ── Create ────────────────────────────────────────────────────────────────────
