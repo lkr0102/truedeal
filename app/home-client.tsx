@@ -137,7 +137,7 @@ function getStartTarget(iso: string): Date {
   return new Date(`${iso}T03:00:00Z`)
 }
 function formatCountdown(ms: number, lang: Language): { label: string; urgency: "normal" | "warning" | "critical" } {
-  if (ms <= 0) return { label: lang === "pt" ? "Iniciando..." : "Starting...", urgency: "critical" }
+  if (ms <= 0) return { label: lang === "pt" ? "A iniciar" : "Starting soon", urgency: "critical" }
   const s = Math.floor(ms / 1000), d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600)
   const m = Math.floor((s % 3600) / 60), sec = s % 60
   const p = (n: number) => String(n).padStart(2, "0")

@@ -68,3 +68,36 @@ export async function settleUsdcDirect(
 
   return txSignatures
 }
+
+// Refund USDC from custodial escrow back to participants (deal cancelled due to no quorum).
+export async function refundUsdcDirect(
+  feePayer: Keypair,
+  participantPublicKeys: PublicKey[],
+  stakeAmountMicro: bigint,
+): Promise<string[]> {
+  if (participantPublicKeys.length === 0) return []
+
+  const connection = getConnection()
+
+  const escrowATA = await getOrCreateAssociatedTokenAccount(
+    connection, feePayer, USDC_MINT, feePayer.publicKey,
+  )
+
+  const txSignatures: string[] = []
+  for (const participantPubkey of participantPublicKeys) {
+    const participantATA = await getOrCreateAssociatedTokenAccount(
+      connection, feePayer, USDC_MINT, participantPubkey,
+    )
+    const sig = await transfer(
+      connection,
+      feePayer,
+      escrowATA.address,
+      participantATA.address,
+      feePayer,
+      stakeAmountMicro,
+    )
+    txSignatures.push(sig)
+  }
+
+  return txSignatures
+}
