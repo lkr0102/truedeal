@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import {
   Bell, Home, Compass, Wallet, User, Plus,
   Clock, Activity, PieChart, Trophy, Award,
-  Search, Globe, Moon,
+  Search, Globe, Moon, ChevronLeft, ChevronRight,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { DealWithParticipants, Profile } from "@/lib/supabase/types"
@@ -335,71 +335,93 @@ function HeroBanner({ lang }: { lang: Language }) {
 
   const TOTAL = 2
 
+  function prev(e: React.MouseEvent) { e.stopPropagation(); setCurrent(c => (c - 1 + TOTAL) % TOTAL) }
+  function next(e: React.MouseEvent) { e.stopPropagation(); setCurrent(c => (c + 1) % TOTAL) }
+
+  const arrowStyle = (side: "left" | "right"): React.CSSProperties => ({
+    position: "absolute", [side]: 10, top: "50%", transform: "translateY(-50%)",
+    zIndex: 2, width: 28, height: 28, borderRadius: "50%",
+    background: "rgba(255,255,255,0.88)", border: "none", cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.14)", flexShrink: 0,
+  })
+
   return (
     <div style={{ padding: "0 20px 12px" }}>
-      {/* Banner 1 — Brand / Goals */}
-      {current === 0 && (
-        <div
-          onClick={() => router.push("/create")}
-          style={{ borderRadius: 26, padding: "20px 20px 18px", position: "relative", overflow: "hidden", cursor: "pointer", background: `linear-gradient(135deg, #00523A 0%, #008C3E 55%, ${C.brand} 100%)` }}
-        >
-          <div style={{ position: "absolute", top: "-30%", right: "-8%", width: 180, height: 180, background: "rgba(255,255,255,0.1)", borderRadius: "50%", filter: "blur(40px)", pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: "-25%", left: "35%", width: 120, height: 120, background: "rgba(0,0,0,0.12)", borderRadius: "50%", filter: "blur(30px)", pointerEvents: "none" }} />
+      <div style={{ position: "relative" }}>
 
-          <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 22 }}>
-            {/* Left: logo mark */}
-            <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
-              <div style={{ width: 52, height: 52, background: "rgba(255,255,255,0.15)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", border: "1.5px solid rgba(255,255,255,0.22)" }}>
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg>
-              </div>
-              <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.01em", color: "#fff", textAlign: "center" as const, lineHeight: 1.1 }}>
-                TRUE<br /><span style={{ opacity: 0.65 }}>DEAL</span>
-              </div>
-            </div>
+        {/* Banner 1 — Brand / Goals */}
+        {current === 0 && (
+          <div
+            onClick={() => router.push("/create")}
+            style={{ borderRadius: 26, padding: "20px 50px 18px", position: "relative", overflow: "hidden", cursor: "pointer", background: `linear-gradient(135deg, #00523A 0%, #008C3E 55%, ${C.brand} 100%)` }}
+          >
+            <div style={{ position: "absolute", top: "-30%", right: "-8%", width: 180, height: 180, background: "rgba(255,255,255,0.1)", borderRadius: "50%", filter: "blur(40px)", pointerEvents: "none" }} />
+            <div style={{ position: "absolute", bottom: "-25%", left: "35%", width: 120, height: 120, background: "rgba(0,0,0,0.12)", borderRadius: "50%", filter: "blur(30px)", pointerEvents: "none" }} />
 
-            {/* Right: tagline + CTA */}
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.025em", color: "#fff", lineHeight: 1.3, marginBottom: 16 }}>
-                <div>Set your goals.</div>
-                <div>Honor your word.</div>
-                <div style={{ opacity: 0.75 }}>Get paid for it.</div>
+            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 22 }}>
+              {/* Left: app logo (green circle + black checkmark) */}
+              <div style={{ flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 7 }}>
+                <div style={{ width: 56, height: 56, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: "2.5px solid rgba(255,255,255,0.35)", boxShadow: "0 0 0 4px rgba(255,255,255,0.1)" }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+                </div>
+                <div style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.01em", color: "#fff", textAlign: "center" as const, lineHeight: 1.1 }}>
+                  TRUE<br /><span style={{ opacity: 0.65 }}>DEAL</span>
+                </div>
               </div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.9)", borderRadius: 100, padding: "9px 16px", fontSize: 12, fontWeight: 700, color: C.brandDark, letterSpacing: "-0.01em" }}>
-                {lang === "pt" ? "Definir metas agora" : "Set your goals now"} →
+
+              {/* Right: tagline + CTA */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 18, fontWeight: 800, letterSpacing: "-0.025em", color: "#fff", lineHeight: 1.3, marginBottom: 16 }}>
+                  <div>Set your goals.</div>
+                  <div>Honor your word.</div>
+                  <div style={{ opacity: 0.75 }}>Get paid for it.</div>
+                </div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.9)", borderRadius: 100, padding: "9px 16px", fontSize: 12, fontWeight: 700, color: C.brandDark, letterSpacing: "-0.01em" }}>
+                  {lang === "pt" ? "Definir metas agora" : "Set your goals now"} →
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Banner 2 — Invite / Social */}
-      {current === 1 && (
-        <div
-          onClick={handleShare}
-          style={{ borderRadius: 26, padding: "20px 20px 18px", position: "relative", overflow: "hidden", cursor: "pointer", background: C.surface, border: `1px solid ${C.border}` }}
-        >
-          <div style={{ position: "absolute", top: 0, right: 0, width: "45%", height: "100%", background: `linear-gradient(270deg, ${C.activeLight}, transparent)`, pointerEvents: "none" }} />
-          <div style={{ position: "absolute", bottom: "-20%", right: "15%", width: 100, height: 100, background: `radial-gradient(circle, rgba(0,184,82,0.08), transparent 70%)`, pointerEvents: "none" }} />
+        {/* Banner 2 — Invite / Social */}
+        {current === 1 && (
+          <div
+            onClick={handleShare}
+            style={{ borderRadius: 26, padding: "20px 50px 18px", position: "relative", overflow: "hidden", cursor: "pointer", background: C.surface, border: `1px solid ${C.border}` }}
+          >
+            <div style={{ position: "absolute", top: 0, right: 0, width: "45%", height: "100%", background: `linear-gradient(270deg, ${C.activeLight}, transparent)`, pointerEvents: "none" }} />
+            <div style={{ position: "absolute", bottom: "-20%", right: "15%", width: 100, height: 100, background: `radial-gradient(circle, rgba(0,184,82,0.08), transparent 70%)`, pointerEvents: "none" }} />
 
-          <div style={{ position: "relative" }}>
-            <div style={{ fontSize: 9, fontWeight: 700, color: C.brand, ...MONO, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: 10 }}>
-              Community
-            </div>
-            <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.035em", color: C.text, lineHeight: 1.2, marginBottom: 18 }}>
-              {lang === "pt" ? (
-                <>Alguns desafios são<br /><span style={{ color: C.brand }}>mais fáceis</span> com amigos.</>
-              ) : (
-                <>Some challenges are<br /><span style={{ color: C.brand }}>more easy</span> with friends.</>
-              )}
-            </div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.brand, borderRadius: 100, padding: "9px 18px", fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: "-0.01em" }}>
-              {shareFeedback
-                ? (lang === "pt" ? "Link copiado!" : "Link copied!")
-                : (lang === "pt" ? "Convidar amigos agora" : "Invite your friends now")} →
+            <div style={{ position: "relative" }}>
+              <div style={{ fontSize: 9, fontWeight: 700, color: C.brand, ...MONO, letterSpacing: "0.1em", textTransform: "uppercase" as const, marginBottom: 10 }}>
+                Community
+              </div>
+              <div style={{ fontSize: 21, fontWeight: 800, letterSpacing: "-0.035em", color: C.text, lineHeight: 1.2, marginBottom: 18 }}>
+                {lang === "pt" ? (
+                  <>Alguns desafios são<br /><span style={{ color: C.brand }}>mais fáceis</span> com amigos.</>
+                ) : (
+                  <>Some challenges are<br /><span style={{ color: C.brand }}>more easy</span> with friends.</>
+                )}
+              </div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: C.brand, borderRadius: 100, padding: "9px 18px", fontSize: 12, fontWeight: 700, color: "#fff", letterSpacing: "-0.01em" }}>
+                {shareFeedback
+                  ? (lang === "pt" ? "Link copiado!" : "Link copied!")
+                  : (lang === "pt" ? "Convidar amigos agora" : "Invite your friends now")} →
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+
+        {/* Navigation arrows */}
+        <button style={arrowStyle("left")} onClick={prev}>
+          <ChevronLeft style={{ width: 15, height: 15, stroke: C.text, fill: "none" }} />
+        </button>
+        <button style={arrowStyle("right")} onClick={next}>
+          <ChevronRight style={{ width: 15, height: 15, stroke: C.text, fill: "none" }} />
+        </button>
+      </div>
 
       {/* Dot indicators */}
       <div style={{ display: "flex", justifyContent: "center", gap: 5, paddingTop: 10 }}>
