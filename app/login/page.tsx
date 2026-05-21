@@ -168,6 +168,7 @@ function LoginPageInner() {
   const [showWallets, setShowWallets] = useState(false)
   const [walletError, setWalletError] = useState<string | null>(null)
   const [isDemoMode,  setIsDemoMode]  = useState(false)
+  const [signUpSent,  setSignUpSent]  = useState(false)
 
   useEffect(() => {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -262,9 +263,15 @@ function LoginPageInner() {
     }
     const supabase = createClient()
     if (isSignUp) {
-      const { error } = await supabase.auth.signUp({ email, password })
+      const { data: signUpData, error } = await supabase.auth.signUp({ email, password })
       if (error) { setAuthError(error.message); setIsLoading(false); return }
-      router.push("/onboarding/profile")
+      if (signUpData.session) {
+        router.push("/onboarding/profile")
+      } else {
+        setIsLoading(false)
+        setSignUpSent(true)
+      }
+      return
     } else {
       const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) { setAuthError("E-mail ou senha incorretos"); setIsLoading(false); return }
@@ -345,6 +352,29 @@ function LoginPageInner() {
         {/* Card */}
         <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 24, padding: 24 }}>
 
+          {signUpSent ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, padding: "8px 0" }}>
+              <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.activeLight, border: `1px solid ${C.activeBorder}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={C.brand} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.68 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.59 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8 8.09a16 16 0 0 0 6 6l.72-.85a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+                </svg>
+              </div>
+              <div style={{ textAlign: "center" }}>
+                <p style={{ fontSize: 16, fontWeight: 800, color: C.text, marginBottom: 6 }}>Confirme seu e-mail</p>
+                <p style={{ fontSize: 13, color: C.mid, lineHeight: 1.5 }}>
+                  Enviamos um link de confirmação para <strong style={{ color: C.text }}>{email}</strong>. Clique no link para ativar sua conta.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setSignUpSent(false); setIsSignUp(false) }}
+                style={{ width: "100%", padding: "13px 0", borderRadius: 12, fontSize: 14, fontWeight: 700, color: C.brand, background: C.activeLight, border: `1px solid ${C.activeBorder}`, cursor: "pointer" }}
+              >
+                Já confirmei — Entrar
+              </button>
+            </div>
+          ) : (
+          <>
           {/* Email form */}
           <form onSubmit={handleEmailLogin} style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
             <Field type="email" value={email} onChange={setEmail} placeholder="seu@email.com" />
@@ -438,6 +468,8 @@ function LoginPageInner() {
                 {isLoading ? "Acessando..." : "PROTOCOL OVERRIDE (DEMO ACCESS)"}
               </button>
             </div>
+          )}
+          </>
           )}
         </div>
 

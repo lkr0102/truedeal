@@ -362,7 +362,9 @@ function ProfileSetupContent() {
 
         {/* Nome */}
         <div style={{ marginBottom: 18 }}>
-          <label style={{ fontSize: 13, fontWeight: 600, color: C.mid, display: "block", marginBottom: 8 }}>Nome completo</label>
+          <label style={{ fontSize: 13, fontWeight: 600, color: C.mid, display: "block", marginBottom: 8 }}>
+            Nome do usuário <span style={{ color: "#DC2626" }}>*</span>
+          </label>
           <input
             type="text" value={name} onChange={(e) => handleNameChange(e.target.value)}
             placeholder="Seu nome"

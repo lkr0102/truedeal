@@ -107,6 +107,7 @@ interface WalletClientProps {
   tdpHistory:       TdpTransaction[]
   activeDealsValue: number
   managedPublicKey: string | null
+  isExternalWallet?: boolean
   solBalance:       number
   solUsdPrice:      number
   usdcBalance:      number
@@ -116,7 +117,7 @@ interface WalletClientProps {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function WalletClient({
-  profile, tdpHistory, activeDealsValue, managedPublicKey, solBalance, solUsdPrice, usdcBalance, isDevnet,
+  profile, tdpHistory, activeDealsValue, managedPublicKey, isExternalWallet = false, solBalance, solUsdPrice, usdcBalance, isDevnet,
 }: WalletClientProps) {
   const [showBalance, setShowBalance] = useState(true)
   const [currency,    setCurrency]    = useState<Currency>("usd")
@@ -257,7 +258,7 @@ export default function WalletClient({
               {copied ? <Check style={{ width: 16, height: 16, stroke: "#fff", fill: "none" }} /> : <Copy style={{ width: 16, height: 16, stroke: "rgba(255,255,255,0.6)", fill: "none" }} />}
             </button>
             <p style={{ marginTop: 8, fontSize: 9, color: "rgba(255,255,255,0.4)", textAlign: "center", textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, ...MONO }}>
-              🔐 Sovereign Managed Wallet · AES-256-GCM
+              {isExternalWallet ? "◎ Carteira Conectada · Phantom / Solflare" : "🔐 Sovereign Managed Wallet · AES-256-GCM"}
             </p>
           </div>
         </div>

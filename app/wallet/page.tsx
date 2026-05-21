@@ -36,21 +36,30 @@ export default async function WalletPage() {
     fetchSolUsdPrice(),
   ])
 
+  // For users who authenticated via their own Solana wallet (Phantom/Solflare),
+  // their actual public key is stored in user metadata — use it directly.
+  const externalWalletAddress = (user?.user_metadata?.wallet_address as string | undefined) ?? null
+  const isExternalWallet = !!externalWalletAddress
+
   let managedPublicKey: string | null = null
-  try {
-    const existing = await getMyWallet()
-    managedPublicKey = existing.publicKey
-    if (!managedPublicKey) {
-      const created = await ensureUserWallet()
-      managedPublicKey = created.publicKey
+  if (!isExternalWallet) {
+    try {
+      const existing = await getMyWallet()
+      managedPublicKey = existing.publicKey
+      if (!managedPublicKey) {
+        const created = await ensureUserWallet()
+        managedPublicKey = created.publicKey
+      }
+    } catch (err) {
+      console.error("[wallet/page] wallet provisioning failed:", err)
     }
-  } catch (err) {
-    console.error("[wallet/page] wallet provisioning failed:", err)
   }
 
+  const displayPublicKey = managedPublicKey ?? externalWalletAddress
+
   const [solBalance, usdcBalance] = await Promise.all([
-    managedPublicKey ? getSolBalance(managedPublicKey)  : Promise.resolve(0),
-    managedPublicKey ? getUsdcBalance(managedPublicKey) : Promise.resolve(0),
+    displayPublicKey ? getSolBalance(displayPublicKey)  : Promise.resolve(0),
+    displayPublicKey ? getUsdcBalance(displayPublicKey) : Promise.resolve(0),
   ])
 
   const activeDealsValue = deals
@@ -65,7 +74,8 @@ export default async function WalletPage() {
       profile={profile}
       tdpHistory={tdpHistory}
       activeDealsValue={activeDealsValue}
-      managedPublicKey={managedPublicKey}
+      managedPublicKey={displayPublicKey}
+      isExternalWallet={isExternalWallet}
       solBalance={solBalance}
       solUsdPrice={solUsdPrice}
       usdcBalance={usdcBalance}
