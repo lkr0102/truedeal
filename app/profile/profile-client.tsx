@@ -1,15 +1,15 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
   Home, Compass, Wallet, User, Plus, CheckCircle2,
   ChevronRight,
   Trophy, Zap, Shield, Bell, HelpCircle, LogOut,
-  Target, Clock, Info, X, Loader2,
+  Target, Clock, Info, X, Loader2, Camera,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { getMySocialConnections, saveMembershipEmail } from "@/lib/actions/profile"
+import { getMySocialConnections, saveMembershipEmail, updateProfile } from "@/lib/actions/profile"
 import type { Profile, DealWithParticipants } from "@/lib/supabase/types"
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -337,19 +337,39 @@ interface ProfileClientProps {
   userId: string | null
 }
 
-// ── Avatar placeholder ─────────────────────────────────────────────────────────
+// ── Avatar ─────────────────────────────────────────────────────────────────────
 
-function AvatarPlaceholder({ size = 84, initials }: { size?: number; initials: string }) {
+function Avatar({ size = 84, initials, avatarUrl, onClick }: {
+  size?: number
+  initials: string
+  avatarUrl?: string | null
+  onClick?: () => void
+}) {
   return (
-    <div style={{ position: "relative", width: size, height: size }}>
-      <div style={{ width: "100%", height: "100%", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: C.brand, border: `3px solid ${C.surface}` }}>
-        <span style={{ fontWeight: 800, color: "#fff", fontSize: size * 0.3 }}>{initials}</span>
+    <button
+      onClick={onClick}
+      style={{ position: "relative", width: size, height: size, border: "none", cursor: "pointer", background: "transparent", padding: 0, flexShrink: 0 }}
+    >
+      <div style={{ width: "100%", height: "100%", borderRadius: "50%", overflow: "hidden", border: `3px solid ${C.surface}`, boxShadow: "0 2px 12px rgba(0,0,0,0.12)" }}>
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="Foto de perfil" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : (
+          <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: C.brand }}>
+            <span style={{ fontWeight: 800, color: "#fff", fontSize: size * 0.3 }}>{initials}</span>
+          </div>
+        )}
       </div>
-      <div style={{ position: "absolute", bottom: 0, right: 0, width: 22, height: 22, borderRadius: "50%", background: C.brandDark, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <User style={{ width: 11, height: 11, color: "#fff" }} />
+      <div style={{ position: "absolute", bottom: 0, right: 0, width: 26, height: 26, borderRadius: "50%", background: C.brandDark, border: `2px solid ${C.surface}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <Camera style={{ width: 12, height: 12, color: "#fff", fill: "none" }} />
       </div>
-    </div>
+    </button>
   )
+}
+
+function formatHandle(username: string): string {
+  const match = username.match(/^(.+?)(\d{4})$/)
+  if (match) return `${match[1]} #${match[2]}`
+  return `@${username}`
 }
 
 // ── Dashboard Tab ──────────────────────────────────────────────────────────────
@@ -532,6 +552,32 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
   const socialError  = searchParams.get("social_error")
   const socialSuccess = searchParams.get("social_success")
 
+  const fileRef     = useRef<HTMLInputElement>(null)
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
+
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => setAvatarUrl(ev.target?.result as string)
+    reader.readAsDataURL(file)
+
+    const supabase = createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    const ext  = file.name.split(".").pop() ?? "jpg"
+    const path = `${user?.id ?? "anon"}/${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true })
+    if (!upErr) {
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path)
+      await updateProfile({
+        display_name: profile?.display_name ?? "Usuário",
+        username:     profile?.username ?? "user",
+        avatar_url:   urlData.publicUrl,
+      })
+      setAvatarUrl(urlData.publicUrl)
+    }
+  }
+
   // ── Derived stats ──
   const myDeals   = deals.filter(d => d.participants.some(p => p.user_id === userId))
   const finalized = myDeals.filter(d => d.status === "finalizado")
@@ -620,18 +666,18 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
 
       {/* Header */}
       <div style={{ padding: "48px 20px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-        <AvatarPlaceholder size={80} initials={initials} />
+        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoChange} />
+        <Avatar size={80} initials={initials} avatarUrl={avatarUrl} onClick={() => fileRef.current?.click()} />
         <div style={{ textAlign: "center" }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
             <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>{USER.name}</h1>
             {USER.verified && <CheckCircle2 style={{ width: 18, height: 18, color: C.brand }} />}
           </div>
-          {USER.username && <p style={{ fontSize: 12, color: C.dim, marginTop: 2, ...MONO }}>{USER.username}</p>}
-          <div style={{ marginTop: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: C.brand, padding: "3px 10px", borderRadius: 100, background: C.activeLight, border: `1px solid ${C.activeBorder}`, ...MONO }}>
-              Reputação: Integridade Total
-            </span>
-          </div>
+          {profile?.username && (
+            <p style={{ fontSize: 11, color: C.dim, marginTop: 4, fontStyle: "italic", letterSpacing: "0.01em" }}>
+              {formatHandle(profile.username)}
+            </p>
+          )}
         </div>
 
         {/* Stats card */}
