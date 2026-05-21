@@ -115,13 +115,14 @@ export default function DealResultClient({
       const reward   = rewardForRank(deal.distribution, deal.net_pot, rank)
       return {
         rank,
-        initials: getInitials(name),
+        initials:  getInitials(name),
+        avatarUrl: p.profile.avatar_url ?? null,
         name,
-        metric:   snapVal > 0 ? snapVal.toLocaleString("pt-BR") : "—",
-        reward:   `$${reward.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
-        color:    PLAYER_COLORS[i % PLAYER_COLORS.length],
-        isMe:     p.user_id === userId,
-        isWinner: p.user_id === deal.winner_id,
+        metric:    snapVal > 0 ? snapVal.toLocaleString("pt-BR") : "—",
+        reward:    `$${reward.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+        color:     PLAYER_COLORS[i % PLAYER_COLORS.length],
+        isMe:      p.user_id === userId,
+        isWinner:  p.user_id === deal.winner_id,
       }
     })
 
@@ -342,9 +343,11 @@ export default function DealResultClient({
                   }}>
                   {rankMedals[player.rank - 1] ?? `#${player.rank}`}
                 </div>
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-                  style={{ background: player.color }}>
-                  {player.initials}
+                <div className="w-8 h-8 rounded-lg flex-shrink-0 overflow-hidden flex items-center justify-center text-xs font-bold text-white"
+                  style={{ background: player.avatarUrl ? "transparent" : player.color }}>
+                  {player.avatarUrl
+                    ? <img src={player.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : player.initials}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className={`text-sm font-semibold ${player.isMe ? "text-[#16A34A]" : "text-gray-800"}`}>

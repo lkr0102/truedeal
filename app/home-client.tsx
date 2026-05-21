@@ -541,8 +541,10 @@ function ProfilePopover({
         onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", gap: 12, borderBottom: `1px solid ${C.border}` }}>
-          <div style={{ width: 44, height: 44, borderRadius: 12, background: C.brand, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>{initials}</span>
+          <div style={{ width: 44, height: 44, borderRadius: 12, background: C.brand, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+            {profile?.avatar_url
+              ? <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>{initials}</span>}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 700, color: C.text, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName}</div>
@@ -930,12 +932,16 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
             <Bell style={{ width: 16, height: 16, stroke: C.mid, fill: "none" }} />
             <div style={{ position: "absolute", top: 7, right: 7, width: 7, height: 7, background: C.forming, borderRadius: "50%", border: `2px solid ${C.bg}` }} />
           </button>
-          <button onClick={() => setShowProfile(!showProfile)} style={{ width: 34, height: 34, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.surface}`, cursor: "pointer", position: "relative" }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{initials}</span>
+          <div style={{ position: "relative", width: 34, height: 34, flexShrink: 0 }}>
+            <button onClick={() => setShowProfile(!showProfile)} style={{ width: 34, height: 34, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.surface}`, cursor: "pointer", overflow: "hidden", padding: 0 }}>
+              {profile?.avatar_url
+                ? <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                : <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{initials}</span>}
+            </button>
             <div style={{ position: "absolute", bottom: -4, right: -4, background: C.brand, color: "#fff", borderRadius: 100, fontSize: 8, fontWeight: 700, padding: "1px 4px", border: `1px solid ${C.bg}`, ...MONO }}>
               {level}
             </div>
-          </button>
+          </div>
         </div>
       </div>
 

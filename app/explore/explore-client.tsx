@@ -256,9 +256,11 @@ function ShakesRankingList({
                 style={{ color: rank <= 3 ? C.brand : "#9CA3AF" }}>
                 {rank}
               </p>
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: `linear-gradient(135deg,${bg},${bg}CC)` }}>
-                <span className="font-bold text-[10px]" style={{ color }}>{initials}</span>
+              <div className="w-8 h-8 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden"
+                style={{ background: u.avatar_url ? "transparent" : `linear-gradient(135deg,${bg},${bg}CC)` }}>
+                {u.avatar_url
+                  ? <img src={u.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <span className="font-bold text-[10px]" style={{ color }}>{initials}</span>}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
@@ -429,9 +431,11 @@ function HallOfFameTab({
                   style={{ color: rank <= 3 ? C.brand : "#9CA3AF" }}>
                   {rank}
                 </p>
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ background: `linear-gradient(135deg,${bg},${bg}CC)` }}>
-                  <span className="font-bold text-xs" style={{ color }}>{initials}</span>
+                <div className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center overflow-hidden"
+                  style={{ background: u.avatar_url ? "transparent" : `linear-gradient(135deg,${bg},${bg}CC)` }}>
+                  {u.avatar_url
+                    ? <img src={u.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    : <span className="font-bold text-xs" style={{ color }}>{initials}</span>}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">

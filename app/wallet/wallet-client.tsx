@@ -187,8 +187,10 @@ export default function WalletClient({
 
         {/* User mini-card */}
         <div style={{ borderRadius: 16, padding: "12px 14px", marginBottom: 14, marginTop: 6, display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}` }}>
-          <div style={{ width: 40, height: 40, borderRadius: 12, background: C.brand, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <span style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>{initials}</span>
+          <div style={{ width: 40, height: 40, borderRadius: 12, background: C.brand, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, overflow: "hidden" }}>
+            {profile?.avatar_url
+              ? <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              : <span style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>{initials}</span>}
           </div>
           <div style={{ flex: 1 }}>
             <p style={{ fontWeight: 700, fontSize: 14, color: C.text }}>{displayName}</p>

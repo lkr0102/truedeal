@@ -46,6 +46,7 @@ type DealStatus = "ativo" | "pendente" | "finalizado"
 interface Participant {
   id: string
   initials: string
+  avatarUrl: string | null
   name: string
   username: string
   socialHandle?: string
@@ -126,6 +127,19 @@ function getInitials(name: string) {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
 }
 
+function PlayerAvatar({ player, size, bg, border, textColor }: {
+  player: { initials: string; avatarUrl: string | null }
+  size: number; bg: string; border: string; textColor: string
+}) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: player.avatarUrl ? "transparent" : bg, border: `1.5px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.33, fontWeight: 700, color: textColor, flexShrink: 0, overflow: "hidden" }}>
+      {player.avatarUrl
+        ? <img src={player.avatarUrl} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        : player.initials}
+    </div>
+  )
+}
+
 function getUserTag(username: string) {
   const plain = username.replace(/^@/, "")
   const digits = (plain.match(/\d+/g) ?? []).join("")
@@ -186,6 +200,7 @@ function mapDeal(d: DealWithParticipants, userId: string | null, lang: "pt" | "e
     return {
       id:           p.id,
       initials:     getInitials(name),
+      avatarUrl:    p.profile.avatar_url ?? null,
       name,
       username:     `@${p.profile.username}`,
       userTag:      getUserTag(p.profile.username),
@@ -1109,9 +1124,7 @@ export default function DealClient({
                 <div key={player.id} style={{ background: C.surface, border: `1px solid ${player.isMe ? C.activeBorder : C.border}`, borderRadius: 16, marginBottom: 10, overflow: "hidden" }}>
                   {/* Card header */}
                   <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: player.isMe ? C.activeLight : "transparent", borderBottom: `1px solid ${C.border2}` }}>
-                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: statusBg, border: `1.5px solid ${statusBorder}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: statusColor, flexShrink: 0 }}>
-                      {player.initials}
-                    </div>
+                    <PlayerAvatar player={player} size={34} bg={statusBg} border={statusBorder} textColor={statusColor} />
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 5 }}>
                         {player.name}
@@ -1243,9 +1256,7 @@ export default function DealClient({
           {aliveList.map((player, i) => (
             <div key={player.id} style={{ background: player.isMe ? C.activeLight : C.surface, border: `1px solid ${player.isMe ? C.activeBorder : C.border}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 9 }}>
               <div style={{ fontSize: 12, width: 18, textAlign: "center", flexShrink: 0, color: C.dim, fontFamily: "monospace", fontWeight: 600 }}>{i + 1}</div>
-              <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.activeLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.brand, flexShrink: 0, border: `1.5px solid ${C.activeBorder}` }}>
-                {player.initials}
-              </div>
+              <PlayerAvatar player={player} size={32} bg={C.activeLight} border={C.activeBorder} textColor={C.brand} />
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 2, display: "flex", alignItems: "center", gap: 5 }}>
                   {player.name}
@@ -1277,9 +1288,7 @@ export default function DealClient({
               </div>
               {eliminatedList.map(player => (
                 <div key={player.id} style={{ background: C.formingLight, border: `1px solid ${C.formingBorder}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 9 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(139,160,154,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.dim, flexShrink: 0, border: `1.5px solid ${C.formingBorder}` }}>
-                    {player.initials}
-                  </div>
+                  <PlayerAvatar player={player} size={32} bg="rgba(139,160,154,0.12)" border={C.formingBorder} textColor={C.dim} />
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 2, color: C.mid, textDecoration: "line-through" }}>
                       {player.name}
