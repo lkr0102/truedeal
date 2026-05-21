@@ -519,7 +519,7 @@ function DealRulesCard({ deal, dealData }: { deal: DealView; dealData: DealWithP
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-type TabId = "overview" | "participants" | "rules"
+type TabId = "overview" | "progress" | "participants" | "rules"
 
 interface CheckinStats {
   count: number
@@ -531,11 +531,13 @@ export default function DealClient({
   userId,
   userSocialConnections,
   checkinStats: initialCheckinStats,
+  allCheckins = {},
 }: {
   deal: DealWithParticipants
   userId: string | null
   userSocialConnections?: SocialConnection[]
   checkinStats?: CheckinStats | null
+  allCheckins?: Record<string, { date: string; activityAt: string }[]>
 }) {
   const router             = useRouter()
   const { language }       = useLanguageStore()
@@ -734,9 +736,10 @@ export default function DealClient({
 
   // ── Tabs config ─────────────────────────────────────────────────────────────
   const TABS: { id: TabId; label: string }[] = [
-    { id: "overview",     label: language === "pt" ? "Visão geral"    : "Overview" },
-    { id: "participants", label: language === "pt" ? "Participantes"  : "Participants" },
-    { id: "rules",        label: language === "pt" ? "Regras & Verif.": "Rules & Verif." },
+    { id: "overview",     label: language === "pt" ? "Geral"      : "Overview"  },
+    { id: "progress",     label: language === "pt" ? "Progresso"  : "Progress"  },
+    { id: "participants", label: language === "pt" ? "Players"    : "Players"   },
+    { id: "rules",        label: language === "pt" ? "Regras"     : "Rules"     },
   ]
 
   return (
@@ -1033,29 +1036,204 @@ export default function DealClient({
         </div>
       )}
 
+      {/* ── PROGRESS TAB ── */}
+      {activeTab === "progress" && (() => {
+        const startDate = new Date(dealData.start_date)
+        const endDate   = new Date(dealData.end_date)
+        const freq      = dealData.rule_frequency ?? "daily"
+        const now       = new Date()
+
+        // Build compliance windows from start to end based on frequency
+        type Window = { label: string; start: Date; end: Date; completed: boolean; current: boolean }
+        const windows: Window[] = []
+        let cur = new Date(startDate)
+        let n   = 1
+        while (cur < endDate) {
+          const next = new Date(cur)
+          if (freq === "daily")        next.setDate(next.getDate() + 1)
+          else if (freq === "weekly")  next.setDate(next.getDate() + 7)
+          else if (freq === "monthly") next.setMonth(next.getMonth() + 1)
+          else                         next.setTime(endDate.getTime())
+          const windowEnd = next > endDate ? new Date(endDate) : next
+          windows.push({
+            label:     freq === "daily"   ? (language === "pt" ? `Dia ${n}`     : `Day ${n}`)     :
+                       freq === "weekly"  ? (language === "pt" ? `Semana ${n}`  : `Week ${n}`)   :
+                                           (language === "pt" ? `Mês ${n}`     : `Month ${n}`),
+            start:     new Date(cur),
+            end:       new Date(windowEnd),
+            completed: windowEnd <= now,
+            current:   cur <= now && windowEnd > now,
+          })
+          cur = new Date(windowEnd)
+          n++
+        }
+
+        const completedWindows = windows.filter(w => w.completed)
+        const locale = language === "pt" ? ptBR : undefined
+
+        return (
+          <div style={{ padding: "14px 20px" }}>
+
+            {/* Summary stats */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 7, marginBottom: 14 }}>
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 10px", textAlign: "center" }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: C.brand }}>{completedWindows.length}</div>
+                <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginTop: 2 }}>
+                  {language === "pt" ? "Períodos" : "Periods"}
+                </div>
+              </div>
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 10px", textAlign: "center" }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: C.brand }}>{aliveCount}</div>
+                <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginTop: 2 }}>
+                  {language === "pt" ? "Em dia" : "On track"}
+                </div>
+              </div>
+              <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 10px", textAlign: "center" }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: C.forming }}>{eliminatedCount}</div>
+                <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginTop: 2 }}>
+                  {language === "pt" ? "Falhou" : "Failed"}
+                </div>
+              </div>
+            </div>
+
+            {/* Per-participant progress cards */}
+            {deal.participants_list.map(player => {
+              const playerCheckins = allCheckins[player.id] ?? []
+              const checkinDates   = new Set(playerCheckins.map(c => c.date))
+              const isAlive        = player.approved
+              const statusColor    = isAlive ? C.brand : C.forming
+              const statusBg       = isAlive ? C.activeLight : C.formingLight
+              const statusBorder   = isAlive ? C.activeBorder : C.formingBorder
+
+              return (
+                <div key={player.id} style={{ background: C.surface, border: `1px solid ${player.isMe ? C.activeBorder : C.border}`, borderRadius: 16, marginBottom: 10, overflow: "hidden" }}>
+                  {/* Card header */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", background: player.isMe ? C.activeLight : "transparent", borderBottom: `1px solid ${C.border2}` }}>
+                    <div style={{ width: 34, height: 34, borderRadius: "50%", background: statusBg, border: `1.5px solid ${statusBorder}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: statusColor, flexShrink: 0 }}>
+                      {player.initials}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", display: "flex", alignItems: "center", gap: 5 }}>
+                        {player.name}
+                        {player.isMe && (
+                          <span style={{ fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 100, background: C.activeLight, color: C.brand, fontFamily: "monospace" }}>
+                            {language === "pt" ? "Você" : "You"}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 10, color: C.dim, fontFamily: "monospace", marginTop: 1 }}>
+                        {player.isMe && myChannelHandle ? myChannelHandle : player.username}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 100, background: statusBg, border: `1px solid ${statusBorder}` }}>
+                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: statusColor }} />
+                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "monospace", color: statusColor, letterSpacing: "0.06em" }}>
+                        {isAlive
+                          ? (language === "pt" ? "Em dia" : "On track")
+                          : (language === "pt" ? "Eliminado" : "Eliminated")}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Window dots (only show first 14 to avoid overflow) */}
+                  {windows.length > 0 && (
+                    <div style={{ padding: "10px 14px 8px" }}>
+                      <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginBottom: 6 }}>
+                        {language === "pt" ? "Histórico de períodos" : "Period history"}
+                      </div>
+                      <div style={{ display: "flex", flexWrap: "wrap" as const, gap: 5 }}>
+                        {windows.slice(0, 28).map((w, wi) => {
+                          const hasCheckin = isGymDeal ? checkinDates.has(w.start.toISOString().split("T")[0]) : null
+                          const dot = w.current
+                            ? { bg: "rgba(232,98,10,0.15)", border: C.forming, color: C.forming, symbol: "…" }
+                            : !w.completed
+                            ? { bg: C.surface2, border: C.border, color: C.dim, symbol: String(wi + 1) }
+                            : isGymDeal
+                            ? hasCheckin
+                              ? { bg: C.activeLight, border: C.activeBorder, color: C.brand, symbol: "✓" }
+                              : { bg: C.formingLight, border: C.formingBorder, color: C.forming, symbol: "✗" }
+                            : isAlive
+                            ? { bg: C.activeLight, border: C.activeBorder, color: C.brand, symbol: "✓" }
+                            : wi === completedWindows.length - 1
+                            ? { bg: C.formingLight, border: C.formingBorder, color: C.forming, symbol: "✗" }
+                            : { bg: C.activeLight, border: C.activeBorder, color: C.brand, symbol: "✓" }
+                          return (
+                            <div
+                              key={wi}
+                              title={`${w.label} · ${format(w.start, "dd MMM", { locale })}${w.completed ? "" : w.current ? " · Em andamento" : ""}`}
+                              style={{ width: 26, height: 26, borderRadius: 6, background: dot.bg, border: `1px solid ${dot.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: dot.color, fontFamily: "monospace" }}
+                            >
+                              {dot.symbol}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Gym deal: show actual checkin list */}
+                  {isGymDeal && playerCheckins.length > 0 && (
+                    <div style={{ margin: "0 14px 12px", borderRadius: 10, border: `1px solid ${C.border2}`, overflow: "hidden" }}>
+                      <div style={{ padding: "7px 10px", background: C.surface2, fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em" }}>
+                        {language === "pt" ? "Check-ins registrados" : "Recorded check-ins"} · {playerCheckins.length}
+                      </div>
+                      {playerCheckins.slice(-5).reverse().map((ck, ci) => (
+                        <div key={ci} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "7px 10px", borderTop: `1px solid ${C.border2}`, fontSize: 11 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontWeight: 700, color: C.brand, fontSize: 12 }}>✓</span>
+                            <span style={{ fontWeight: 600, color: C.text }}>
+                              {format(new Date(ck.date), "dd MMM", { locale })}
+                            </span>
+                          </div>
+                          <span style={{ fontSize: 10, color: C.dim, fontFamily: "monospace" }}>
+                            {format(new Date(ck.activityAt), "HH:mm")}
+                          </span>
+                        </div>
+                      ))}
+                      {playerCheckins.length > 5 && (
+                        <div style={{ padding: "6px 10px", borderTop: `1px solid ${C.border2}`, fontSize: 9, color: C.dim, fontFamily: "monospace", textAlign: "center" as const }}>
+                          +{playerCheckins.length - 5} {language === "pt" ? "anteriores" : "more"}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* No data state for non-gym deals */}
+                  {!isGymDeal && completedWindows.length === 0 && (
+                    <div style={{ padding: "10px 14px 12px", fontSize: 11, color: C.dim, fontFamily: "monospace" }}>
+                      {language === "pt" ? "Deal ainda não iniciou os períodos de verificação." : "Deal verification periods haven't started yet."}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )
+      })()}
+
       {/* ── PARTICIPANTS TAB ── */}
       {activeTab === "participants" && (
         <div style={{ padding: "14px 20px" }}>
 
           {/* 2-col counts */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 7, marginBottom: 12 }}>
-            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
+            <div style={{ background: C.activeLight, border: `1px solid ${C.activeBorder}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: C.brand }}>{aliveCount}</div>
-              <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginTop: 2 }}>
-                {language === "pt" ? "Ativos" : "Active"}
+              <div style={{ fontSize: 8, fontFamily: "monospace", color: C.brand, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginTop: 2, opacity: 0.7 }}>
+                {language === "pt" ? "Em dia" : "On track"}
               </div>
             </div>
-            <div style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
+            <div style={{ background: C.formingLight, border: `1px solid ${C.formingBorder}`, borderRadius: 10, padding: 10, textAlign: "center" }}>
               <div style={{ fontSize: 18, fontWeight: 800, color: C.forming }}>{eliminatedCount}</div>
-              <div style={{ fontSize: 8, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginTop: 2 }}>
-                {language === "pt" ? "Falharam" : "Failed"}
+              <div style={{ fontSize: 8, fontFamily: "monospace", color: C.forming, textTransform: "uppercase" as const, letterSpacing: "0.1em", marginTop: 2, opacity: 0.7 }}>
+                {language === "pt" ? "Eliminados" : "Eliminated"}
               </div>
             </div>
           </div>
 
           {/* Active list */}
-          <div style={{ fontSize: 10, fontFamily: "monospace", color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 7, fontWeight: 600 }}>
-            {language === "pt" ? "Ativos" : "Active"}
+          <div style={{ fontSize: 10, fontFamily: "monospace", color: C.brand, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 7, fontWeight: 700 }}>
+            {language === "pt" ? "Em dia" : "On track"}
           </div>
           {aliveList.length === 0 && (
             <div style={{ textAlign: "center", padding: "12px 0", fontSize: 11, color: C.dim }}>
@@ -1063,18 +1241,24 @@ export default function DealClient({
             </div>
           )}
           {aliveList.map((player, i) => (
-            <div key={player.id} style={{ background: player.isMe ? C.activeLight : C.surface, border: `1px solid ${player.isMe ? C.activeBorder : C.border}`, borderRadius: 10, padding: "9px 11px", marginBottom: 5, display: "flex", alignItems: "center", gap: 9 }}>
-              <div style={{ fontSize: 14, width: 18, textAlign: "center", flexShrink: 0, color: C.dim }}>{i + 1}</div>
-              <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.surface2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.mid, flexShrink: 0, border: `1px solid ${C.border}` }}>
+            <div key={player.id} style={{ background: player.isMe ? C.activeLight : C.surface, border: `1px solid ${player.isMe ? C.activeBorder : C.border}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 9 }}>
+              <div style={{ fontSize: 12, width: 18, textAlign: "center", flexShrink: 0, color: C.dim, fontFamily: "monospace", fontWeight: 600 }}>{i + 1}</div>
+              <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.activeLight, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.brand, flexShrink: 0, border: `1.5px solid ${C.activeBorder}` }}>
                 {player.initials}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 2, display: "flex", alignItems: "center", gap: 5 }}>
                   {player.name}
-                  {player.isMe && <span style={{ fontSize: 9, fontWeight: 700, marginLeft: 6, padding: "1px 5px", borderRadius: 100, background: C.activeLight, color: C.brand, fontFamily: "monospace" }}>{language === "pt" ? "Você" : "You"}</span>}
+                  {player.isMe && <span style={{ fontSize: 8, fontWeight: 700, padding: "1px 5px", borderRadius: 100, background: C.activeLight, color: C.brand, fontFamily: "monospace" }}>{language === "pt" ? "Você" : "You"}</span>}
                 </div>
-                <div style={{ fontSize: 10, color: C.dim, fontFamily: "monospace" }}>
-                  {player.isMe && myChannelHandle ? myChannelHandle : player.username}
+                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: C.brand, flexShrink: 0 }} />
+                  <span style={{ fontSize: 9, color: C.brand, fontFamily: "monospace", fontWeight: 600 }}>
+                    {language === "pt" ? "Cumprindo" : "Complying"}
+                  </span>
+                  <span style={{ fontSize: 9, color: C.dim, fontFamily: "monospace" }}>
+                    · {player.isMe && myChannelHandle ? myChannelHandle : player.username}
+                  </span>
                 </div>
               </div>
               <div style={{ fontSize: 12, fontWeight: 700, textAlign: "right", color: C.brand }}>
@@ -1088,18 +1272,26 @@ export default function DealClient({
           {/* Failed list */}
           {eliminatedList.length > 0 && (
             <>
-              <div style={{ fontSize: 10, fontFamily: "monospace", color: C.forming, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginTop: 10, marginBottom: 7, fontWeight: 600 }}>
-                {language === "pt" ? "Falharam" : "Failed"}
+              <div style={{ fontSize: 10, fontFamily: "monospace", color: C.forming, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginTop: 12, marginBottom: 7, fontWeight: 700 }}>
+                {language === "pt" ? "Eliminados" : "Eliminated"}
               </div>
               {eliminatedList.map(player => (
-                <div key={player.id} style={{ background: C.closedLight, border: `1px solid ${C.closedBorder}`, borderRadius: 10, padding: "9px 11px", marginBottom: 5, display: "flex", alignItems: "center", gap: 9, opacity: 0.75 }}>
-                  <div style={{ width: 30, height: 30, borderRadius: "50%", background: C.surface2, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.mid, flexShrink: 0, border: `1px solid ${C.border}` }}>
+                <div key={player.id} style={{ background: C.formingLight, border: `1px solid ${C.formingBorder}`, borderRadius: 12, padding: "10px 12px", marginBottom: 6, display: "flex", alignItems: "center", gap: 9 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(139,160,154,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.dim, flexShrink: 0, border: `1.5px solid ${C.formingBorder}` }}>
                     {player.initials}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 1 }}>{player.name}</div>
-                    <div style={{ fontSize: 10, color: C.dim, fontFamily: "monospace" }}>
-                      {player.isMe && myChannelHandle ? myChannelHandle : player.username}
+                    <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: "-0.01em", marginBottom: 2, color: C.mid, textDecoration: "line-through" }}>
+                      {player.name}
+                      {player.isMe && <span style={{ fontSize: 8, fontWeight: 700, marginLeft: 6, padding: "1px 5px", borderRadius: 100, background: C.formingLight, color: C.forming, fontFamily: "monospace", textDecoration: "none" as const }}>{language === "pt" ? "Você" : "You"}</span>}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 6px", borderRadius: 100, background: C.formingLight, color: C.forming, fontFamily: "monospace", border: `1px solid ${C.formingBorder}` }}>
+                        {language === "pt" ? "Eliminado" : "Eliminated"}
+                      </span>
+                      <span style={{ fontSize: 9, color: C.dim, fontFamily: "monospace" }}>
+                        · {player.isMe && myChannelHandle ? myChannelHandle : player.username}
+                      </span>
                     </div>
                   </div>
                   <div style={{ fontSize: 12, fontWeight: 700, textAlign: "right", color: C.forming }}>

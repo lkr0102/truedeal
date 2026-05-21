@@ -64,6 +64,25 @@ export async function recordDealCheckin(
   return { success: true }
 }
 
+export async function getDealAllCheckins(
+  dealId: string,
+): Promise<Record<string, { date: string; activityAt: string }[]>> {
+  const supabase = await createClient()
+  const { data, error } = await (supabase.from("deal_checkins") as any)
+    .select("user_id, checkin_date, activity_at")
+    .eq("deal_id", dealId)
+    .order("activity_at", { ascending: true })
+
+  if (error || !data) return {}
+
+  const grouped: Record<string, { date: string; activityAt: string }[]> = {}
+  for (const row of data) {
+    if (!grouped[row.user_id]) grouped[row.user_id] = []
+    grouped[row.user_id].push({ date: row.checkin_date, activityAt: row.activity_at })
+  }
+  return grouped
+}
+
 export async function getDealCheckinStats(
   dealId: string,
   userId: string,
