@@ -1502,7 +1502,7 @@ export default function CreateDealPage() {
               </p>
             </div>
 
-            <button onClick={() => router.push("/")}
+            <button onClick={() => router.push(`/deal/${confirmedDeal.deal.id}`)}
               style={{ width: "100%", padding: "16px 0", borderRadius: 100, fontWeight: 700, fontSize: 15, color: "#fff", background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, border: "none", cursor: "pointer", boxShadow: "0 4px 18px rgba(0,184,82,0.3)" }}>
               {language === "pt" ? "Ver meu deal" : "See my deal"}
             </button>
