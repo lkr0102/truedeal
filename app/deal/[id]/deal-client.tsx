@@ -611,16 +611,33 @@ export default function DealClient({
   // ── Share link ───────────────────────────────────────────────────────────────
   const shareUrl = `${typeof window !== "undefined" ? window.location.origin : ""}/deal/${dealData.id}`
 
+  const sharePot  = Math.round(entryAmount * (dealData.participant_count ?? 1))
+  const shareRule = `${dealData.rule_target ?? "?"} ${getRuleLabels(language)[dealData.verification_type] ?? dealData.verification_type}${freqLabel ? ` · ${freqLabel}` : ""}`
+  const shareStartFmt = format(new Date(dealData.start_date), language === "pt" ? "dd MMM" : "MMM dd", { locale: language === "pt" ? ptBR : undefined })
+  const shareEndFmt   = format(new Date(dealData.end_date),   language === "pt" ? "dd MMM" : "MMM dd", { locale: language === "pt" ? ptBR : undefined })
+
+  const shareText = language === "pt"
+    ? `🤝 Entrei em um desafio no TrueDeal!\n\n"${dealData.title}"\n🎯 Regra: ${shareRule}\n💰 Entrada: $${entryAmount} · Pote: $${sharePot}\n📅 ${shareStartFmt} → ${shareEndFmt}\n\nVem entrar também 👉`
+    : `🤝 I joined a deal on TrueDeal!\n\n"${dealData.title}"\n🎯 Rule: ${shareRule}\n💰 Entry: $${entryAmount} · Pot: $${sharePot}\n📅 ${shareStartFmt} → ${shareEndFmt}\n\nJoin here 👉`
+
   function handleCopyLink() {
     navigator.clipboard.writeText(shareUrl).catch(() => {})
     setLinkCopied(true)
     setTimeout(() => setLinkCopied(false), 2000)
   }
 
+  function handleShareX() {
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`, "_blank")
+  }
+
+  function handleShareWhatsApp() {
+    window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`, "_blank")
+  }
+
   async function handleNativeShare() {
     if (navigator.share) {
       try {
-        await navigator.share({ title: dealData.title, text: language === "pt" ? `Participe do acordo "${dealData.title}" no TrueDeal` : `Join the deal "${dealData.title}" on TrueDeal`, url: shareUrl })
+        await navigator.share({ title: dealData.title, text: shareText, url: shareUrl })
       } catch { /* cancelled */ }
     } else {
       handleCopyLink()
@@ -1181,59 +1198,103 @@ export default function DealClient({
           onClick={() => setShowShareSheet(false)}
         >
           <div
-            style={{ width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", padding: "20px 20px 44px", background: C.surface, boxShadow: "0 -12px 48px rgba(0,0,0,0.18)" }}
+            style={{ width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "28px 28px 0 0", padding: "0 0 44px", background: C.surface, boxShadow: "0 -16px 56px rgba(0,0,0,0.22)" }}
             onClick={e => e.stopPropagation()}
           >
-            {/* Handle bar */}
-            <div style={{ width: 36, height: 4, borderRadius: 100, background: C.border, margin: "0 auto 20px" }} />
+            {/* Handle */}
+            <div style={{ width: 36, height: 4, borderRadius: 100, background: C.border, margin: "14px auto 0" }} />
 
             {/* Header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
-              <div>
-                <p style={{ fontSize: 16, fontWeight: 800, color: C.text, letterSpacing: "-0.02em", marginBottom: 2 }}>
-                  {language === "pt" ? "Compartilhar acordo" : "Share deal"}
-                </p>
-                <p style={{ fontSize: 12, color: C.dim }}>{dealData.title}</p>
-              </div>
-              <button onClick={() => setShowShareSheet(false)} style={{ width: 32, height: 32, borderRadius: "50%", background: C.surface2, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <X style={{ width: 16, height: 16, stroke: C.mid, fill: "none" }} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 20px 12px" }}>
+              <p style={{ fontSize: 16, fontWeight: 800, color: C.text, letterSpacing: "-0.02em" }}>
+                {language === "pt" ? "Compartilhar deal" : "Share deal"}
+              </p>
+              <button onClick={() => setShowShareSheet(false)} style={{ width: 30, height: 30, borderRadius: "50%", background: C.surface2, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <X style={{ width: 14, height: 14, stroke: C.mid, fill: "none" }} />
               </button>
             </div>
 
-            {/* Deal preview pill */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 14, background: deal.status === "pendente" ? C.formingLight : C.activeLight, border: `1px solid ${deal.status === "pendente" ? C.formingBorder : C.activeBorder}`, marginBottom: 18 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: deal.status === "pendente" ? C.forming : C.brand, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Activity style={{ width: 16, height: 16, stroke: "#fff", fill: "none" }} />
+            {/* ── Card preview ── */}
+            <div style={{ margin: "0 20px 14px", borderRadius: 20, overflow: "hidden", background: statusGradient, padding: "18px 18px 14px", position: "relative" }}>
+              {/* glow blob */}
+              <div style={{ position: "absolute", top: "-40%", right: "-8%", width: 160, height: 160, background: "rgba(255,255,255,0.08)", borderRadius: "50%", filter: "blur(40px)", pointerEvents: "none" }} />
+
+              {/* status + type pills */}
+              <div style={{ display: "flex", gap: 7, marginBottom: 12, position: "relative" }}>
+                <div style={{ padding: "4px 10px", borderRadius: 100, background: "rgba(0,0,0,0.26)", color: "#fff", fontSize: 10, fontWeight: 800, letterSpacing: "1px" }}>
+                  • {statusLabel.toUpperCase()}
+                </div>
+                <div style={{ padding: "4px 10px", borderRadius: 100, background: "rgba(255,255,255,0.15)", color: "#fff", fontSize: 10, fontWeight: 700 }}>
+                  {dealData.type === "privado" ? (language === "pt" ? "PRIVADO" : "PRIVATE") : (language === "pt" ? "PÚBLICO" : "PUBLIC")}
+                </div>
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{dealData.title}</p>
-                <p style={{ fontSize: 10, color: C.dim, fontFamily: "monospace" }}>
-                  ${dealData.entry_amount} · {dealData.participant_count} {language === "pt" ? "participantes" : "participants"}
-                </p>
+
+              {/* title */}
+              <div style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: "-0.5px", lineHeight: 1.2, marginBottom: 5, position: "relative" }}>
+                {dealData.title}
               </div>
-              <div style={{ fontSize: 9, fontWeight: 700, color: deal.status === "pendente" ? C.forming : C.brand, fontFamily: "monospace", textTransform: "uppercase", letterSpacing: "0.06em", flexShrink: 0 }}>
-                {statusLabel}
+
+              {/* rule */}
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.68)", marginBottom: 14, position: "relative" }}>
+                {shareRule}
+              </div>
+
+              {/* stats row */}
+              <div style={{ display: "flex", gap: 7, position: "relative" }}>
+                {[
+                  { label: "ENTRY",   value: `$${entryAmount}` },
+                  { label: "PLAYERS", value: String(dealData.participant_count ?? 0) },
+                  { label: "POT",     value: `$${sharePot}` },
+                  { label: "PERIOD",  value: `${shareStartFmt} → ${shareEndFmt}` },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ flex: 1, background: "rgba(0,0,0,0.26)", borderRadius: 10, padding: "8px 9px" }}>
+                    <div style={{ fontSize: 8, fontWeight: 700, color: "rgba(255,255,255,0.48)", letterSpacing: "1px", marginBottom: 3 }}>{label}</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* watermark */}
+              <div style={{ marginTop: 12, fontSize: 9, fontWeight: 700, color: "rgba(255,255,255,0.35)", letterSpacing: "1.5px", position: "relative" }}>
+                TRUEDEAL.APP
               </div>
             </div>
 
             {/* URL row */}
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderRadius: 14, background: C.surface2, border: `1px solid ${C.border}`, marginBottom: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 20px 14px", padding: "10px 14px", borderRadius: 14, background: C.surface2, border: `1px solid ${C.border}` }}>
               <span style={{ flex: 1, fontSize: 12, color: C.mid, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shareUrl}</span>
-              <button
-                onClick={handleCopyLink}
-                style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: linkCopied ? C.brand : C.mid, background: "none", border: "none", cursor: "pointer", fontFamily: "monospace", letterSpacing: "0.04em" }}
-              >
+              <button onClick={handleCopyLink} style={{ flexShrink: 0, fontSize: 11, fontWeight: 700, color: linkCopied ? C.brand : C.mid, background: "none", border: "none", cursor: "pointer", fontFamily: "monospace", letterSpacing: "0.04em" }}>
                 {linkCopied ? (language === "pt" ? "Copiado!" : "Copied!") : (language === "pt" ? "Copiar" : "Copy")}
               </button>
             </div>
 
-            {/* CTA buttons */}
-            <button
-              onClick={handleNativeShare}
-              style={{ width: "100%", padding: 15, borderRadius: 100, fontWeight: 700, fontSize: 14, color: "#fff", background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, border: "none", cursor: "pointer", boxShadow: "0 4px 18px rgba(0,184,82,0.3)" }}
-            >
-              {language === "pt" ? "Compartilhar" : "Share"}
-            </button>
+            {/* Share buttons */}
+            <div style={{ display: "flex", gap: 10, padding: "0 20px" }}>
+              {/* X */}
+              <button onClick={handleShareX}
+                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 7, padding: "14px 8px", borderRadius: 18, background: "#000", border: "none", cursor: "pointer" }}>
+                <span style={{ fontSize: 20, fontWeight: 900, color: "#fff", lineHeight: 1, fontFamily: "serif" }}>𝕏</span>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.8)" }}>
+                  {language === "pt" ? "Post no X" : "Post on X"}
+                </span>
+              </button>
+
+              {/* WhatsApp */}
+              <button onClick={handleShareWhatsApp}
+                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 7, padding: "14px 8px", borderRadius: 18, background: "#25D366", border: "none", cursor: "pointer" }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/>
+                </svg>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>WhatsApp</span>
+              </button>
+
+              {/* More / native */}
+              <button onClick={handleNativeShare}
+                style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 7, padding: "14px 8px", borderRadius: 18, background: C.surface2, border: `1px solid ${C.border}`, cursor: "pointer" }}>
+                <Share2 style={{ width: 20, height: 20, stroke: C.mid, fill: "none" }} />
+                <span style={{ fontSize: 11, fontWeight: 700, color: C.mid }}>{language === "pt" ? "Mais" : "More"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
