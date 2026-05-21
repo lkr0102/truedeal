@@ -12,6 +12,7 @@ import {
 import type { DealWithParticipants, Distribution } from "@/lib/supabase/types"
 import { useLanguageStore } from "@/lib/i18n"
 import { joinDeal } from "@/lib/actions/deals"
+import { getMyUsdcBalance } from "@/lib/actions/wallet"
 import { recordDealCheckin } from "@/lib/actions/checkins"
 
 // ── Design tokens (inline — not yet in globals.css) ───────────────────────────
@@ -542,6 +543,8 @@ export default function DealClient({
   const [activeTab,        setActiveTab]        = useState<TabId>("overview")
   const [joinLoading,      setJoinLoading]      = useState(false)
   const [joinError,        setJoinError]        = useState<string | null>(null)
+  const [showJoinConfirm,  setShowJoinConfirm]  = useState(false)
+  const [walletBalance,    setWalletBalance]    = useState<number | null>(null)
   const [showSocialPopup,  setShowSocialPopup]  = useState<string[] | null>(null)
   const [showShareSheet,   setShowShareSheet]   = useState(false)
   const [showMoreMenu,     setShowMoreMenu]     = useState(false)
@@ -655,9 +658,19 @@ export default function DealClient({
 
   const isParticipant = userId ? dealData.participants.some(p => p.user_id === userId) : false
 
+  // ── Join confirm ────────────────────────────────────────────────────────────
+  async function openJoinConfirm() {
+    if (!userId) { router.push("/login"); return }
+    setWalletBalance(null)
+    setShowJoinConfirm(true)
+    const bal = await getMyUsdcBalance()
+    setWalletBalance(bal)
+  }
+
   // ── Join handler ────────────────────────────────────────────────────────────
   async function handleJoin() {
     if (!userId) { router.push("/login"); return }
+    setShowJoinConfirm(false)
     if (!hasRequiredConnection && requiredChannel) {
       setShowSocialPopup(
         deal.verificationChannels.filter(ch => !userSocialConnections?.some(c => {
@@ -771,7 +784,7 @@ export default function DealClient({
           {/* CTA — forming, non-participant, logged in */}
           {deal.status === "pendente" && !isParticipant && userId && (
             <button
-              onClick={handleJoin}
+              onClick={openJoinConfirm}
               disabled={joinLoading}
               style={{ width: "100%", background: "rgba(255,255,255,0.9)", borderRadius: 100, padding: "11px", textAlign: "center", fontSize: 12, fontWeight: 700, color: "#9E3700", border: "none", cursor: "pointer", marginTop: 14, position: "relative" }}
             >
@@ -1126,7 +1139,7 @@ export default function DealClient({
           </div>
           {deal.status === "pendente" && !isParticipant && userId && (
             <button
-              onClick={handleJoin}
+              onClick={openJoinConfirm}
               disabled={joinLoading}
               style={{ padding: "13px 20px", borderRadius: 100, fontSize: 12, fontWeight: 700, background: C.forming, color: "#fff", border: "none", cursor: "pointer", opacity: joinLoading ? 0.7 : 1 }}
             >
@@ -1413,6 +1426,88 @@ export default function DealClient({
           </div>
         </div>
       )}
+
+      {/* ── Join Deal — Deposit Confirmation Modal ──────────────────────────── */}
+      {showJoinConfirm && (() => {
+        const after = walletBalance !== null ? walletBalance - entryAmount : null
+        const mono  = "'DM Mono', monospace"
+        const row = (label: string, value: string, valueColor?: string) => (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${C.border}` }}>
+            <span style={{ fontSize: 13, color: C.mid }}>{label}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: valueColor ?? C.text, fontFamily: mono }}>{value}</span>
+          </div>
+        )
+        return (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "flex-end", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+            onClick={() => setShowJoinConfirm(false)}
+          >
+            <div
+              style={{ width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "28px 28px 0 0", background: C.surface, boxShadow: "0 -16px 60px rgba(0,0,0,0.18)", padding: "0 0 40px" }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Handle */}
+              <div style={{ width: 36, height: 4, borderRadius: 100, background: C.border, margin: "14px auto 0" }} />
+
+              {/* Header */}
+              <div style={{ padding: "20px 24px 4px" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: C.forming, fontFamily: mono, letterSpacing: "0.08em", textTransform: "uppercase" as const, marginBottom: 6 }}>
+                  {language === "pt" ? "Entrar no acordo" : "Join deal"}
+                </div>
+                <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", color: C.text, marginBottom: 4, lineHeight: 1.2 }}>
+                  {dealData.title}
+                </div>
+                <div style={{ fontSize: 13, color: C.mid, lineHeight: 1.5 }}>
+                  {language === "pt"
+                    ? "Ao confirmar, seu depósito é reservado como garantia do seu compromisso com esse acordo."
+                    : "By confirming, your deposit is locked as a guarantee of your commitment to this deal."}
+                </div>
+              </div>
+
+              {/* Amount rows */}
+              <div style={{ padding: "4px 24px 0" }}>
+                {row(language === "pt" ? "Valor de entrada" : "Entry amount", `$${entryAmount.toFixed(2)}`)}
+                {row(
+                  language === "pt" ? "Saldo na carteira" : "Wallet balance",
+                  walletBalance === null ? "—" : `$${walletBalance.toFixed(2)}`,
+                  walletBalance === null ? C.dim : undefined,
+                )}
+                {row(
+                  language === "pt" ? "Saldo após depósito" : "Balance after deposit",
+                  after === null ? "—" : after < 0 ? `-$${Math.abs(after).toFixed(2)}` : `$${after.toFixed(2)}`,
+                  after === null ? C.dim : after < 0 ? "#EF4444" : C.brand,
+                )}
+              </div>
+
+              {/* Warning if insufficient */}
+              {after !== null && after < 0 && (
+                <div style={{ margin: "12px 24px 0", padding: "10px 12px", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                  <p style={{ fontSize: 11, color: "#EF4444", fontWeight: 600 }}>
+                    {language === "pt" ? "Saldo insuficiente. Adicione USDC à sua carteira antes de entrar." : "Insufficient balance. Add USDC to your wallet before joining."}
+                  </p>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div style={{ display: "flex", gap: 10, padding: "20px 24px 0" }}>
+                <button
+                  onClick={() => setShowJoinConfirm(false)}
+                  style={{ flex: 1, padding: "14px", borderRadius: 100, fontSize: 13, fontWeight: 600, background: C.surface2, border: `1px solid ${C.border}`, color: C.mid, cursor: "pointer" }}
+                >
+                  {language === "pt" ? "Cancelar" : "Cancel"}
+                </button>
+                <button
+                  onClick={handleJoin}
+                  disabled={joinLoading || (after !== null && after < 0)}
+                  style={{ flex: 2, padding: "14px", borderRadius: 100, fontSize: 13, fontWeight: 700, background: joinLoading || (after !== null && after < 0) ? C.border : C.forming, color: "#fff", border: "none", cursor: joinLoading || (after !== null && after < 0) ? "default" : "pointer" }}
+                >
+                  {joinLoading ? (language === "pt" ? "Entrando..." : "Joining...") : (language === "pt" ? "Sim, quero entrar" : "Yes, join deal")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

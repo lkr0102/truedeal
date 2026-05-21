@@ -133,3 +133,10 @@ export async function getUsdcBalance(publicKeyStr: string): Promise<number> {
     return 0
   }
 }
+
+// ── Convenience: fetch balance for the currently authenticated user ────────────
+export async function getMyUsdcBalance(): Promise<number> {
+  const { publicKey } = await getMyWallet()
+  if (!publicKey) return 0
+  return getUsdcBalance(publicKey).catch(() => 0)
+}

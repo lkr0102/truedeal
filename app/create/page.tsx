@@ -7,6 +7,7 @@ import {
   Plus, Minus, Check, Info, X, AlertCircle, ShieldCheck, Lock, Globe, ExternalLink,
 } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
+import { getMyUsdcBalance } from "@/lib/actions/wallet"
 import type { DealCategory, DealType } from "@/lib/supabase/types"
 import { useLanguageStore, t, type Language } from "@/lib/i18n"
 
@@ -370,13 +371,15 @@ export default function CreateDealPage() {
   const [customAmtStr, setCustomAmtStr] = useState("")
   const [distribution, setDistribution] = useState("proportional")
 
-  const [dealguardOpen,  setDealguardOpen]  = useState(false)
-  const [showInfo,       setShowInfo]       = useState(false)
-  const [ruleInfoId,     setRuleInfoId]     = useState<string | null>(null)
-  const [isSubmitting,   setIsSubmitting]   = useState(false)
-  const [submitError,    setSubmitError]    = useState<string | null>(null)
-  const [missingSocial,  setMissingSocial]  = useState<string[] | null>(null)
-  const [confirmedDeal,  setConfirmedDeal]  = useState<{ deal: any; amount: number; txSignature?: string } | null>(null)
+  const [dealguardOpen,     setDealguardOpen]     = useState(false)
+  const [showInfo,          setShowInfo]          = useState(false)
+  const [ruleInfoId,        setRuleInfoId]        = useState<string | null>(null)
+  const [isSubmitting,      setIsSubmitting]      = useState(false)
+  const [submitError,       setSubmitError]       = useState<string | null>(null)
+  const [missingSocial,     setMissingSocial]     = useState<string[] | null>(null)
+  const [confirmedDeal,     setConfirmedDeal]     = useState<{ deal: any; amount: number; txSignature?: string } | null>(null)
+  const [showDepositConfirm, setShowDepositConfirm] = useState(false)
+  const [walletBalance,     setWalletBalance]     = useState<number | null>(null)
 
   // ── Derived ──
   const channels       = category ? (CHANNELS[category] ?? []) : []
@@ -454,8 +457,17 @@ export default function CreateDealPage() {
     if (!isNaN(n) && n >= 1) setQuantity(n)
   }
 
+  async function openDepositConfirm() {
+    if (!isValid || isSubmitting) return
+    setWalletBalance(null)
+    setShowDepositConfirm(true)
+    const bal = await getMyUsdcBalance()
+    setWalletBalance(bal)
+  }
+
   async function handleConfirm() {
     if (!isValid || isSubmitting) return
+    setShowDepositConfirm(false)
     setIsSubmitting(true)
     setSubmitError(null)
     const privacyMap: Record<string, DealType> = { private: "privado", public: "publico" }
@@ -1155,7 +1167,7 @@ export default function CreateDealPage() {
 
           <div style={{ position: "sticky", bottom: 0, background: "rgba(240,243,240,0.96)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, padding: "11px 20px 34px", display: "flex", flexDirection: "column", gap: 8 }}>
             <button
-              onClick={handleConfirm}
+              onClick={openDepositConfirm}
               disabled={!isValid || isSubmitting}
               style={{ width: "100%", padding: 13, borderRadius: 100, fontSize: 13, fontWeight: 700, background: (isValid && !isSubmitting) ? C.forming : C.border, color: "#fff", border: "none", cursor: (isValid && !isSubmitting) ? "pointer" : "default", textAlign: "center" }}
             >
@@ -1167,6 +1179,85 @@ export default function CreateDealPage() {
           </div>
         </div>
       )}
+
+      {/* ── Create Deal — Deposit Confirmation Modal ─────────────────────────── */}
+      {showDepositConfirm && (() => {
+        const after = walletBalance !== null ? walletBalance - effectiveAmount : null
+        const mono  = "var(--font-dm-mono, 'DM Mono', monospace)"
+        const row = (label: string, value: string, valueColor?: string) => (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 0", borderBottom: `1px solid ${C.border}` }}>
+            <span style={{ fontSize: 13, color: C.mid }}>{label}</span>
+            <span style={{ fontSize: 15, fontWeight: 700, color: valueColor ?? C.text, fontFamily: mono }}>{value}</span>
+          </div>
+        )
+        return (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 60, display: "flex", alignItems: "flex-end", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
+            onClick={() => setShowDepositConfirm(false)}
+          >
+            <div
+              style={{ width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "28px 28px 0 0", background: C.surface, boxShadow: "0 -16px 60px rgba(0,0,0,0.18)", padding: "0 0 40px" }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Handle */}
+              <div style={{ width: 36, height: 4, borderRadius: 100, background: C.border, margin: "14px auto 0" }} />
+
+              {/* Header */}
+              <div style={{ padding: "20px 24px 4px" }}>
+                <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", color: C.text, marginBottom: 6 }}>
+                  {language === "pt" ? "Tudo certo para publicar?" : "Ready to publish?"}
+                </div>
+                <div style={{ fontSize: 13, color: C.mid, lineHeight: 1.5 }}>
+                  {language === "pt"
+                    ? "Ao confirmar, você entra como participante e seu stake é reservado pelo período do acordo."
+                    : "By confirming, you join as participant and your stake is reserved for the deal period."}
+                </div>
+              </div>
+
+              {/* Amount rows */}
+              <div style={{ padding: "4px 24px 0" }}>
+                {row(language === "pt" ? "Entrada do acordo" : "Deal entry", `$${effectiveAmount.toFixed(2)}`)}
+                {row(
+                  language === "pt" ? "Saldo na carteira" : "Wallet balance",
+                  walletBalance === null ? "—" : `$${walletBalance.toFixed(2)}`,
+                  walletBalance === null ? C.dim : undefined,
+                )}
+                {row(
+                  language === "pt" ? "Saldo após depósito" : "Balance after deposit",
+                  after === null ? "—" : after < 0 ? `-$${Math.abs(after).toFixed(2)}` : `$${after.toFixed(2)}`,
+                  after === null ? C.dim : after < 0 ? "#EF4444" : C.brand,
+                )}
+              </div>
+
+              {/* Warning if insufficient */}
+              {after !== null && after < 0 && (
+                <div style={{ margin: "12px 24px 0", padding: "10px 12px", borderRadius: 10, background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)" }}>
+                  <p style={{ fontSize: 11, color: "#EF4444", fontWeight: 600 }}>
+                    {language === "pt" ? "Saldo insuficiente. Adicione USDC antes de publicar." : "Insufficient balance. Add USDC before publishing."}
+                  </p>
+                </div>
+              )}
+
+              {/* Buttons */}
+              <div style={{ display: "flex", gap: 10, padding: "20px 24px 0" }}>
+                <button
+                  onClick={() => setShowDepositConfirm(false)}
+                  style={{ flex: 1, padding: "14px", borderRadius: 100, fontSize: 13, fontWeight: 600, background: C.surface2, border: `1px solid ${C.border}`, color: C.mid, cursor: "pointer" }}
+                >
+                  {language === "pt" ? "Cancelar" : "Cancel"}
+                </button>
+                <button
+                  onClick={handleConfirm}
+                  disabled={isSubmitting || (after !== null && after < 0)}
+                  style={{ flex: 2, padding: "14px", borderRadius: 100, fontSize: 13, fontWeight: 700, background: isSubmitting || (after !== null && after < 0) ? C.border : C.forming, color: "#fff", border: "none", cursor: isSubmitting || (after !== null && after < 0) ? "default" : "pointer" }}
+                >
+                  {isSubmitting ? (language === "pt" ? "Publicando..." : "Publishing...") : (language === "pt" ? "Sim, publicar acordo" : "Yes, publish deal")}
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* ── Calendar ─────────────────────────────────────────────────────────── */}
       {showCal && (
