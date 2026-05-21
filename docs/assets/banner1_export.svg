@@ -1,0 +1,61 @@
+<svg width="1500" height="500" viewBox="0 0 1500 500" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700;800&amp;display=swap');
+    </style>
+
+    <!-- Main gradient: dark green → medium green → bright green -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#00523A"/>
+      <stop offset="55%"  stop-color="#008C3E"/>
+      <stop offset="100%" stop-color="#00B852"/>
+    </linearGradient>
+
+    <!-- Top-right glow blob -->
+    <radialGradient id="glowTR" cx="80%" cy="20%" r="35%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Bottom-center dark blob -->
+    <radialGradient id="glowBL" cx="45%" cy="90%" r="22%">
+      <stop offset="0%"   stop-color="#000000" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Clip to rounded rect -->
+    <clipPath id="card">
+      <rect width="1500" height="500" rx="52" ry="52"/>
+    </clipPath>
+  </defs>
+
+  <g clip-path="url(#card)">
+    <!-- Background -->
+    <rect width="1500" height="500" fill="url(#bgGrad)"/>
+    <!-- Glow overlays -->
+    <rect width="1500" height="500" fill="url(#glowTR)"/>
+    <rect width="1500" height="500" fill="url(#glowBL)"/>
+
+    <!-- ── Logo circle ── -->
+    <circle cx="148" cy="218" r="90" fill="#00B852"/>
+    <!-- Circle border ring -->
+    <circle cx="148" cy="218" r="90" fill="none" stroke="rgba(255,255,255,0.35)" stroke-width="4"/>
+    <!-- Outer glow ring -->
+    <circle cx="148" cy="218" r="103" fill="none" stroke="rgba(255,255,255,0.10)" stroke-width="12"/>
+    <!-- Checkmark -->
+    <polyline points="100,222 133,258 200,175" fill="none" stroke="#000000" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <!-- TRUE DEAL label -->
+    <text x="148" y="346" text-anchor="middle" font-family="'DM Sans', Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1" fill="#ffffff">TRUE</text>
+    <text x="148" y="378" text-anchor="middle" font-family="'DM Sans', Arial, sans-serif" font-size="28" font-weight="800" letter-spacing="1" fill="rgba(255,255,255,0.65)">DEAL</text>
+
+    <!-- ── Tagline ── -->
+    <text x="306" y="186" font-family="'DM Sans', Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="-1.6" fill="#ffffff">Set your goals.</text>
+    <text x="306" y="264" font-family="'DM Sans', Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="-1.6" fill="#ffffff">Honor your word.</text>
+    <text x="306" y="342" font-family="'DM Sans', Arial, sans-serif" font-size="64" font-weight="800" letter-spacing="-1.6" fill="rgba(255,255,255,0.75)">Get paid for it.</text>
+
+    <!-- ── CTA button ── -->
+    <rect x="306" y="376" width="408" height="72" rx="36" ry="36" fill="rgba(255,255,255,0.90)"/>
+    <text x="510" y="422" text-anchor="middle" font-family="'DM Sans', Arial, sans-serif" font-size="28" font-weight="700" letter-spacing="-0.3" fill="#00523A">Set your goals now →</text>
+  </g>
+</svg>

@@ -630,15 +630,33 @@ export default function DealClient({
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`, "_blank")
   }
 
-  function handleShareWhatsApp() {
+  async function handleShareWhatsApp() {
+    const cardEndpoint = `${window.location.origin}/api/og/deal/${dealData.id}`
+    try {
+      const res  = await fetch(cardEndpoint)
+      const blob = await res.blob()
+      const file = new File([blob], "truedeal-card.png", { type: "image/png" })
+      if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text: `${shareText}\n${shareUrl}` })
+        return
+      }
+    } catch { /* fallback below */ }
     window.open(`https://wa.me/?text=${encodeURIComponent(`${shareText} ${shareUrl}`)}`, "_blank")
   }
 
   async function handleNativeShare() {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: dealData.title, text: shareText, url: shareUrl })
-      } catch { /* cancelled */ }
+    const cardEndpoint = `${window.location.origin}/api/og/deal/${dealData.id}`
+    try {
+      const res  = await fetch(cardEndpoint)
+      const blob = await res.blob()
+      const file = new File([blob], "truedeal-card.png", { type: "image/png" })
+      if (typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], text: `${shareText}\n${shareUrl}` })
+        return
+      }
+    } catch { /* fallback below */ }
+    if (typeof navigator.share === "function") {
+      try { await navigator.share({ title: dealData.title, text: shareText, url: shareUrl }) } catch { /* cancelled */ }
     } else {
       handleCopyLink()
     }

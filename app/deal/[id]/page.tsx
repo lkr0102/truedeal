@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation"
+import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { fetchDeal } from "@/lib/actions/deals"
 import { getMySocialConnections } from "@/lib/actions/profile"
@@ -6,6 +7,36 @@ import { getDealCheckinStats } from "@/lib/actions/checkins"
 import DealClient from "./deal-client"
 
 export const dynamic = "force-dynamic"
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Metadata> {
+  const { id } = await params
+  const result = await fetchDeal(id)
+  if (!("deal" in result) || !result.deal) return {}
+
+  const d = result.deal
+  const origin = "https://truedeal.app"
+  const ogImage = `${origin}/api/og/deal/${id}`
+  const title   = `${d.title} — TrueDeal`
+  const desc    = `Entrada: $${d.entry_amount} · ${d.participant_count} participante(s) · Junte-se ao desafio`
+
+  return {
+    title,
+    description: desc,
+    openGraph: {
+      title,
+      description: desc,
+      images: [{ url: ogImage, width: 800, height: 420, alt: d.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description: desc,
+      images: [ogImage],
+    },
+  }
+}
 
 const GYM_CHANNELS = ["wellhub", "totalpass"]
 
