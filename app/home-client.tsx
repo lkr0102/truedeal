@@ -6,6 +6,7 @@ import {
   Bell, Home, Compass, Wallet, User, Plus,
   Clock, Activity, PieChart, Trophy, Award,
   Search, Globe, Moon, ChevronLeft, ChevronRight,
+  Lock, SlidersHorizontal, ArrowUpDown, X as XIcon,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import type { DealWithParticipants, Profile } from "@/lib/supabase/types"
@@ -205,6 +206,12 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
           <span style={{ padding: "2px 8px", borderRadius: 100, fontSize: 10, fontWeight: 600, background: C.surface2, color: C.mid, border: `1px solid ${C.border}` }}>
             {prizeLabel}
           </span>
+          {deal.type === "privado" && (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 3, padding: "2px 7px", borderRadius: 100, fontSize: 10, fontWeight: 600, background: "rgba(124,58,237,0.08)", color: "#7C3AED", border: "1px solid rgba(124,58,237,0.2)" }}>
+              <Lock style={{ width: 8, height: 8 }} />
+              {lang === "pt" ? "Privado" : "Private"}
+            </span>
+          )}
         </div>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
           {deal.verifications.length > 0 && (
@@ -291,20 +298,37 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
             <span style={{ fontWeight: 700, color: deal.pot > 0 ? C.brand : C.dim }}>${deal.pot}</span>
           </div>
         </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); onClick() }}
-          style={{
-            padding: "7px 14px", borderRadius: 100, fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer",
-            background: deal.status === "pendente" && !deal.isParticipating ? C.forming : deal.status === "ativo" ? C.activeLight : C.surface2,
-            color: deal.status === "pendente" && !deal.isParticipating ? "#fff" : deal.status === "ativo" ? C.brand : C.mid,
-            outline: deal.status === "ativo" ? `1px solid ${C.activeBorder}` : undefined,
-          }}
-        >
-          {deal.isParticipating
+        {(() => {
+          const isPrivate  = deal.type === "privado"
+          const isPending  = deal.status === "pendente"
+          const canJoin    = isPending && !deal.isParticipating
+          const isRequest  = canJoin && isPrivate
+          const bg = deal.isParticipating
+            ? (deal.status === "ativo" ? C.activeLight : C.surface2)
+            : isPending
+              ? (isPrivate ? "rgba(124,58,237,0.1)" : C.forming)
+              : C.surface2
+          const color = deal.isParticipating
+            ? (deal.status === "ativo" ? C.brand : C.mid)
+            : isPending
+              ? (isPrivate ? "#7C3AED" : "#fff")
+              : C.mid
+          const outline = deal.status === "ativo" ? `1px solid ${C.activeBorder}` : isRequest ? "1px solid rgba(124,58,237,0.3)" : undefined
+          const label = deal.isParticipating
             ? (deal.status === "ativo" ? (lang === "pt" ? "Progresso" : "Progress") : (lang === "pt" ? "Resultados" : "Results"))
-            : (deal.status === "pendente" ? (lang === "pt" ? "Entrar" : "Join") : (lang === "pt" ? "Ver" : "View"))
-          }
-        </button>
+            : isPending
+              ? (isPrivate ? (lang === "pt" ? "Solicitar" : "Request") : (lang === "pt" ? "Entrar" : "Join"))
+              : (lang === "pt" ? "Ver" : "View")
+          return (
+            <button
+              onClick={(e) => { e.stopPropagation(); onClick() }}
+              style={{ padding: "7px 14px", borderRadius: 100, fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", background: bg, color, outline }}
+            >
+              {isRequest && <Lock style={{ width: 9, height: 9, display: "inline", marginRight: 4, verticalAlign: "middle" }} />}
+              {label}
+            </button>
+          )
+        })()}
       </div>
     </div>
   )
@@ -615,10 +639,182 @@ const STATUS_PILLS: { key: DealStatusUI; labelPt: string; labelEn: string; color
 ]
 
 const TYPE_PILLS: { key: DealTypeUI; labelPt: string; labelEn: string }[] = [
-  { key: "oficial", labelPt: "Oficial", labelEn: "Official" },
-  { key: "privado", labelPt: "Privado", labelEn: "Private"  },
-  { key: "público", labelPt: "Público", labelEn: "Public"   },
+  { key: "público", labelPt: "Público", labelEn: "Public"  },
+  { key: "privado", labelPt: "Privado", labelEn: "Private" },
 ]
+
+type SortOption  = "entry_asc" | "entry_desc" | "pot_asc" | "pot_desc" | "start_asc" | null
+type DurFilter   = "short" | "medium" | "long" | null
+type PriceFilter = "lt50" | "50to200" | "gt200" | null
+
+const CHANNEL_OPTS: { key: VerifType; label: string; bg: string }[] = [
+  { key: "x",         label: "𝕏 (Twitter)", bg: "#000"    },
+  { key: "strava",    label: "Strava",       bg: "#FC4C02" },
+  { key: "wellhub",   label: "Wellhub",      bg: "#00A878" },
+  { key: "totalpass", label: "TotalPass",    bg: "#FF6B35" },
+]
+const PRICE_OPTS: { key: PriceFilter; labelPt: string; labelEn: string; min?: number; max?: number }[] = [
+  { key: "lt50",    labelPt: "Até $50",    labelEn: "Under $50",  max: 50 },
+  { key: "50to200", labelPt: "$50–$200",   labelEn: "$50–$200",   min: 50, max: 200 },
+  { key: "gt200",   labelPt: "Acima $200", labelEn: "Over $200",  min: 200 },
+]
+const DUR_OPTS: { key: DurFilter; labelPt: string; labelEn: string }[] = [
+  { key: "short",  labelPt: "Sprint (≤7d)",    labelEn: "Sprint (≤7d)"    },
+  { key: "medium", labelPt: "Padrão (8–30d)",  labelEn: "Standard (8–30d)" },
+  { key: "long",   labelPt: "Maratona (30d+)", labelEn: "Marathon (30d+)" },
+]
+const SORT_OPTS: { key: SortOption; labelPt: string; labelEn: string }[] = [
+  { key: "entry_asc",  labelPt: "Entrada ↑ (menor)",   labelEn: "Entry ↑ (cheapest)"  },
+  { key: "entry_desc", labelPt: "Entrada ↓ (maior)",   labelEn: "Entry ↓ (priciest)"  },
+  { key: "pot_asc",    labelPt: "Pote ↑ (menor)",      labelEn: "Pot ↑ (smallest)"    },
+  { key: "pot_desc",   labelPt: "Pote ↓ (maior)",      labelEn: "Pot ↓ (largest)"     },
+  { key: "start_asc",  labelPt: "Início mais próximo", labelEn: "Starting soonest"    },
+]
+
+function checkDuration(days: number, f: DurFilter): boolean {
+  if (f === "short")  return days <= 7
+  if (f === "medium") return days > 7 && days <= 30
+  if (f === "long")   return days > 30
+  return true
+}
+
+// ── Filter + Sort Sheet ───────────────────────────────────────────────────────
+
+interface FilterSortSheetProps {
+  lang: Language
+  activeChannels: VerifType[]
+  setActiveChannels: (v: VerifType[]) => void
+  priceFilter: PriceFilter
+  setPriceFilter: (v: PriceFilter) => void
+  durFilter: DurFilter
+  setDurFilter: (v: DurFilter) => void
+  sortOrder: SortOption
+  setSortOrder: (v: SortOption) => void
+  onClose: () => void
+  onReset: () => void
+}
+
+function FilterSortSheet({
+  lang, activeChannels, setActiveChannels, priceFilter, setPriceFilter,
+  durFilter, setDurFilter, sortOrder, setSortOrder, onClose, onReset,
+}: FilterSortSheetProps) {
+  function toggleChannel(ch: VerifType) {
+    setActiveChannels(
+      activeChannels.includes(ch)
+        ? activeChannels.filter(c => c !== ch)
+        : [...activeChannels, ch],
+    )
+  }
+
+  const pill = (active: boolean, onClick: () => void, label: string, accent: string = C.brand): React.ReactNode => (
+    <button
+      onClick={onClick}
+      style={{
+        flexShrink: 0, padding: "7px 14px", borderRadius: 100, fontSize: 12, fontWeight: 600,
+        background: active ? accent + "18" : C.surface2,
+        color: active ? accent : C.mid,
+        border: `1px solid ${active ? accent + "44" : C.border}`,
+        cursor: "pointer", whiteSpace: "nowrap" as const,
+      }}
+    >
+      {label}
+    </button>
+  )
+
+  const section = (title: string) => (
+    <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, ...MONO, textTransform: "uppercase" as const, letterSpacing: "0.12em", marginBottom: 10 }}>
+      {title}
+    </div>
+  )
+
+  return (
+    <div
+      style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "flex-end", background: "rgba(0,0,0,0.4)" }}
+      onClick={onClose}
+    >
+      <div
+        style={{ width: "100%", maxWidth: 430, margin: "0 auto", borderRadius: "24px 24px 0 0", background: C.surface, boxShadow: "0 -12px 48px rgba(0,0,0,0.16)", maxHeight: "85vh", overflowY: "auto" }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Handle */}
+        <div style={{ width: 36, height: 4, borderRadius: 100, background: C.border, margin: "14px auto 0" }} />
+
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 4px" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, letterSpacing: "-0.025em", color: C.text }}>
+            {lang === "pt" ? "Filtros & Ordenação" : "Filters & Sort"}
+          </h3>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={onReset} style={{ fontSize: 12, fontWeight: 600, color: C.dim, background: "none", border: "none", cursor: "pointer" }}>
+              {lang === "pt" ? "Limpar" : "Reset"}
+            </button>
+            <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: "50%", background: C.surface2, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <XIcon style={{ width: 14, height: 14, stroke: C.dim }} />
+            </button>
+          </div>
+        </div>
+
+        <div style={{ padding: "16px 20px 40px", display: "flex", flexDirection: "column", gap: 24 }}>
+
+          {/* Sort */}
+          <div>
+            {section(lang === "pt" ? "Ordenar por" : "Sort by")}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {pill(sortOrder === null, () => setSortOrder(null), lang === "pt" ? "Padrão" : "Default")}
+              {SORT_OPTS.map(o => pill(
+                sortOrder === o.key,
+                () => setSortOrder(sortOrder === o.key ? null : o.key),
+                lang === "pt" ? o.labelPt : o.labelEn,
+                C.brand,
+              ))}
+            </div>
+          </div>
+
+          {/* Verification channel */}
+          <div>
+            {section(lang === "pt" ? "Canal de verificação" : "Verification channel")}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {pill(activeChannels.length === 0, () => setActiveChannels([]), lang === "pt" ? "Todos" : "All")}
+              {CHANNEL_OPTS.map(o => pill(
+                activeChannels.includes(o.key),
+                () => toggleChannel(o.key),
+                o.label,
+                o.bg,
+              ))}
+            </div>
+          </div>
+
+          {/* Price range */}
+          <div>
+            {section(lang === "pt" ? "Faixa de entrada" : "Entry price range")}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {pill(priceFilter === null, () => setPriceFilter(null), lang === "pt" ? "Qualquer" : "Any")}
+              {PRICE_OPTS.map(o => pill(
+                priceFilter === o.key,
+                () => setPriceFilter(priceFilter === o.key ? null : o.key),
+                lang === "pt" ? o.labelPt : o.labelEn,
+              ))}
+            </div>
+          </div>
+
+          {/* Duration */}
+          <div>
+            {section(lang === "pt" ? "Duração do deal" : "Deal duration")}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {pill(durFilter === null, () => setDurFilter(null), lang === "pt" ? "Qualquer" : "Any")}
+              {DUR_OPTS.map(o => pill(
+                durFilter === o.key,
+                () => setDurFilter(durFilter === o.key ? null : o.key),
+                lang === "pt" ? o.labelPt : o.labelEn,
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Home Client ───────────────────────────────────────────────────────────────
 
@@ -644,14 +840,46 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
   const [showSearch,     setShowSearch]     = useState(false)
   const [showNotif,      setShowNotif]      = useState(false)
   const [showProfile,    setShowProfile]    = useState(false)
+  const [showFilters,    setShowFilters]    = useState(false)
+  const [activeChannels, setActiveChannels] = useState<VerifType[]>([])
+  const [priceFilter,    setPriceFilter]    = useState<PriceFilter>(null)
+  const [durFilter,      setDurFilter]      = useState<DurFilter>(null)
+  const [sortOrder,      setSortOrder]      = useState<SortOption>(null)
 
   const viewingMyDeals = activeMainTab === "meus"
+
+  const priceOpt = PRICE_OPTS.find(o => o.key === priceFilter)
 
   const filteredDeals = deals
     .filter((d) => !viewingMyDeals  || d.isParticipating)
     .filter((d) => !activeStatus    || d.status === activeStatus)
     .filter((d) => !activeDealType  || d.type   === activeDealType)
     .filter((d) => !searchQuery     || d.title.toLowerCase().includes(searchQuery.toLowerCase()))
+    .filter((d) => activeChannels.length === 0 || d.verifications.some(v => activeChannels.includes(v)))
+    .filter((d) => !priceOpt?.min   || d.valuePerPerson >= priceOpt.min)
+    .filter((d) => !priceOpt?.max   || d.valuePerPerson <= priceOpt.max)
+    .filter((d) => !durFilter       || checkDuration(d.daysTotal, durFilter))
+    .sort((a, b) => {
+      switch (sortOrder) {
+        case "entry_asc":  return a.valuePerPerson - b.valuePerPerson
+        case "entry_desc": return b.valuePerPerson - a.valuePerPerson
+        case "pot_asc":    return a.pot - b.pot
+        case "pot_desc":   return b.pot - a.pot
+        case "start_asc":  return (a.daysToStart ?? 9999) - (b.daysToStart ?? 9999)
+        default: return 0
+      }
+    })
+
+  const advancedFilterCount = [
+    activeChannels.length > 0,
+    priceFilter !== null,
+    durFilter   !== null,
+    sortOrder   !== null,
+  ].filter(Boolean).length
+
+  function resetAdvancedFilters() {
+    setActiveChannels([]); setPriceFilter(null); setDurFilter(null); setSortOrder(null)
+  }
 
   const countByStatus = (s: DealStatusUI) => deals
     .filter((d) => d.status === s)
@@ -742,7 +970,7 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
           const isActive = activeMainTab === tab.key
           return (
             <button key={tab.key}
-              onClick={() => { setActiveMainTab(tab.key); setActiveDealType(null); setActiveStatus(null); setSearchQuery(""); setShowSearch(false) }}
+              onClick={() => { setActiveMainTab(tab.key); setActiveDealType(null); setActiveStatus(null); setSearchQuery(""); setShowSearch(false); resetAdvancedFilters() }}
               style={{
                 padding: "6px 14px", borderRadius: 100, fontSize: 12, fontWeight: isActive ? 700 : 500,
                 background: isActive ? C.text : C.surface, border: `1px solid ${isActive ? C.text : C.border}`,
@@ -754,23 +982,87 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
         })}
       </div>
 
-      {/* ── FILTER ROW ── */}
-      <div style={{ display: "flex", gap: 6, padding: "0 20px 11px", overflowX: "auto", scrollbarWidth: "none" }}>
-        <button onClick={() => setShowSearch(s => !s)} style={{ flexShrink: 0, width: 30, height: 30, borderRadius: "50%", background: showSearch ? C.activeLight : C.surface, border: `1px solid ${showSearch ? C.activeBorder : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-          <Search style={{ width: 14, height: 14, stroke: showSearch ? C.brand : C.dim, fill: "none" }} />
+      {/* ── FILTER ROW (single line, Notion-style) ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 20px 11px", overflowX: "auto", scrollbarWidth: "none", WebkitOverflowScrolling: "touch" } as React.CSSProperties}>
+
+        {/* 1. Filters button — always first */}
+        <button
+          onClick={() => setShowFilters(true)}
+          style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 10px", borderRadius: 7, fontSize: 12, fontWeight: 600, background: advancedFilterCount > 0 ? C.activeLight : C.surface2, border: `1px solid ${advancedFilterCount > 0 ? C.activeBorder : C.border}`, color: advancedFilterCount > 0 ? C.brand : C.mid, cursor: "pointer", whiteSpace: "nowrap" as const }}
+        >
+          <SlidersHorizontal style={{ width: 12, height: 12 }} />
+          {lang === "pt" ? "Filtros" : "Filters"}
+          {advancedFilterCount > 0 && (
+            <span style={{ background: C.brand, color: "#fff", borderRadius: 100, padding: "1px 6px", fontSize: 9, fontWeight: 700 }}>{advancedFilterCount}</span>
+          )}
         </button>
+
+        {/* Divider */}
+        <div style={{ flexShrink: 0, width: 1, height: 16, background: C.border, margin: "0 3px" }} />
+
+        {/* 2. Search */}
+        <button onClick={() => setShowSearch(s => !s)} style={{ flexShrink: 0, width: 28, height: 28, borderRadius: 7, background: showSearch ? C.activeLight : C.surface2, border: `1px solid ${showSearch ? C.activeBorder : C.border}`, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+          <Search style={{ width: 13, height: 13, stroke: showSearch ? C.brand : C.dim, fill: "none" }} />
+        </button>
+
+        {/* Divider */}
+        <div style={{ flexShrink: 0, width: 1, height: 16, background: C.border, margin: "0 3px" }} />
+
+        {/* 3. Status section */}
         {STATUS_PILLS.map(p => {
           const cnt = countByStatus(p.key)
           const isActive = activeStatus === p.key
           return (
             <button key={p.key} onClick={() => setActiveStatus(isActive ? null : p.key)}
-              style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 100, fontSize: 11, fontWeight: 500, background: isActive ? (p.key === "pendente" ? C.formingLight : p.key === "ativo" ? C.activeLight : C.closedLight) : C.surface, border: `1px solid ${isActive ? (p.key === "pendente" ? C.formingBorder : p.key === "ativo" ? C.activeBorder : C.closedBorder) : C.border}`, color: isActive ? p.color : C.mid, cursor: "pointer", whiteSpace: "nowrap" as const }}>
+              style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, fontSize: 12, fontWeight: 500, background: isActive ? (p.key === "pendente" ? C.formingLight : p.key === "ativo" ? C.activeLight : C.closedLight) : C.surface2, border: `1px solid ${isActive ? (p.key === "pendente" ? C.formingBorder : p.key === "ativo" ? C.activeBorder : C.closedBorder) : C.border}`, color: isActive ? p.color : C.mid, cursor: "pointer", whiteSpace: "nowrap" as const }}>
               {lang === "pt" ? p.labelPt : p.labelEn}
-              {cnt > 0 && <span style={{ background: "rgba(0,0,0,0.08)", borderRadius: 100, padding: "1px 5px", fontSize: 10 }}>{cnt}</span>}
+              {cnt > 0 && <span style={{ background: isActive ? "rgba(0,0,0,0.1)" : C.border, borderRadius: 100, padding: "0px 5px", fontSize: 10, fontWeight: 600, color: isActive ? p.color : C.dim }}>{cnt}</span>}
             </button>
           )
         })}
+
+        {/* Divider */}
+        <div style={{ flexShrink: 0, width: 1, height: 16, background: C.border, margin: "0 3px" }} />
+
+        {/* 4. Type section (Public / Private) */}
+        {TYPE_PILLS.map(p => {
+          const isActive = activeDealType === p.key
+          const isPrivate = p.key === "privado"
+          const accent = isPrivate ? "#7C3AED" : C.brand
+          return (
+            <button key={p.key} onClick={() => setActiveDealType(isActive ? null : p.key)}
+              style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, fontSize: 12, fontWeight: 500, background: isActive ? (isPrivate ? "rgba(124,58,237,0.1)" : C.activeLight) : C.surface2, border: `1px solid ${isActive ? (isPrivate ? "rgba(124,58,237,0.3)" : C.activeBorder) : C.border}`, color: isActive ? accent : C.mid, cursor: "pointer", whiteSpace: "nowrap" as const }}>
+              {isPrivate && <Lock style={{ width: 9, height: 9 }} />}
+              {lang === "pt" ? p.labelPt : p.labelEn}
+            </button>
+          )
+        })}
+
+        {/* 5. Sort chip — only shown when a sort is active */}
+        {sortOrder && (
+          <>
+            <div style={{ flexShrink: 0, width: 1, height: 16, background: C.border, margin: "0 3px" }} />
+            <button onClick={() => setShowFilters(true)}
+              style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 7, fontSize: 12, fontWeight: 500, background: C.activeLight, border: `1px solid ${C.activeBorder}`, color: C.brand, cursor: "pointer", whiteSpace: "nowrap" as const }}>
+              <ArrowUpDown style={{ width: 11, height: 11 }} />
+              {SORT_OPTS.find(o => o.key === sortOrder)?.[lang === "pt" ? "labelPt" : "labelEn"]}
+            </button>
+          </>
+        )}
+
       </div>
+
+      {showFilters && (
+        <FilterSortSheet
+          lang={lang}
+          activeChannels={activeChannels} setActiveChannels={setActiveChannels}
+          priceFilter={priceFilter}       setPriceFilter={setPriceFilter}
+          durFilter={durFilter}           setDurFilter={setDurFilter}
+          sortOrder={sortOrder}           setSortOrder={setSortOrder}
+          onClose={() => setShowFilters(false)}
+          onReset={resetAdvancedFilters}
+        />
+      )}
 
       {showSearch && (
         <div style={{ padding: "0 20px 11px", position: "relative" }}>

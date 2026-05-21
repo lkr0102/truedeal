@@ -117,6 +117,7 @@ export interface DealParticipant {
   start_snapshot:   Record<string, number> | null  // { followers: 12840 }
   current_snapshot: Record<string, number> | null
   rank:             number | null
+  transaction_hash: string | null
 }
 
 export type DealParticipantInsert = Omit<DealParticipant, "id" | "joined_at" | "rank"> & { rank?: number }

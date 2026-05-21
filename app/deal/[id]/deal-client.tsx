@@ -1236,29 +1236,34 @@ export default function DealClient({
             onClick={e => e.stopPropagation()}
           >
             <div style={{ width: 36, height: 4, borderRadius: 100, background: C.border, margin: "0 auto 20px" }} />
-            {dealData.solana_tx_signature ? (
-              <a
-                href={`https://solscan.io/tx/${dealData.solana_tx_signature}${process.env.NEXT_PUBLIC_SOLANA_NETWORK === "mainnet-beta" ? "" : "?cluster=devnet"}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, background: C.surface2, border: `1px solid ${C.border}`, textDecoration: "none" }}
-              >
-                <div style={{ width: 40, height: 40, borderRadius: 12, background: C.activeLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: `1px solid ${C.activeBorder}` }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.brand} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
-                  </svg>
+            {(() => {
+              const myTx = dealData.participants.find(p => p.user_id === userId)?.transaction_hash
+              const txSig = dealData.solana_tx_signature ?? myTx ?? null
+              const cluster = process.env.NEXT_PUBLIC_SOLANA_NETWORK === "mainnet-beta" ? "" : "?cluster=devnet"
+              return txSig ? (
+                <a
+                  href={`https://solscan.io/tx/${txSig}${cluster}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "flex", alignItems: "center", gap: 14, padding: "14px 16px", borderRadius: 14, background: C.surface2, border: `1px solid ${C.border}`, textDecoration: "none" }}
+                >
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: C.activeLight, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, border: `1px solid ${C.activeBorder}` }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={C.brand} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                    </svg>
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{language === "pt" ? "Ver na blockchain" : "View on blockchain"}</div>
+                    <div style={{ fontSize: 11, color: C.dim, marginTop: 2, fontFamily: "monospace" }}>Solscan · {txSig.slice(0, 8)}…</div>
+                  </div>
+                  <span style={{ color: C.dim, fontSize: 16 }}>→</span>
+                </a>
+              ) : (
+                <div style={{ padding: "16px", borderRadius: 14, background: C.surface2, border: `1px solid ${C.border}`, textAlign: "center" }}>
+                  <p style={{ fontSize: 13, color: C.dim }}>{language === "pt" ? "Transação blockchain não disponível." : "Blockchain transaction not available."}</p>
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{language === "pt" ? "Ver na blockchain" : "View on blockchain"}</div>
-                  <div style={{ fontSize: 11, color: C.dim, marginTop: 2, fontFamily: "monospace" }}>Solscan · {dealData.solana_tx_signature.slice(0, 8)}…</div>
-                </div>
-                <span style={{ color: C.dim, fontSize: 16 }}>→</span>
-              </a>
-            ) : (
-              <div style={{ padding: "16px", borderRadius: 14, background: C.surface2, border: `1px solid ${C.border}`, textAlign: "center" }}>
-                <p style={{ fontSize: 13, color: C.dim }}>{language === "pt" ? "Transação blockchain não disponível." : "Blockchain transaction not available."}</p>
-              </div>
-            )}
+              )
+            })()}
           </div>
         </div>
       )}

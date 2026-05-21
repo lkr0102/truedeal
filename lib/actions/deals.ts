@@ -209,8 +209,9 @@ export async function createDeal(input: CreateDealInput) {
 
       console.log(`[USDC] Creator staked for deal ${deal.id}: ${stakeTxSignature}`)
     }
-  } catch (err) {
-    console.error("[USDC] stakeUsdc failed (non-blocking):", err)
+  } catch (err: any) {
+    console.error("[USDC] stakeUsdc failed (non-blocking):", err?.message ?? err)
+    if (!process.env.APP_FEE_PAYER_KEY) console.error("[USDC] APP_FEE_PAYER_KEY is not set — on-chain stake skipped")
   }
 
   revalidatePath("/")
@@ -257,17 +258,17 @@ const MOCK_DEALS: DealWithParticipants[] = [
     participants: [
       {
         id: "p1", deal_id: "mock-deal-1", user_id: LUKAS_ID, joined_at: new Date().toISOString(), status: "active",
-        start_snapshot: { steps: 1000 }, current_snapshot: { steps: 45000 }, rank: 1,
+        start_snapshot: { steps: 1000 }, current_snapshot: { steps: 45000 }, rank: 1, transaction_hash: null,
         profile: { id: LUKAS_ID, username: "lukas_admin", display_name: "Lukas Admin", avatar_url: "/images/avatars/lukas.png" }
       },
       {
         id: "p2", deal_id: "mock-deal-1", user_id: "u2", joined_at: new Date().toISOString(), status: "active",
-        start_snapshot: { steps: 500 }, current_snapshot: { steps: 32000 }, rank: 2,
+        start_snapshot: { steps: 500 }, current_snapshot: { steps: 32000 }, rank: 2, transaction_hash: null,
         profile: { id: "u2", username: "joao_dev", display_name: "João Dev", avatar_url: null }
       },
       {
         id: "p3", deal_id: "mock-deal-1", user_id: "u3", joined_at: new Date().toISOString(), status: "eliminated",
-        start_snapshot: { steps: 200 }, current_snapshot: { steps: 5000 }, rank: 3,
+        start_snapshot: { steps: 200 }, current_snapshot: { steps: 5000 }, rank: 3, transaction_hash: null,
         profile: { id: "u3", username: "slacker", display_name: "The Slacker", avatar_url: null }
       }
     ]
@@ -307,7 +308,7 @@ const MOCK_DEALS: DealWithParticipants[] = [
     participants: [
       {
         id: "p4", deal_id: "mock-deal-2", user_id: LUKAS_ID, joined_at: new Date().toISOString(), status: "winner",
-        start_snapshot: { likes: 0 }, current_snapshot: { likes: 1250 }, rank: 1,
+        start_snapshot: { likes: 0 }, current_snapshot: { likes: 1250 }, rank: 1, transaction_hash: null,
         profile: { id: LUKAS_ID, username: "lukas_admin", display_name: "Lukas Admin", avatar_url: "/images/avatars/lukas.png" }
       }
     ]
@@ -516,8 +517,9 @@ export async function joinDeal(dealId: string) {
 
       console.log(`[USDC] Participant ${user.id} staked for deal ${dealId}: ${txSignature}`)
     }
-  } catch (err) {
-    console.error("[USDC] stakeUsdc failed (non-blocking):", err)
+  } catch (err: any) {
+    console.error("[USDC] stakeUsdc failed (non-blocking):", err?.message ?? err)
+    if (!process.env.APP_FEE_PAYER_KEY) console.error("[USDC] APP_FEE_PAYER_KEY is not set — on-chain stake skipped")
   }
 
   revalidatePath("/")
