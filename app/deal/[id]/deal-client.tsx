@@ -1165,6 +1165,8 @@ export default function DealClient({
                             ? hasCheckin
                               ? { bg: C.activeLight, border: C.activeBorder, color: C.brand, symbol: "✓" }
                               : { bg: C.formingLight, border: C.formingBorder, color: C.forming, symbol: "✗" }
+                            : dealData.status === "ativo"
+                            ? { bg: C.surface2, border: C.border, color: C.dim, symbol: "?" }
                             : isAlive
                             ? { bg: C.activeLight, border: C.activeBorder, color: C.brand, symbol: "✓" }
                             : wi === completedWindows.length - 1

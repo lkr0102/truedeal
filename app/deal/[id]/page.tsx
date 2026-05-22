@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { createClient } from "@/lib/supabase/server"
 import { fetchDeal } from "@/lib/actions/deals"
 import { getMySocialConnections } from "@/lib/actions/profile"
-import { getDealCheckinStats, getDealAllCheckins } from "@/lib/actions/checkins"
+import { getDealCheckinStats, getDealAllCheckins, evaluateGymDealCompliance } from "@/lib/actions/checkins"
 import DealClient from "./deal-client"
 
 export const dynamic = "force-dynamic"
@@ -55,6 +55,8 @@ export default async function DealDetailPage({
   const isGymDeal = (result.deal.verification_channels ?? []).some(c => GYM_CHANNELS.includes(c))
   const isActive  = result.deal.status === "ativo"
   const isPartic  = user ? result.deal.participants.some((p: any) => p.user_id === user.id) : false
+
+  if (isGymDeal && isActive) await evaluateGymDealCompliance(id)
 
   const [connectionsResult, checkinStats, allCheckins] = await Promise.all([
     user ? getMySocialConnections() : Promise.resolve({ connections: [] }),

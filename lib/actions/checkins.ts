@@ -45,14 +45,14 @@ export async function recordDealCheckin(
   if (!conn || !conn.member_email)
     return { error: "No gym account linked. Connect Wellhub or TotalPass in your profile first." }
 
-  // Insert — UNIQUE (deal_id, user_id, checkin_date) prevents double check-in on same day
+  // Insert — UNIQUE (deal_id, user_id, date) prevents double check-in on same day
   const today = new Date().toISOString().split("T")[0]
   const { error: insertErr } = await (supabase.from("deal_checkins") as any).insert({
-    deal_id:      dealId,
-    user_id:      user.id,
-    source:       conn.platform as string,
-    activity_at:  new Date().toISOString(),
-    checkin_date: today,
+    deal_id:     dealId,
+    user_id:     user.id,
+    source:      conn.platform as string,
+    activity_at: new Date().toISOString(),
+    date:        today,
   })
 
   if (insertErr) {
@@ -69,7 +69,7 @@ export async function getDealAllCheckins(
 ): Promise<Record<string, { date: string; activityAt: string }[]>> {
   const supabase = await createClient()
   const { data, error } = await (supabase.from("deal_checkins") as any)
-    .select("user_id, checkin_date, activity_at")
+    .select("user_id, date, activity_at")
     .eq("deal_id", dealId)
     .order("activity_at", { ascending: true })
 
@@ -78,9 +78,91 @@ export async function getDealAllCheckins(
   const grouped: Record<string, { date: string; activityAt: string }[]> = {}
   for (const row of data) {
     if (!grouped[row.user_id]) grouped[row.user_id] = []
-    grouped[row.user_id].push({ date: row.checkin_date, activityAt: row.activity_at })
+    grouped[row.user_id].push({ date: row.date, activityAt: row.activity_at })
   }
   return grouped
+}
+
+/**
+ * For active gym deals: evaluate per-period compliance from stored check-ins and
+ * mark any participant who missed a completed period as 'eliminated'.
+ * Called server-side at page load — idempotent, 2 DB round-trips.
+ */
+export async function evaluateGymDealCompliance(dealId: string): Promise<void> {
+  const supabase = await createClient()
+
+  const { data: deal } = await (supabase.from("deals") as any)
+    .select("status, start_date, end_date, rule_frequency, rule_target, verification_channels")
+    .eq("id", dealId)
+    .single()
+
+  if (!deal || deal.status !== "ativo") return
+
+  const channels: string[] = deal.verification_channels ?? []
+  if (!channels.some(c => GYM_CHANNELS.includes(c as any))) return
+
+  const now      = new Date()
+  const start    = new Date(deal.start_date)
+  const end      = new Date(deal.end_date)
+  const freq     = (deal.rule_frequency ?? "daily") as string
+  const target   = (deal.rule_target ?? 1) as number
+
+  // Build completed windows (same logic as deal-client progress tab)
+  const completedWindows: { startStr: string; endStr: string }[] = []
+  let cur = new Date(start)
+  while (cur < end) {
+    const next = new Date(cur)
+    if (freq === "daily")        next.setDate(next.getDate() + 1)
+    else if (freq === "weekly")  next.setDate(next.getDate() + 7)
+    else if (freq === "monthly") next.setMonth(next.getMonth() + 1)
+    else                         next.setTime(end.getTime())
+    const windowEnd = next > end ? new Date(end) : next
+    if (windowEnd <= now) {
+      completedWindows.push({
+        startStr: cur.toISOString().split("T")[0],
+        endStr:   windowEnd.toISOString().split("T")[0],
+      })
+    }
+    cur = new Date(windowEnd)
+  }
+
+  if (completedWindows.length === 0) return
+
+  const { data: participants } = await (supabase.from("deal_participants") as any)
+    .select("id, user_id")
+    .eq("deal_id", dealId)
+    .eq("status", "active")
+
+  if (!participants?.length) return
+
+  const { data: allCheckins } = await (supabase.from("deal_checkins") as any)
+    .select("user_id, date")
+    .eq("deal_id", dealId)
+
+  // Build userId → Set<dateString>
+  const byUser: Record<string, Set<string>> = {}
+  for (const c of allCheckins ?? []) {
+    if (!byUser[c.user_id]) byUser[c.user_id] = new Set()
+    byUser[c.user_id].add(c.date)
+  }
+
+  const toEliminate: string[] = []
+  for (const p of participants) {
+    const dates = byUser[p.user_id] ?? new Set<string>()
+    for (const w of completedWindows) {
+      const count = [...dates].filter(d => d >= w.startStr && d < w.endStr).length
+      if (count < target) {
+        toEliminate.push(p.id)
+        break
+      }
+    }
+  }
+
+  if (toEliminate.length > 0) {
+    await (supabase.from("deal_participants") as any)
+      .update({ status: "eliminated" })
+      .in("id", toEliminate)
+  }
 }
 
 export async function getDealCheckinStats(
