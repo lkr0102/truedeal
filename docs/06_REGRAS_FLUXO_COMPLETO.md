@@ -217,12 +217,17 @@ A mesma lógica de soma por janela aplica-se às regras:
 
 ### 5.3 Comportamento em caso de dados insuficientes
 
-Se o DealGuard Engine não conseguir coletar dados de um participante em uma janela (token expirado, API indisponível, conta privada), o participante é tratado como **não-cumprimento** naquela janela, resultando em status de perdedor.
+Se o DealGuard Engine não conseguir coletar dados de um participante em uma janela, o participante é tratado como **não-cumprimento** naquela janela, resultando em status de perdedor.
 
-Razões possíveis:
-- Token OAuth expirado ou revogado.
+**Tokens OAuth expirados são renovados automaticamente** pelo DealGuard Engine antes de cada request à API da plataforma (Strava e X). Se o refresh falhar (token revogado, permissões removidas pelo usuário), aí sim o participante é marcado como não-cumprimento.
+
+Razões que resultam em não-cumprimento:
+- Token OAuth revogado pelo usuário ou expirado sem refresh token válido.
 - Conta alterada para privada após o início do deal.
-- Falha temporária na API da plataforma (registrada em `audit_logs`).
+- Falha permanente na API da plataforma (registrada em `audit_logs`).
+
+Razões que **não** resultam em não-cumprimento (tratadas automaticamente):
+- Token OAuth expirado mas refresh token válido → renovado silenciosamente antes da coleta.
 
 ---
 

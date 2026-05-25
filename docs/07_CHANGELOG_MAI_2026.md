@@ -1,6 +1,6 @@
 # TrueDeal — Changelog · Maio 2026
 
-**Período coberto:** 16–21 de Maio de 2026  
+**Período coberto:** 16–25 de Maio de 2026  
 **Responsável:** Lukas (Frontend / Product)  
 **Branch:** `main` — todos os commits estão na produção (Vercel auto-deploy)
 
@@ -8,17 +8,101 @@
 
 ## Resumo Executivo
 
-Neste ciclo de sprints foram entregues **melhorias de UX em toda a plataforma**, com foco em:
+Neste ciclo de sprints foram entregues **melhorias de UX em toda a plataforma** e **correção de bugs críticos no motor de liquidação (DealGuard Engine)**, com foco em:
 
 1. Filtro de deals no home redesenhado (Notion-style)
 2. Modais de confirmação de depósito (Create e Join)
 3. Sistema de compartilhamento social com card visual e integração X + WhatsApp
 4. Correção de navegação pós-criação de deal
 5. Banners de home com navegação e identidade visual
+6. **Correção de 5 bugs críticos no DealGuard Engine** — deals não eram liquidados e compliance era avaliado incorretamente
+7. **Validação por período (daily/weekly)** — um post no dia 1 não cobre o dia 2
 
 ---
 
 ## Detalhamento por Commit
+
+---
+
+### `[22–25/05]` — Fix: DealGuard Engine — 5 bugs críticos de liquidação + validação por período
+
+**Contexto:** Deal `B9EFC0F4` ("1 post por day for 3 days.", `end_date = 2026-05-24`) permaneceu em `status = ativo` após o encerramento, sem liquidação e sem distribuição do pot. Diagnóstico revelou 5 bugs compondo o problema.
+
+---
+
+#### Bug 1 — RLS bloqueava `deal_participants` e `social_connections` no cron (CRÍTICO)
+
+**Arquivo:** `lib/integrations/polling-service.ts`
+
+`auditDeal` usava `createClient()` (cliente com sessão do usuário). O cron não tem sessão; `auth.uid() = null` → RLS retornava zero linhas de `deal_participants` e `social_connections`. O loop de auditoria nunca executava (`results = []`), e o settlement encerrava o deal sem nenhum vencedor ou atualização de status de participante.
+
+**Fix:** `createClient()` → `createServiceClient()`.
+
+---
+
+#### Bug 2 — Tokens OAuth do X expiravam sem refresh (CRÍTICO)
+
+**Arquivo:** `lib/integrations/polling-service.ts` + `lib/integrations/x.ts`
+
+Tokens X de ambos os participantes expiraram antes do final do deal (3–4 dias antes). Não havia lógica de refresh para X — ao contrário do Strava, que já tinha. `fetchXUserPosts` recebia 401 e retornava `[]` silenciosamente; participantes eram marcados como falha mesmo tendo postado.
+
+**Fix:** Adicionado `refreshXToken()` em `x.ts` (espelho do padrão Strava já existente: `POST /oauth2/token` com Basic auth + `grant_type=refresh_token`). Chamado em `polling-service.ts` antes de cada request à X API quando `token_expires_at` está a menos de 5 minutos do vencimento.
+
+---
+
+#### Bug 3 — `endTime` do X API excluía o dia final inteiro (SIGNIFICATIVO)
+
+**Arquivo:** `lib/integrations/polling-service.ts`
+
+```typescript
+// Antes (errado):
+new Date(deal.end_date).toISOString()  // "2026-05-24T00:00:00.000Z"
+// X API end_time é exclusivo → todos os posts do dia 24 eram excluídos
+
+// Depois (correto):
+new Date(deal.end_date + "T23:59:59.999Z").toISOString()  // "2026-05-24T23:59:59.999Z"
+```
+
+---
+
+#### Bug 4 — Cron comparava timestamp com coluna `date`, liquidando deals no meio do dia (MODERADO)
+
+**Arquivo:** `app/api/cron/settle-deals/route.ts`
+
+```typescript
+// Antes: comparava ISO timestamp com coluna date → deal com end_date=hoje era liquidado às 12h UTC
+const now = new Date().toISOString()
+.lt("end_date", now)
+
+// Depois: comparação date-to-date → deal end_date=hoje só é liquidado no cron de amanhã
+const today = new Date().toISOString().split("T")[0]
+.lt("end_date", today)
+```
+
+---
+
+#### Bug 5 — Validação de compliance ignorava frequência; total substituía por-período (SIGNIFICATIVO)
+
+**Arquivos:** `lib/integrations/x.ts`, `lib/integrations/strava.ts`, `lib/integrations/polling-service.ts`
+
+A lógica anterior multiplicava `ruleTarget × durationDays` para criar um `effectiveTarget` (ex: 3 para um deal "1 post/dia por 3 dias"), depois verificava se `posts.length >= 3`. Isso permitia que 3 posts feitos no mesmo dia passassem.
+
+**Fix:** Validação por janela. Para `rule_frequency = "daily"`, cada dia do período é verificado individualmente; para `"weekly"`, cada semana. Zero posts num dia = falha, independente dos demais dias.
+
+Mudanças técnicas:
+- `XPost` agora inclui `created_at` (adicionado a `tweet.fields`)
+- `validateXRule(posts, rule, target, frequency, startDate, endDate)` — agrupa posts por dia/semana antes de validar
+- `validateStravaRule` — mesma assinatura estendida; atividades agrupadas por `start_date`
+- Wellhub/TotalPass — migrou de `count` (total) para fetch de rows, agrupados por `activity_at`
+- `effectiveTarget` e `durationDays` removidos de `polling-service.ts`
+
+**Arquivos modificados:**
+- `app/api/cron/settle-deals/route.ts`
+- `lib/integrations/polling-service.ts`
+- `lib/integrations/strava.ts`
+- `lib/integrations/x.ts`
+
+---
 
 ### `6a4a94f` — Deal share sheet com X/WhatsApp + card OG
 **Problema:** O botão de compartilhar abria o share nativo do iOS sem contexto visual, sem destinos específicos e sem card.
