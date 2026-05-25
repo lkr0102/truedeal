@@ -1,10 +1,34 @@
-import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/server"
 import { fetchStravaActivities, validateStravaRule } from "./strava"
-import { fetchXUserPosts, validateXRule } from "./x"
+import { fetchXUserPosts, refreshXToken, validateXRule } from "./x"
 import { analyzeEvidence } from "./sentinel-core"
 
+function getDateRange(startDate: string, endDate: string): string[] {
+  const dates: string[] = []
+  const cur = new Date(startDate + "T00:00:00Z")
+  const end = new Date(endDate + "T00:00:00Z")
+  while (cur <= end) {
+    dates.push(cur.toISOString().split("T")[0])
+    cur.setUTCDate(cur.getUTCDate() + 1)
+  }
+  return dates
+}
+
+function getWeekRanges(startDate: string, endDate: string): [string, string][] {
+  const weeks: [string, string][] = []
+  const cur = new Date(startDate + "T00:00:00Z")
+  const end = new Date(endDate + "T00:00:00Z")
+  while (cur <= end) {
+    const wStart = cur.toISOString().split("T")[0]
+    const wEnd = new Date(Math.min(cur.getTime() + 6 * 86400000, end.getTime())).toISOString().split("T")[0]
+    weeks.push([wStart, wEnd])
+    cur.setUTCDate(cur.getUTCDate() + 7)
+  }
+  return weeks
+}
+
 async function refreshStravaToken(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: Awaited<ReturnType<typeof createServiceClient>>,
   connectionId: string,
   refreshToken: string,
 ): Promise<string | null> {
@@ -42,7 +66,7 @@ async function refreshStravaToken(
  */
 
 export async function auditDeal(dealId: string) {
-  const supabase = await createClient()
+  const supabase = await createServiceClient()
 
   // 1. Fetch deal (including rule config) with participants and their social connections
   const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
@@ -98,27 +122,45 @@ export async function auditDeal(dealId: string) {
           after:  afterEpoch,
           before: beforeEpoch,
         })
-        isSuccess = validateStravaRule(rawData, ruleType, ruleTarget)
+        isSuccess = validateStravaRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
 
       } else if (channel === "x") {
+        let xToken = conn.access_token
+        const xExpiresAt = conn.token_expires_at ? new Date(conn.token_expires_at).getTime() / 1000 : 0
+        if (xExpiresAt > 0 && Date.now() / 1000 > xExpiresAt - 300 && conn.refresh_token) {
+          xToken = (await refreshXToken(supabase, conn.id, conn.refresh_token)) ?? xToken
+        }
         const startTime = deal.start_date ? new Date(deal.start_date).toISOString() : undefined
-        const endTime   = deal.end_date   ? new Date(deal.end_date).toISOString()   : undefined
-        rawData = await fetchXUserPosts(conn.access_token, conn.external_id, { startTime, endTime })
-        isSuccess = validateXRule(rawData, ruleType, ruleTarget)
+        // end_time is exclusive in the X API — use end of day so the last day is fully included
+        const endTime   = deal.end_date   ? new Date(deal.end_date + "T23:59:59.999Z").toISOString() : undefined
+        rawData = await fetchXUserPosts(xToken, conn.external_id, { startTime, endTime })
+        isSuccess = validateXRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
 
       } else if (channel === "wellhub" || channel === "totalpass") {
-        // Wellhub / TotalPass: validate check-in count recorded in deal_checkins
-        const { count, error: checkinErr } = await (supabase.from("deal_checkins") as any)
-          .select("*", { count: "exact", head: true })
+        const { data: checkins, error: checkinErr } = await (supabase.from("deal_checkins") as any)
+          .select("activity_at")
           .eq("deal_id",    dealId)
           .eq("user_id",    participant.user_id)
           .eq("source",     channel)
           .gte("activity_at", deal.start_date)
           .lte("activity_at", deal.end_date)
 
-        if (!checkinErr) {
-          isSuccess = (count ?? 0) >= ruleTarget
-          rawData = [{ checkin_count: count ?? 0 }]
+        if (!checkinErr && checkins) {
+          rawData = checkins
+          if (deal.rule_frequency === "daily" && deal.start_date && deal.end_date) {
+            isSuccess = getDateRange(deal.start_date, deal.end_date).every(day =>
+              checkins.filter((c: any) => String(c.activity_at).startsWith(day)).length >= ruleTarget
+            )
+          } else if (deal.rule_frequency === "weekly" && deal.start_date && deal.end_date) {
+            isSuccess = getWeekRanges(deal.start_date, deal.end_date).every(([wStart, wEnd]) =>
+              checkins.filter((c: any) => {
+                const d = String(c.activity_at).split("T")[0]
+                return d >= wStart && d <= wEnd
+              }).length >= ruleTarget
+            )
+          } else {
+            isSuccess = checkins.length >= ruleTarget
+          }
         }
       }
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createServiceClient } from "@/lib/supabase/server"
 import { settleDealProtocol } from "@/lib/actions/settlement"
 
 // Vercel Cron calls this route every hour (see vercel.json).
@@ -11,14 +11,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
-  const supabase = await createClient()
+  const supabase = await createServiceClient()
 
-  const now = new Date().toISOString()
+  // Use today's calendar date so deals with end_date = today are settled
+  // only after the day is fully over (next cron run), not mid-day.
+  const today = new Date().toISOString().split("T")[0]
 
   const { data: expired, error } = await (supabase.from("deals") as any)
     .select("id, title")
     .eq("status", "ativo")
-    .lt("end_date", now)
+    .lt("end_date", today)
 
   if (error) {
     console.error("[settle-deals] Failed to query expired deals:", error.message)
@@ -26,7 +28,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!expired?.length) {
-    return NextResponse.json({ ok: true, settled: 0, ts: now })
+    return NextResponse.json({ ok: true, settled: 0, ts: today })
   }
 
   console.log(`[settle-deals] Found ${expired.length} expired deal(s) to settle`)
@@ -46,7 +48,7 @@ export async function GET(request: NextRequest) {
 
   const allOk = results.every((r) => r.ok)
   return NextResponse.json(
-    { ok: allOk, settled: results.filter((r) => r.ok).length, results, ts: now },
+    { ok: allOk, settled: results.filter((r) => r.ok).length, results, ts: today },
     { status: allOk ? 200 : 207 },
   )
 }
