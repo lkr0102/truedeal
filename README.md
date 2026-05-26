@@ -1,14 +1,9 @@
-# TrueDeal — Set your goals. Honor your word. Get paid for it.
+# TrueDeal — Set your goals. Honor your word. Get paid for it
 
-<div align="center">
-  <img src="public/brand/app-icon-logo.png" width="80" height="80" alt="True Deal Logo" />
-  <p><strong>"Set your goals. Honor your word. Get paid for it."</strong></p>
-  <p>
-    <a href="https://truedeal.vercel.app">
-      <img src="https://img.shields.io/badge/Demo-Vercel-black?style=for-the-badge&logo=vercel" alt="TrueDeal Demo" />
-    </a>
-  </p>
-</div>
+![True Deal Logo](public/brand/app-icon-logo.png)
+**"Set your goals. Honor your word. Get paid for it."**
+
+[![TrueDeal Demo](https://img.shields.io/badge/Demo-Vercel-black?style=for-the-badge&logo=vercel)](https://truedeal.vercel.app)
 
 ---
 
@@ -77,19 +72,19 @@ But Moonwalk is limited to fitness and works exclusively with step counting. The
 
 ## Tech Stack
 
-| Layer          | Technology                                      |
-|:---------------|:------------------------------------------------|
-| Blockchain     | Solana · Anchor Framework (Rust)                |
-| Frontend       | Next.js 16 · TailwindCSS · Lucide Icons         |
-| Backend / Auth | Supabase (PostgreSQL · Auth · Storage)          |
+| Layer          | Technology                                            |
+| :------------- | :---------------------------------------------------- |
+| Blockchain     | Solana · Anchor Framework (Rust)                      |
+| Frontend       | Next.js 16 · TailwindCSS · Lucide Icons               |
+| Backend / Auth | Supabase (PostgreSQL · Auth · Storage)                |
 | Verification   | Strava API · X API · Behavioral AI Oracle (DealGuard) |
-| Wallet         | Account Abstraction (AES-256-GCM managed keys)  |
+| Wallet         | Account Abstraction (AES-256-GCM managed keys)        |
 
 ---
 
 ## Deal State Machine
 
-```
+```text
 formacao → ativo → liquidando → encerrado
         ↘ cancelado  (< 2 participants at start time)
 ```
@@ -122,7 +117,7 @@ A participant is a **winner** only if they meet the configured rule in **every f
 
 ## Economic Model
 
-```
+```text
 loser_pool        = entry_amount × num_losers
 platform_fee      = loser_pool × 0.03
 distributable     = loser_pool − platform_fee + winners' stakes
@@ -136,12 +131,15 @@ Winners always recover their original stake plus a proportional share of the los
 ## Quick Start
 
 ### 1. Install Dependencies
+
 ```bash
 npm install
 ```
 
 ### 2. Configure Environment
+
 Create a `.env.local` based on `.env.example`:
+
 ```env
 NEXT_PUBLIC_SOLANA_NETWORK=devnet
 NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
@@ -157,6 +155,7 @@ APP_ORACLE2_KEY=base64-oracle2-private-key
 > Without oracle keys, the app runs in **Demo Mode** — all UX flows work, settlement is simulated without gas.
 
 ### 3. Run Locally
+
 ```bash
 npm run dev
 ```
@@ -166,7 +165,7 @@ npm run dev
 ## Documentation
 
 | Document | Description |
-|:---------|:------------|
+| :------- | :---------- |
 | [REGRAS_FLUXO_COMPLETO.md](docs/REGRAS_FLUXO_COMPLETO.md) | Complete business rules, state machine, compliance sub-rules, economic model |
 | [01_ARCHITECTURE.md](docs/01_ARCHITECTURE.md) | System architecture and component breakdown |
 | [02_MVP_SCOPE.md](docs/02_MVP_SCOPE.md) | MVP scope, implemented features, and roadmap |
