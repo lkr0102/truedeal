@@ -5,6 +5,42 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.6.0] - 2026-05-26 — In-App Notification System + Profile Drawer
+
+### Added
+- **In-app notification system** — 10 types with FOMO/greed triggers, real-time delivery via Supabase Realtime `postgres_changes`
+- `notifications` table in Supabase with RLS + Realtime publication (migration `018_notifications.sql`)
+- `lib/actions/notifications.ts` — `createNotification()` helper (fire-and-forget, service role, bilingual)
+- Notifications fired from: `joinDeal()`, `sweepStaleDeals()`, `settleDealProtocol()`, `evaluateGymDealCompliance()`, settle-deals cron
+- `NotificationPopover` fully implemented — fetch on open, mark-all-read on open, live prepend via Realtime
+- Unread badge on avatar (red dot, top-left, `9+` cap) driven by initial count + Realtime INSERT events
+- Milestone notifications at 5/10/15/20/25/50 participants showing live pot value
+- Mid-deal elimination notifications showing updated expected prize for remaining active participants
+- 24h ending-soon notifications via cron for all active participants
+- All notification copy stored bilingual (PT + EN) at insert time; client renders based on `useLanguageStore`
+
+### Changed
+- **Profile drawer** — bell/notifications button moved inside drawer as first menu item; dark mode toggle replaced with disabled "Em breve" state; display name removed from drawer header (only @handle + Shakes remain)
+
+---
+
+## [0.5.0] - 2026-05-25 — DealGuard Engine Fixes + Wallet Pipeline
+
+### Added
+- X OAuth token refresh (`refreshXToken()`) — mirrors existing Strava pattern, prevents 401 mid-deal
+- Cron `provision-wallets` — daily retroactive wallet provisioning for users without wallets
+- Avatar photo upload + signature handle on profile page
+- Progress tab with compliance history + participant differentiation
+
+### Fixed
+- 5 critical DealGuard Engine bugs: RLS blocking cron audits, X token expiry, X API `end_time` off-by-one, cron comparing timestamp vs date column, compliance counting totals instead of per-period windows
+- Force light mode: `color-scheme: light` in CSS + `colorScheme: "light"` in viewport meta
+- Wallet generation pipeline: `createServiceClient()` in auth callback, typed error surface, AES-256-GCM key migration
+- Email signup confirmation flow, onboarding labels, Phantom wallet address handling
+- Deal compliance tracking during active phase (correct participant status updates)
+
+---
+
 ## [0.4.0] - 2026-05-03 — Colosseum Frontier Hackathon Build
 
 ### Added

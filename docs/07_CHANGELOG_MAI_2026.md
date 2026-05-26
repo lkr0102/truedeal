@@ -8,7 +8,7 @@
 
 ## Resumo Executivo
 
-Neste ciclo de sprints foram entregues **melhorias de UX em toda a plataforma**, **correção de bugs críticos no motor de liquidação (DealGuard Engine)** e **infraestrutura de carteiras reconstruída do zero**, com foco em:
+Neste ciclo de sprints foram entregues **melhorias de UX em toda a plataforma**, **correção de bugs críticos no motor de liquidação (DealGuard Engine)**, **infraestrutura de carteiras reconstruída do zero** e **sistema completo de notificações in-app**, com foco em:
 
 1. Filtro de deals no home redesenhado (Notion-style)
 2. Modais de confirmação de depósito (Create e Join)
@@ -20,10 +20,104 @@ Neste ciclo de sprints foram entregues **melhorias de UX em toda a plataforma**,
 8. **Modo escuro forçado como light** — app sempre exibe versão clara independente do sistema operacional
 9. **Pipeline de carteiras reconstruído** — geração confiável no cadastro + cron retroativo para usuários existentes + migração de chave de criptografia
 10. **UX do criador de deal melhorada** — presets curtos (1/2/3 dias), labels de seção, ícone de calendário nos seletores de data e botão "Voltar para tela inicial" na tela de confirmação
+11. **Profile drawer redesenhado** — bell/notificações movido para dentro do drawer, dark mode desabilitado com badge "Em breve", header simplificado (sem nome duplicado)
+12. **Sistema de notificações in-app completo** — 10 tipos com gatilhos FOMO/greed, entrega em tempo real via Supabase Realtime, badge de não-lidas no avatar, conteúdo bilíngue PT/EN armazenado no INSERT
 
 ---
 
 ## Detalhamento por Commit
+
+---
+
+### `[26/05]` — Feature: Sistema de notificações in-app (Supabase Realtime)
+
+**Commits:** `74090339` (drawer redesign) + `79022ca8` (notification system)
+
+#### Profile Drawer redesenhado
+
+**Problema:** O botão de notificações ficava no top bar, sem contexto. O header do drawer repetia o nome do usuário que já aparecia no subtítulo. O toggle de Dark Mode estava funcional mas o modo escuro não é suportado ainda.
+
+**Mudanças em `app/home-client.tsx`:**
+
+- **Bell removido do top bar** — `NotificationPopover` e botão eliminados do header
+- **Bell adicionado como primeiro item do `ProfilePopover`** — ação chama `onOpenNotif()` que abre o popover de notificações
+- **Drawer header simplificado** — removida a linha com `displayName` duplicada; ficam apenas `@handle` e saldo de Shakes
+- **Dark Mode desabilitado** — substituído por div com `opacity: 0.4`, `cursor: not-allowed`, badge cinza "Em breve" — não clicável
+
+---
+
+#### Sistema de Notificações In-App
+
+**Motivação:** App não tinha nenhuma notificação — `NotificationPopover` mostrava "Nenhuma notificação" hardcoded. O objetivo é estimular **ganância, FOMO e engajamento contínuo** com notificações entregues em tempo real.
+
+**10 tipos de notificação implementados:**
+
+| Tipo | Gatilho | Tom |
+|------|---------|-----|
+| `deal_join_confirm` | Usuário entra num deal | 🤝 "Você está competindo com X pessoas por $Y" |
+| `deal_joined` | Creator: novo participante no seu deal | 🎯 "Novo participante! Pote atual: $X" |
+| `deal_milestone` | Deal atinge 5/10/15/20/25/50 participantes | 🔥 "Pote cresceu para $X" |
+| `deal_started` | Deal ativado (formacao→ativo) | 🚀 "Começou! Pote: $X" |
+| `deal_cancelled` | Deal cancelado por falta de quórum | ❌ "Cancelado, reembolso efetuado" |
+| `deal_result_win` | Resultado final: vencedor | 🏆 "Você venceu!" |
+| `deal_result_lose` | Resultado final: perdedor | 📉 "Deal encerrado" |
+| `deal_eliminated` | Eliminação em deal de academia | ⚡ "Você foi eliminado" |
+| `deal_window_update` | Outros eliminados → prêmio do ativo sobe | 💰 "2 caíram. Seu prêmio esperado agora é $X!" |
+| `deal_ending_soon` | 24h antes do fim do deal (cron) | ⏰ "Última verificação amanhã!" |
+
+**Fórmula do prêmio esperado:**
+```
+prêmio_esperado = entry_amount × total_participantes_ever × 0.97 / ativos_restantes
+```
+Conservadora (assume que todos os ativos ganham) — maximiza o número exibido como teto do prêmio.
+
+---
+
+**Arquitetura implementada:**
+
+**`supabase/migrations/018_notifications.sql`** (NOVO — aplicado em produção):
+```sql
+CREATE TABLE public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  type TEXT NOT NULL,
+  deal_id UUID REFERENCES public.deals(id) ON DELETE SET NULL,
+  title_pt TEXT NOT NULL, title_en TEXT NOT NULL,
+  body_pt TEXT NOT NULL, body_en TEXT NOT NULL,
+  is_read BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- Índice por usuário+data para fetch do popover
+-- Índice parcial WHERE is_read = false para badge
+-- RLS: SELECT e UPDATE apenas para o próprio usuário (service role bypassa)
+-- ALTER PUBLICATION supabase_realtime ADD TABLE notifications
+```
+
+**`lib/actions/notifications.ts`** (NOVO):
+- Helper `createNotification(supabase, input)` — recebe service client como parâmetro para reutilizar a instância do caller
+- Fire-and-forget: erros são logados mas nunca propagam para o caller
+- Bilíngue no INSERT: `title_pt`, `title_en`, `body_pt`, `body_en` — client renderiza a coluna correta via `useLanguageStore()`
+
+**Gatilhos nos server actions:**
+
+| Arquivo | Onde | Tipos enviados |
+|---------|------|----------------|
+| `lib/actions/deals.ts` → `joinDeal()` | Após INSERT em `deal_participants` | `deal_join_confirm`, `deal_joined`, `deal_milestone` |
+| `lib/actions/deals.ts` → `sweepStaleDeals()` | Após ativação e cancelamento | `deal_started`, `deal_cancelled` |
+| `lib/actions/settlement.ts` → `settleDealProtocol()` | Após classificação de vencedores/perdedores | `deal_result_win`, `deal_result_lose` |
+| `lib/actions/checkins.ts` → `evaluateGymDealCompliance()` | Após eliminação por janela | `deal_eliminated`, `deal_window_update` |
+| `app/api/cron/settle-deals/route.ts` | Query extra: deals com `end_date = amanhã` | `deal_ending_soon` |
+
+**Frontend (`app/home-client.tsx`):**
+
+- Interface `AppNotification` + mapa `NOTIF_ICONS` (emoji por tipo)
+- `NotificationPopover` reescrito com 3 `useEffect`s:
+  - #1: fetch das últimas 20 notificações ao abrir
+  - #2: UPDATE em massa `is_read = true` ao abrir → zera badge
+  - #3: Realtime `postgres_changes` INSERT — prepend em tempo real, sem polling
+- Unread badge no avatar (vermelho, top-left, `top: -3, left: -3`) — não conflita com level badge (bottom-right)
+- Badge count via fetch inicial + Realtime subscription separado (`notif-badge:${userId}`)
+- Click em notificação → `router.push(\`/deal/${n.deal_id}\`)` se `deal_id` existe
 
 ---
 
