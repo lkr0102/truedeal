@@ -112,12 +112,13 @@ interface WalletClientProps {
   solUsdPrice:      number
   usdcBalance:      number
   isDevnet:         boolean
+  walletError?:     string
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function WalletClient({
-  profile, tdpHistory, activeDealsValue, managedPublicKey, isExternalWallet = false, solBalance, solUsdPrice, usdcBalance, isDevnet,
+  profile, tdpHistory, activeDealsValue, managedPublicKey, isExternalWallet = false, solBalance, solUsdPrice, usdcBalance, isDevnet, walletError,
 }: WalletClientProps) {
   const [showBalance, setShowBalance] = useState(true)
   const [currency,    setCurrency]    = useState<Currency>("usd")
@@ -254,7 +255,11 @@ export default function WalletClient({
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 700 }}>◎</span>
                 <span style={{ fontSize: 12, color: "rgba(255,255,255,0.9)", ...MONO }}>
-                  {managedPublicKey ? truncateAddr(managedPublicKey) : "Gerando…"}
+                  {managedPublicKey
+                    ? truncateAddr(managedPublicKey)
+                    : walletError
+                      ? "Erro ao gerar carteira"
+                      : "Gerando…"}
                 </span>
               </div>
               {copied ? <Check style={{ width: 16, height: 16, stroke: "#fff", fill: "none" }} /> : <Copy style={{ width: 16, height: 16, stroke: "rgba(255,255,255,0.6)", fill: "none" }} />}

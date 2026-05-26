@@ -10,6 +10,10 @@
     {
       "path": "/api/cron/settle-deals",
       "schedule": "0 12 * * *"
+    },
+    {
+      "path": "/api/cron/provision-wallets",
+      "schedule": "0 6 * * *"
     }
   ]
 }

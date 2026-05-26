@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
+import { createServiceClient } from "@/lib/supabase/server"
 import { generateKeypair, encryptSecret } from "@/lib/solana/keypair"
 import { grantDevnetUSDC } from "@/lib/solana/devnet-faucet"
 
@@ -36,37 +37,43 @@ export async function GET(request: NextRequest) {
 
     if (!error && data.user) {
       try {
-        const { data: existingWallet } = await (supabase.from("user_wallets") as any)
+        // Use service client so wallet creation bypasses RLS and succeeds regardless
+        // of session cookie propagation timing in the redirect context.
+        const svc = await createServiceClient()
+
+        const { data: existingWallet } = await (svc.from("user_wallets") as any)
           .select("public_key")
           .eq("user_id", data.user.id)
           .maybeSingle()
 
-        if (!existingWallet && process.env.WALLET_MASTER_KEY) {
+        if (!existingWallet) {
           const keypair         = generateKeypair()
           const encryptedSecret = encryptSecret(keypair.secretKey)
           const publicKey       = keypair.publicKey.toBase58()
 
-          await (supabase.from("user_wallets") as any).insert({
+          const { error: insertErr } = await (svc.from("user_wallets") as any).insert({
             user_id:          data.user.id,
             public_key:       publicKey,
             encrypted_secret: encryptedSecret,
           })
 
-          await (supabase.from("profiles") as any)
-            .update({ solana_public_key: publicKey })
-            .eq("id", data.user.id)
+          if (insertErr) {
+            console.error("[auth/callback] wallet INSERT failed:", insertErr.message)
+          } else {
+            await (svc.from("profiles") as any)
+              .update({ solana_public_key: publicKey })
+              .eq("id", data.user.id)
 
-          // Grant 1,000 devnet USDC so the user can test immediately (non-blocking).
-          // On success, mark usdc_granted so the wallet page doesn't retry unnecessarily.
-          if (process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta") {
-            grantDevnetUSDC(publicKey)
-              .then((sig) => {
-                console.log(`[devnet] Granted 1000 USDC to ${publicKey}: ${sig}`)
-                return (supabase.from("user_wallets") as any)
-                  .update({ usdc_granted: true })
-                  .eq("user_id", data.user.id)
-              })
-              .catch((err) => console.error("[devnet] USDC grant failed:", err))
+            if (process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta") {
+              grantDevnetUSDC(publicKey)
+                .then((sig) => {
+                  console.log(`[devnet] Granted 1000 USDC to ${publicKey}: ${sig}`)
+                  return (svc.from("user_wallets") as any)
+                    .update({ usdc_granted: true })
+                    .eq("user_id", data.user.id)
+                })
+                .catch((err) => console.error("[devnet] USDC grant failed:", err))
+            }
           }
         }
       } catch (walletErr) {

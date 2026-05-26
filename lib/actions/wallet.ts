@@ -2,7 +2,7 @@
 
 import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js"
 import { getAssociatedTokenAddress, getAccount } from "@solana/spl-token"
-import { createClient } from "@/lib/supabase/server"
+import { createClient, createServiceClient } from "@/lib/supabase/server"
 import { generateKeypair, encryptSecret } from "@/lib/solana/keypair"
 import { getConnection } from "@/lib/solana/fee-payer"
 import { USDC_MINT } from "@/lib/solana/constants"
@@ -19,18 +19,20 @@ export async function ensureUserWallet(): Promise<{ publicKey: string | null; er
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { publicKey: null, error: "Não autenticado" }
 
-  // Check for existing wallet
-  const { data: existing } = await (supabase.from("user_wallets") as any)
+  // Use service client for DB operations: bypasses RLS so the INSERT always
+  // succeeds regardless of session propagation timing or policy edge cases.
+  const svc = await createServiceClient()
+
+  const { data: existing } = await (svc.from("user_wallets") as any)
     .select("public_key, usdc_granted")
     .eq("user_id", user.id)
     .maybeSingle()
 
   if (existing?.public_key) {
-    // Retry USDC grant if the DB flag shows it never succeeded (no RPC balance check needed)
     if (shouldGrantUSDC() && !existing.usdc_granted) {
       grantDevnetUSDC(existing.public_key)
         .then(() =>
-          (supabase.from("user_wallets") as any)
+          (svc.from("user_wallets") as any)
             .update({ usdc_granted: true })
             .eq("user_id", user.id),
         )
@@ -39,36 +41,38 @@ export async function ensureUserWallet(): Promise<{ publicKey: string | null; er
     return { publicKey: existing.public_key }
   }
 
-  // Create and persist a new keypair
-  const keypair         = generateKeypair()
-  const encryptedSecret = encryptSecret(keypair.secretKey)
-  const publicKey       = keypair.publicKey.toBase58()
+  try {
+    const keypair         = generateKeypair()
+    const encryptedSecret = encryptSecret(keypair.secretKey)
+    const publicKey       = keypair.publicKey.toBase58()
 
-  const { error } = await (supabase.from("user_wallets") as any).insert({
-    user_id:          user.id,
-    public_key:       publicKey,
-    encrypted_secret: encryptedSecret,
-  })
+    const { error } = await (svc.from("user_wallets") as any).insert({
+      user_id:          user.id,
+      public_key:       publicKey,
+      encrypted_secret: encryptedSecret,
+    })
 
-  if (error) return { publicKey: null, error: error.message }
+    if (error) return { publicKey: null, error: error.message }
 
-  // Denormalize into profiles for quick reads
-  await (supabase.from("profiles") as any)
-    .update({ solana_public_key: publicKey })
-    .eq("id", user.id)
+    await (svc.from("profiles") as any)
+      .update({ solana_public_key: publicKey })
+      .eq("id", user.id)
 
-  // Grant 1,000 USDC to every new managed wallet (non-blocking) and mark the flag on success
-  if (shouldGrantUSDC()) {
-    grantDevnetUSDC(publicKey)
-      .then(() =>
-        (supabase.from("user_wallets") as any)
-          .update({ usdc_granted: true })
-          .eq("user_id", user.id),
-      )
-      .catch((err) => console.error("[devnet] USDC grant failed:", err))
+    if (shouldGrantUSDC()) {
+      grantDevnetUSDC(publicKey)
+        .then(() =>
+          (svc.from("user_wallets") as any)
+            .update({ usdc_granted: true })
+            .eq("user_id", user.id),
+        )
+        .catch((err) => console.error("[devnet] USDC grant failed:", err))
+    }
+
+    return { publicKey }
+  } catch (err: any) {
+    console.error("[ensureUserWallet] keypair generation failed:", err.message)
+    return { publicKey: null, error: err.message }
   }
-
-  return { publicKey }
 }
 
 // ── Read the current user's managed wallet ────────────────────────────────────

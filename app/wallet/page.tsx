@@ -42,6 +42,7 @@ export default async function WalletPage() {
   const isExternalWallet = !!externalWalletAddress
 
   let managedPublicKey: string | null = null
+  let walletError: string | undefined
   if (!isExternalWallet) {
     try {
       const existing = await getMyWallet()
@@ -49,8 +50,13 @@ export default async function WalletPage() {
       if (!managedPublicKey) {
         const created = await ensureUserWallet()
         managedPublicKey = created.publicKey
+        if (!managedPublicKey) {
+          walletError = created.error ?? "Não foi possível gerar sua carteira"
+          console.error("[wallet/page] ensureUserWallet failed:", walletError)
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
+      walletError = err.message ?? "Não foi possível gerar sua carteira"
       console.error("[wallet/page] wallet provisioning failed:", err)
     }
   }
@@ -80,6 +86,7 @@ export default async function WalletPage() {
       solUsdPrice={solUsdPrice}
       usdcBalance={usdcBalance}
       isDevnet={process.env.NEXT_PUBLIC_SOLANA_NETWORK !== "mainnet-beta"}
+      walletError={walletError}
     />
   )
 }
