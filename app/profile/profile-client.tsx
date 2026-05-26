@@ -37,7 +37,7 @@ function BottomNav({ active }: { active: string }) {
     )
   }
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
+    <nav data-bottom-nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
       {navItem(Home,    "home",    "/",        "Deals")}
       {navItem(Compass, "explore", "/explore", "Explorar")}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
@@ -648,7 +648,7 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
+    <div style={{ height: "100dvh", background: C.bg, display: "flex", flexDirection: "column", overflowY: "auto", paddingBottom: 90 }}>
 
       {socialError && (
         <div style={{ position: "fixed", top: 16, left: 16, right: 16, zIndex: 50, borderRadius: 16, padding: "12px 16px", fontSize: 13, fontWeight: 500, color: "#fff", display: "flex", alignItems: "flex-start", gap: 8, background: "rgba(220,38,38,0.95)" }}>

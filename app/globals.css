@@ -238,6 +238,19 @@
   }
 }
 
+/* ── Mobile app layout: fixed header + footer, content scrolls ─────────────── */
+html, body {
+  height: 100%;
+  /* Prevent rubber-band scroll on the body itself on iOS */
+  overscroll-behavior: none;
+}
+
+/* Bottom nav safe area — ensures it clears the iOS home indicator
+   and Safari's bottom toolbar when browsing as a web link */
+nav[data-bottom-nav] {
+  padding-bottom: max(26px, env(safe-area-inset-bottom, 26px));
+}
+
 /* ── Deal Result & Confetti Animations ────────────────────────────────────── */
 @keyframes confettiFall {
   0% {

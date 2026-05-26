@@ -55,7 +55,7 @@ function BottomNav({ active }: { active: string }) {
     )
   }
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
+    <nav data-bottom-nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
       {items.map(i => navItem(i.icon, i.key, i.href, i.key === "home" ? "Deals" : "Explorar"))}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
         <button onClick={() => router.push("/create")} style={{ width: 50, height: 50, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", marginTop: -14, boxShadow: "0 4px 14px rgba(0,184,82,0.35)", border: `3px solid ${C.bg}`, cursor: "pointer" }}>
@@ -172,11 +172,11 @@ export default function WalletClient({
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
+    <div style={{ height: "100dvh", background: C.bg, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Top bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
+      <div style={{ flexShrink: 0, position: "sticky", top: 0, zIndex: 30, background: C.bg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
         <h1 style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>Wallet</h1>
         <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 100, background: C.activeLight, border: `1px solid ${C.activeBorder}` }}>
           <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.brand }} />
@@ -184,7 +184,7 @@ export default function WalletClient({
         </div>
       </div>
 
-      <div style={{ flex: 1, padding: "0 20px", overflowY: "auto" }}>
+      <div style={{ flex: 1, padding: "0 20px", overflowY: "auto", paddingBottom: 90 }}>
 
         {/* User mini-card */}
         <div style={{ borderRadius: 16, padding: "12px 14px", marginBottom: 14, marginTop: 6, display: "flex", alignItems: "center", gap: 12, background: C.surface, border: `1px solid ${C.border}` }}>

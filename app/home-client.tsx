@@ -608,7 +608,7 @@ function BottomNav({ active, lang, onCreateClick }: { active: string; lang: Lang
     )
   }
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
+    <nav data-bottom-nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
       {leftItems.map(i => navItem(i.icon, i.key, i.href))}
 
       {/* Center FAB */}
@@ -907,13 +907,13 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
   }, [])
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
+    <div style={{ height: "100dvh", background: C.bg, display: "flex", flexDirection: "column", overflowY: "auto", paddingBottom: 90 }}>
 
       <NotificationPopover isOpen={showNotif}   onClose={() => setShowNotif(false)} />
       <ProfilePopover isOpen={showProfile} onClose={() => setShowProfile(false)} profile={profile} userId={userId} />
 
       {/* ── TOP BAR ── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 30, height: 30, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 13l4 4L19 7"/></svg>

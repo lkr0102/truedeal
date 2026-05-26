@@ -39,7 +39,7 @@ function BottomNav({ activeKey, lang }: { activeKey: string; lang: Language }) {
     )
   }
   return (
-    <nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
+    <nav data-bottom-nav style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "rgba(240,243,240,0.94)", backdropFilter: "blur(16px)", borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", padding: "9px 0 26px", zIndex: 20 }}>
       {navItem(Home,    "nav_home",    "/")}
       {navItem(Compass, "nav_explore", "/explore")}
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
@@ -536,9 +536,9 @@ export default function ExploreClient({
   ]
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
+    <div style={{ height: "100dvh", background: C.bg, display: "flex", flexDirection: "column", overflowY: "auto", paddingBottom: 90 }}>
       {/* Top bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
+      <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
         <div>
           <h1 style={{ fontSize: 19, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>{t("explore_title", lang)}</h1>
           <p style={{ fontSize: 12, color: C.mid }}>{t("explore_subtitle", lang)}</p>
