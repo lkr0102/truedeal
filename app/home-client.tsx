@@ -463,21 +463,145 @@ function HeroBanner({ lang }: { lang: Language }) {
 
 // ── Notification Popover ──────────────────────────────────────────────────────
 
-function NotificationPopover({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+interface AppNotification {
+  id: string; type: string; deal_id: string | null
+  title_pt: string; title_en: string; body_pt: string; body_en: string
+  is_read: boolean; created_at: string
+}
+
+const NOTIF_ICONS: Record<string, string> = {
+  deal_join_confirm:  "🤝",
+  deal_joined:        "👋",
+  deal_milestone:     "🔥",
+  deal_started:       "🚀",
+  deal_cancelled:     "❌",
+  deal_result_win:    "🏆",
+  deal_result_lose:   "📉",
+  deal_eliminated:    "⚡",
+  deal_window_update: "💰",
+  deal_ending_soon:   "⏰",
+}
+
+function formatRelativeTime(iso: string, lang: Language): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1)  return lang === "pt" ? "agora"   : "just now"
+  if (mins < 60) return lang === "pt" ? `${mins}m` : `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24)  return lang === "pt" ? `${hrs}h`  : `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  return lang === "pt" ? `${days}d` : `${days}d ago`
+}
+
+function NotificationPopover({
+  isOpen, onClose, userId,
+}: { isOpen: boolean; onClose: () => void; userId: string | null }) {
   const { language } = useLanguageStore()
+  const router = useRouter()
+  const [notifications, setNotifications] = useState<AppNotification[]>([])
+  const [loading, setLoading] = useState(false)
+
+  // Fetch on open
+  useEffect(() => {
+    if (!isOpen || !userId) return
+    setLoading(true)
+    const supabase = createClient()
+    ;(supabase.from("notifications") as any)
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(20)
+      .then(({ data }: { data: AppNotification[] | null }) => {
+        setNotifications(data ?? [])
+        setLoading(false)
+      })
+  }, [isOpen, userId])
+
+  // Mark all as read when opened
+  useEffect(() => {
+    if (!isOpen || !userId) return
+    const supabase = createClient()
+    ;(supabase.from("notifications") as any)
+      .update({ is_read: true })
+      .eq("user_id", userId)
+      .eq("is_read", false)
+      .then(() => setNotifications(prev => prev.map(n => ({ ...n, is_read: true }))))
+  }, [isOpen, userId])
+
+  // Realtime subscription (active as long as userId exists)
+  useEffect(() => {
+    if (!userId) return
+    const supabase = createClient()
+    const channel = supabase
+      .channel(`notifications:${userId}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "notifications",
+        filter: `user_id=eq.${userId}`,
+      }, (payload) => {
+        setNotifications(prev => [payload.new as AppNotification, ...prev].slice(0, 20))
+      })
+      .subscribe()
+    return () => { supabase.removeChannel(channel) }
+  }, [userId])
+
   if (!isOpen) return null
+
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 30 }} onClick={onClose}>
       <div
-        style={{ position: "absolute", top: 70, right: 20, width: 300, borderRadius: 24, padding: 16, background: C.surface, border: `1px solid ${C.border}`, boxShadow: "0 16px 48px rgba(0,0,0,0.12)" }}
+        style={{ position: "absolute", top: 70, right: 20, width: 320, borderRadius: 24, overflow: "hidden", background: C.surface, border: `1px solid ${C.border}`, boxShadow: "0 16px 48px rgba(0,0,0,0.12)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-          <h2 style={{ fontWeight: 700, color: C.text, fontSize: 14 }}>{language === "pt" ? "Notificações" : "Notifications"}</h2>
-          <button onClick={onClose} style={{ color: C.dim, background: "none", border: "none", fontSize: 18, cursor: "pointer" }}>×</button>
+        {/* Header */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px 12px", borderBottom: `1px solid ${C.border}` }}>
+          <h2 style={{ fontWeight: 700, color: C.text, fontSize: 14, margin: 0 }}>
+            {language === "pt" ? "Notificações" : "Notifications"}
+          </h2>
+          <button onClick={onClose} style={{ color: C.dim, background: "none", border: "none", fontSize: 18, cursor: "pointer", lineHeight: 1 }}>×</button>
         </div>
-        <div style={{ textAlign: "center", padding: "20px 0", fontSize: 12, color: C.dim }}>
-          {language === "pt" ? "Nenhuma notificação" : "No notifications"}
+        {/* List */}
+        <div style={{ maxHeight: 380, overflowY: "auto" }}>
+          {loading ? (
+            <div style={{ textAlign: "center", padding: "24px 0", fontSize: 12, color: C.dim }}>
+              {language === "pt" ? "Carregando..." : "Loading..."}
+            </div>
+          ) : notifications.length === 0 ? (
+            <div style={{ textAlign: "center", padding: "32px 16px" }}>
+              <div style={{ fontSize: 32, marginBottom: 8 }}>🔔</div>
+              <div style={{ fontSize: 12, color: C.dim }}>
+                {language === "pt" ? "Nenhuma notificação" : "No notifications"}
+              </div>
+            </div>
+          ) : notifications.map((n, i) => (
+            <button
+              key={n.id}
+              onClick={() => { if (n.deal_id) router.push(`/deal/${n.deal_id}`); onClose() }}
+              style={{
+                width: "100%", display: "flex", alignItems: "flex-start", gap: 10,
+                padding: "11px 14px",
+                background: n.is_read ? "transparent" : C.activeLight,
+                border: "none",
+                borderBottom: i < notifications.length - 1 ? `1px solid ${C.border2}` : "none",
+                cursor: n.deal_id ? "pointer" : "default", textAlign: "left",
+              }}
+            >
+              <div style={{ width: 34, height: 34, borderRadius: 9, background: C.surface2, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 16 }}>
+                {NOTIF_ICONS[n.type] ?? "🔔"}
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: C.text, marginBottom: 2, lineHeight: 1.3, display: "flex", alignItems: "center", gap: 5 }}>
+                  {language === "pt" ? n.title_pt : n.title_en}
+                  {!n.is_read && <span style={{ width: 6, height: 6, borderRadius: "50%", background: C.brand, flexShrink: 0, display: "inline-block" }} />}
+                </div>
+                <div style={{ fontSize: 11, color: C.mid, lineHeight: 1.4, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" as const }}>
+                  {language === "pt" ? n.body_pt : n.body_en}
+                </div>
+                <div style={{ fontSize: 10, color: C.dim, marginTop: 3, ...MONO }}>
+                  {formatRelativeTime(n.created_at, language)}
+                </div>
+              </div>
+            </button>
+          ))}
         </div>
       </div>
     </div>
@@ -845,6 +969,7 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
   const [showSearch,     setShowSearch]     = useState(false)
   const [showNotif,      setShowNotif]      = useState(false)
   const [showProfile,    setShowProfile]    = useState(false)
+  const [unreadCount,    setUnreadCount]    = useState(0)
   const [showFilters,    setShowFilters]    = useState(false)
   const [activeChannels, setActiveChannels] = useState<VerifType[]>([])
   const [priceFilter,    setPriceFilter]    = useState<PriceFilter>(null)
@@ -909,11 +1034,30 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
     else setGreeting({ pt: "Bom dia", en: "Good morning" })
   }, [])
 
+  // Unread notification count + live badge via Realtime
+  useEffect(() => {
+    if (!userId) return
+    const supabase = createClient()
+    ;(supabase.from("notifications") as any)
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("is_read", false)
+      .then(({ count: c }: { count: number | null }) => setUnreadCount(c ?? 0))
+    const ch = supabase
+      .channel(`notif-badge:${userId}`)
+      .on("postgres_changes", {
+        event: "INSERT", schema: "public", table: "notifications",
+        filter: `user_id=eq.${userId}`,
+      }, () => setUnreadCount(prev => prev + 1))
+      .subscribe()
+    return () => { supabase.removeChannel(ch) }
+  }, [userId])
+
   return (
     <div style={{ minHeight: "100dvh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
 
-      <NotificationPopover isOpen={showNotif}   onClose={() => setShowNotif(false)} />
-      <ProfilePopover isOpen={showProfile} onClose={() => setShowProfile(false)} profile={profile} userId={userId} onOpenNotif={() => setShowNotif(true)} />
+      <NotificationPopover isOpen={showNotif} onClose={() => setShowNotif(false)} userId={userId} />
+      <ProfilePopover isOpen={showProfile} onClose={() => setShowProfile(false)} profile={profile} userId={userId} onOpenNotif={() => { setShowNotif(true); setUnreadCount(0) }} />
 
       {/* ── TOP BAR ── */}
       <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
@@ -937,9 +1081,16 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
                 ? <img src={profile.avatar_url} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 : <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>{initials}</span>}
             </button>
+            {/* Level badge — bottom right */}
             <div style={{ position: "absolute", bottom: -4, right: -4, background: C.brand, color: "#fff", borderRadius: 100, fontSize: 8, fontWeight: 700, padding: "1px 4px", border: `1px solid ${C.bg}`, ...MONO }}>
               {level}
             </div>
+            {/* Unread notifications badge — top left */}
+            {unreadCount > 0 && (
+              <div style={{ position: "absolute", top: -3, left: -3, minWidth: 16, height: 16, background: "#EF4444", borderRadius: 100, border: `2px solid ${C.bg}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: "#fff", padding: "0 2px", ...MONO }}>
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </div>
+            )}
           </div>
         </div>
       </div>

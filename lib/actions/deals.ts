@@ -35,7 +35,7 @@ export async function sweepStaleDeals() {
     const sweepDate = new Date(Date.now() - 3 * 3600 * 1000).toISOString().split("T")[0]
 
     const { data: stale } = await (supabase.from("deals") as any)
-      .select("id, entry_amount, deal_participants(id, user_id)")
+      .select("id, title, entry_amount, deal_participants(id, user_id)")
       .eq("status", "formacao")
       .lte("start_date", sweepDate)
 
@@ -45,12 +45,30 @@ export async function sweepStaleDeals() {
       .filter((d: any) => (d.deal_participants?.length ?? 0) >= 2)
       .map((d: any) => d.id)
 
-    const toCancel: { id: string; entry_amount: number; participants: any[] }[] = (stale as any[])
+    const toCancel: { id: string; title: string; entry_amount: number; participants: any[] }[] = (stale as any[])
       .filter((d: any) => (d.deal_participants?.length ?? 0) < 2)
-      .map((d: any) => ({ id: d.id, entry_amount: d.entry_amount ?? 0, participants: d.deal_participants ?? [] }))
+      .map((d: any) => ({ id: d.id, title: d.title ?? "", entry_amount: d.entry_amount ?? 0, participants: d.deal_participants ?? [] }))
 
     for (const dealId of toActivate) {
       await (supabase.from("deals") as any).update({ status: "ativo" }).eq("id", dealId)
+      const dealData = (stale as any[]).find((d: any) => d.id === dealId)
+      if (dealData) {
+        try {
+          const { createNotification } = await import("@/lib/actions/notifications")
+          const count = dealData.deal_participants?.length ?? 0
+          const pot = (dealData.entry_amount * count).toFixed(0)
+          for (const p of dealData.deal_participants ?? []) {
+            await createNotification(supabase, {
+              user_id:  p.user_id, type: "deal_started", deal_id: dealId,
+              title_pt: "Deal iniciado! 🚀", title_en: "Deal started! 🚀",
+              body_pt:  `O deal "${dealData.title}" começou com ${count} participantes. Pote: $${pot}. Boa sorte!`,
+              body_en:  `Deal "${dealData.title}" kicked off with ${count} participants. Pot: $${pot}. Good luck!`,
+            })
+          }
+        } catch (err: any) {
+          console.error("[notifications] sweepStaleDeals activate notify failed:", err?.message)
+        }
+      }
     }
 
     if (!toCancel.length) return
@@ -84,6 +102,22 @@ export async function sweepStaleDeals() {
     await (supabase.from("deals") as any)
       .update({ status: "encerrado" })
       .in("id", toCancel.map((d) => d.id))
+
+    try {
+      const { createNotification } = await import("@/lib/actions/notifications")
+      for (const deal of toCancel) {
+        for (const p of deal.participants) {
+          await createNotification(supabase, {
+            user_id:  p.user_id, type: "deal_cancelled", deal_id: deal.id,
+            title_pt: "Deal cancelado", title_en: "Deal cancelled",
+            body_pt:  `O deal "${deal.title}" foi cancelado por falta de participantes. Seu valor será reembolsado.`,
+            body_en:  `Deal "${deal.title}" was cancelled — not enough participants. Your stake will be refunded.`,
+          })
+        }
+      }
+    } catch (err: any) {
+      console.error("[notifications] sweepStaleDeals cancel notify failed:", err?.message)
+    }
 
     revalidatePath("/")
   } catch (err: any) {
@@ -450,7 +484,7 @@ export async function joinDeal(dealId: string) {
 
   // Verifica se o deal existe e tem vagas
   const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
-    .select("id, status, max_participants, mode, entry_amount, verification_channels")
+    .select("id, status, max_participants, mode, entry_amount, verification_channels, creator_id, title")
     .eq("id", dealId)
     .single()
 
@@ -489,6 +523,57 @@ export async function joinDeal(dealId: string) {
   if (insertErr) {
     if ((insertErr as any).code === "23505") return { error: "Você já está participando deste acordo" }
     return { error: (insertErr as any).message }
+  }
+
+  // ── Notifications ─────────────────────────────────────────────────────────────
+  try {
+    const { createNotification } = await import("@/lib/actions/notifications")
+    const { createServiceClient } = await import("@/lib/supabase/server")
+    const svc = await createServiceClient()
+
+    const { data: joinerProfile } = await (supabase.from("profiles") as any)
+      .select("display_name, username").eq("id", user.id).single()
+    const joinerName = joinerProfile?.display_name ?? joinerProfile?.username ?? "Alguém"
+
+    const { count: totalCount } = await (svc.from("deal_participants") as any)
+      .select("user_id", { count: "exact", head: true }).eq("deal_id", dealId)
+    const total = totalCount ?? 1
+    const pot = (deal.entry_amount * total).toFixed(0)
+
+    // 1) Confirm to the joiner
+    await createNotification(svc, {
+      user_id:  user.id, type: "deal_join_confirm", deal_id: dealId,
+      title_pt: "Você entrou! 🤝",  title_en: "You're in! 🤝",
+      body_pt:  `Agora são ${total} competindo por um pote de $${pot}. Boa sorte!`,
+      body_en:  `${total} people are competing for a $${pot} pot. Good luck!`,
+    })
+
+    // 2) Notify creator (skip if they joined their own deal)
+    if (deal.creator_id !== user.id) {
+      await createNotification(svc, {
+        user_id:  deal.creator_id, type: "deal_joined", deal_id: dealId,
+        title_pt: "Novo participante! 🎯",  title_en: "New participant! 🎯",
+        body_pt:  `${joinerName} entrou no seu deal "${deal.title}". Pote atual: $${pot}`,
+        body_en:  `${joinerName} joined your deal "${deal.title}". Current pot: $${pot}`,
+      })
+    }
+
+    // 3) Milestone notification (5 / 10 / 15 / 20 / 25 / 50 participants)
+    const MILESTONES = [5, 10, 15, 20, 25, 50]
+    if (MILESTONES.includes(total)) {
+      const { data: others } = await (svc.from("deal_participants") as any)
+        .select("user_id").eq("deal_id", dealId).neq("user_id", user.id).eq("status", "active")
+      for (const p of others ?? []) {
+        await createNotification(svc, {
+          user_id:  p.user_id, type: "deal_milestone", deal_id: dealId,
+          title_pt: `${total} participantes! 🔥`,  title_en: `${total} participants! 🔥`,
+          body_pt:  `O deal "${deal.title}" chegou a ${total} competidores. O pote agora é $${pot}!`,
+          body_en:  `Deal "${deal.title}" now has ${total} competitors. The pot grew to $${pot}!`,
+        })
+      }
+    }
+  } catch (err: any) {
+    console.error("[notifications] joinDeal notify failed:", err?.message)
   }
 
   // ── On-chain: stake USDC → fee payer escrow ───────────────────────────────────

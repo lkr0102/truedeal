@@ -17,6 +17,37 @@ export async function GET(request: NextRequest) {
   // only after the day is fully over (next cron run), not mid-day.
   const today = new Date().toISOString().split("T")[0]
 
+  // Notify participants of deals ending in exactly 24h (end_date = tomorrow)
+  try {
+    const tomorrow = new Date()
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowDate = tomorrow.toISOString().split("T")[0]
+
+    const { data: endingSoon } = await (supabase.from("deals") as any)
+      .select("id, title, entry_amount, deal_participants(user_id)")
+      .eq("status", "ativo")
+      .eq("end_date", tomorrowDate)
+
+    if (endingSoon?.length) {
+      const { createNotification } = await import("@/lib/actions/notifications")
+      for (const d of endingSoon) {
+        const count = (d.deal_participants ?? []).length
+        const pot   = (d.entry_amount * count).toFixed(0)
+        for (const p of d.deal_participants ?? []) {
+          await createNotification(supabase, {
+            user_id:  p.user_id, type: "deal_ending_soon", deal_id: d.id,
+            title_pt: "Última verificação amanhã! ⏰",  title_en: "Final check tomorrow! ⏰",
+            body_pt:  `O deal "${d.title}" termina amanhã. Você ainda está na corrida por $${pot}. Não descuide!`,
+            body_en:  `Deal "${d.title}" ends tomorrow. You're still in the race for $${pot}. Don't slip!`,
+          })
+        }
+      }
+      console.log(`[settle-deals] Sent ending-soon notifications for ${endingSoon.length} deal(s)`)
+    }
+  } catch (err: any) {
+    console.error("[settle-deals] ending-soon notify failed:", err?.message)
+  }
+
   const { data: expired, error } = await (supabase.from("deals") as any)
     .select("id, title")
     .eq("status", "ativo")

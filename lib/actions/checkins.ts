@@ -92,7 +92,7 @@ export async function evaluateGymDealCompliance(dealId: string): Promise<void> {
   const supabase = await createClient()
 
   const { data: deal } = await (supabase.from("deals") as any)
-    .select("status, start_date, end_date, rule_frequency, rule_target, verification_channels")
+    .select("status, start_date, end_date, rule_frequency, rule_target, verification_channels, entry_amount, title")
     .eq("id", dealId)
     .single()
 
@@ -146,13 +146,13 @@ export async function evaluateGymDealCompliance(dealId: string): Promise<void> {
     byUser[c.user_id].add(c.date)
   }
 
-  const toEliminate: string[] = []
+  const toEliminate: { id: string; user_id: string }[] = []
   for (const p of participants) {
     const dates = byUser[p.user_id] ?? new Set<string>()
     for (const w of completedWindows) {
       const count = [...dates].filter(d => d >= w.startStr && d < w.endStr).length
       if (count < target) {
-        toEliminate.push(p.id)
+        toEliminate.push({ id: p.id, user_id: p.user_id })
         break
       }
     }
@@ -161,7 +161,47 @@ export async function evaluateGymDealCompliance(dealId: string): Promise<void> {
   if (toEliminate.length > 0) {
     await (supabase.from("deal_participants") as any)
       .update({ status: "eliminated" })
-      .in("id", toEliminate)
+      .in("id", toEliminate.map(p => p.id))
+
+    try {
+      const { createNotification } = await import("@/lib/actions/notifications")
+      const { createServiceClient } = await import("@/lib/supabase/server")
+      const svc = await createServiceClient()
+      const eliminatedIds = new Set(toEliminate.map(p => p.user_id))
+
+      const { count: totalEver } = await (svc.from("deal_participants") as any)
+        .select("id", { count: "exact", head: true }).eq("deal_id", dealId)
+
+      const { data: stillActive } = await (svc.from("deal_participants") as any)
+        .select("user_id").eq("deal_id", dealId).eq("status", "active")
+
+      const activeCount    = Math.max(stillActive?.length ?? 1, 1)
+      const totalPot       = (deal.entry_amount ?? 0) * (totalEver ?? 1)
+      const expectedPrize  = (totalPot * 0.97 / activeCount).toFixed(0)
+      const eliminatedCount = toEliminate.length
+
+      for (const p of toEliminate) {
+        await createNotification(svc, {
+          user_id:  p.user_id, type: "deal_eliminated", deal_id: dealId,
+          title_pt: "Você foi eliminado ⚡",  title_en: "You were eliminated ⚡",
+          body_pt:  `Você não cumpriu os requisitos do deal "${deal.title}" e foi eliminado.`,
+          body_en:  `You missed the requirements for deal "${deal.title}" and have been eliminated.`,
+        })
+      }
+
+      for (const p of stillActive ?? []) {
+        if (eliminatedIds.has(p.user_id)) continue
+        await createNotification(svc, {
+          user_id:  p.user_id, type: "deal_window_update", deal_id: dealId,
+          title_pt: `${eliminatedCount} eliminado${eliminatedCount > 1 ? "s" : ""}! 💰`,
+          title_en: `${eliminatedCount} eliminated! 💰`,
+          body_pt:  `${eliminatedCount} participante${eliminatedCount > 1 ? "s caíram" : " caiu"} da disputa. Seu prêmio esperado agora é $${expectedPrize}!`,
+          body_en:  `${eliminatedCount} participant${eliminatedCount > 1 ? "s dropped" : " dropped"} out. Your expected prize is now $${expectedPrize}!`,
+        })
+      }
+    } catch (err: any) {
+      console.error("[notifications] evaluateGymDealCompliance notify failed:", err?.message)
+    }
   }
 }
 

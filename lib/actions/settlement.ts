@@ -51,7 +51,7 @@ export async function settleDealProtocol(
 
   // Fetch deal entry amount (USDC per participant)
   const { data: deal } = await (supabase.from("deals") as any)
-    .select("entry_amount")
+    .select("entry_amount, title")
     .eq("id", dealId)
     .single()
 
@@ -97,6 +97,30 @@ export async function settleDealProtocol(
       .update({ status: result.is_success ? "winner" : "eliminated" })
       .eq("deal_id", dealId)
       .eq("user_id", result.user_id)
+  }
+
+  // Notify all participants with their result
+  try {
+    const { createNotification } = await import("@/lib/actions/notifications")
+    for (const result of audit.results) {
+      if (result.is_success) {
+        await createNotification(supabase, {
+          user_id:  result.user_id, type: "deal_result_win", deal_id: dealId,
+          title_pt: "Você venceu! 🏆",  title_en: "You won! 🏆",
+          body_pt:  `Parabéns! Você completou o deal "${deal?.title}" e vai receber sua parte do pote.`,
+          body_en:  `Congrats! You completed deal "${deal?.title}" and will receive your share of the pot.`,
+        })
+      } else {
+        await createNotification(supabase, {
+          user_id:  result.user_id, type: "deal_result_lose", deal_id: dealId,
+          title_pt: "Deal encerrado",  title_en: "Deal closed",
+          body_pt:  `O deal "${deal?.title}" finalizou. Você não cumpriu os requisitos desta vez.`,
+          body_en:  `Deal "${deal?.title}" ended. You didn't meet the requirements this time.`,
+        })
+      }
+    }
+  } catch (err: any) {
+    console.error("[notifications] settleDealProtocol notify failed:", err?.message)
   }
 
   return {
