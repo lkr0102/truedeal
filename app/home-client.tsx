@@ -487,8 +487,8 @@ function NotificationPopover({ isOpen, onClose }: { isOpen: boolean; onClose: ()
 // ── Profile Popover ───────────────────────────────────────────────────────────
 
 function ProfilePopover({
-  isOpen, onClose, profile, userId,
-}: { isOpen: boolean; onClose: () => void; profile: Profile | null; userId: string | null }) {
+  isOpen, onClose, profile, userId, onOpenNotif,
+}: { isOpen: boolean; onClose: () => void; profile: Profile | null; userId: string | null; onOpenNotif: () => void }) {
   const router = useRouter()
   const { language, setLanguage } = useLanguageStore()
   const [darkMode, setDarkMode] = useState(false)
@@ -547,14 +547,14 @@ function ProfilePopover({
               : <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>{initials}</span>}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontWeight: 700, color: C.text, fontSize: 14, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{displayName}</div>
-            {username && <div style={{ fontSize: 11, color: C.dim, ...MONO }}>{username}</div>}
+            {username && <div style={{ fontSize: 12, fontWeight: 700, color: C.text, ...MONO }}>{username}</div>}
             <div style={{ fontSize: 11, color: C.brand, fontWeight: 700, marginTop: 2 }}>{shakes} 🤝 Shakes</div>
           </div>
           <button onClick={onClose} style={{ width: 28, height: 28, borderRadius: "50%", background: C.surface2, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.dim, fontSize: 16 }}>×</button>
         </div>
         {/* Menu */}
         <div style={{ padding: "8px 0" }}>
+          {menuItem(<Bell style={{ width: 16, height: 16, stroke: C.mid, fill: "none" }} />, language === "pt" ? "Notificações" : "Notifications", () => { onClose(); onOpenNotif() })}
           {menuItem(<User style={{ width: 16, height: 16, stroke: C.brand, fill: "none" }} />, t("nav_profile", language), () => { onClose(); router.push("/profile") })}
           {menuItem(<span style={{ fontSize: 16 }}>🎁</span>, language === "pt" ? "Convide e ganhe" : "Invite & Earn", handleCopyReferral,
             copied ? <span style={{ fontSize: 10, color: C.brand, fontWeight: 700 }}>✓</span> : undefined)}
@@ -565,10 +565,13 @@ function ProfilePopover({
                 <span key={l} style={{ padding: "3px 8px", fontSize: 11, fontWeight: 700, background: language === l ? C.brand : "transparent", color: language === l ? "#fff" : C.dim, transition: "all 0.15s" }}>{l.toUpperCase()}</span>
               ))}
             </div>)}
-          {menuItem(<Moon style={{ width: 16, height: 16, stroke: C.mid, fill: "none" }} />, "Dark Mode", toggleDarkMode,
-            <div style={{ width: 40, height: 22, borderRadius: 100, background: darkMode ? C.brand : C.border, position: "relative", transition: "background 0.2s" }}>
-              <div style={{ position: "absolute", top: 2, width: 18, height: 18, borderRadius: "50%", background: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.15)", transition: "transform 0.2s", transform: darkMode ? "translateX(20px)" : "translateX(2px)" }} />
-            </div>)}
+          <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 12, padding: "10px 20px", opacity: 0.4, cursor: "not-allowed" }}>
+            <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: C.surface2 }}>
+              <Moon style={{ width: 16, height: 16, stroke: C.mid, fill: "none" }} />
+            </div>
+            <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: C.text }}>Dark Mode</span>
+            <span style={{ fontSize: 10, color: C.dim, fontWeight: 700, background: C.surface2, padding: "2px 6px", borderRadius: 6 }}>Em breve</span>
+          </div>
         </div>
         {/* Sign out */}
         <div style={{ padding: "8px 20px 16px", borderTop: `1px solid ${C.border}` }}>
@@ -910,7 +913,7 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
     <div style={{ minHeight: "100dvh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
 
       <NotificationPopover isOpen={showNotif}   onClose={() => setShowNotif(false)} />
-      <ProfilePopover isOpen={showProfile} onClose={() => setShowProfile(false)} profile={profile} userId={userId} />
+      <ProfilePopover isOpen={showProfile} onClose={() => setShowProfile(false)} profile={profile} userId={userId} onOpenNotif={() => setShowNotif(true)} />
 
       {/* ── TOP BAR ── */}
       <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
@@ -928,10 +931,6 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <button onClick={() => setShowNotif(!showNotif)} style={{ width: 34, height: 34, background: C.surface, border: `1px solid ${C.border}`, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" }}>
-            <Bell style={{ width: 16, height: 16, stroke: C.mid, fill: "none" }} />
-            <div style={{ position: "absolute", top: 7, right: 7, width: 7, height: 7, background: C.forming, borderRadius: "50%", border: `2px solid ${C.bg}` }} />
-          </button>
           <div style={{ position: "relative", width: 34, height: 34, flexShrink: 0 }}>
             <button onClick={() => setShowProfile(!showProfile)} style={{ width: 34, height: 34, background: C.brand, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", border: `2px solid ${C.surface}`, cursor: "pointer", overflow: "hidden", padding: 0 }}>
               {profile?.avatar_url
