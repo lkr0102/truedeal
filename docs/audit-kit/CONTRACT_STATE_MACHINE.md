@@ -9,10 +9,12 @@
 > **Decisão arquitetural (2026-05-26):** A infraestrutura blockchain foi migrada para a rede **Mantle L2**. O fluxo financeiro acontece via contratos inteligentes em Solidity ou transferências diretas de tokens ERC-20 entre as managed wallets gerenciadas pelo backend.
 
 **O que mudou:**
+
 - Antes: Fluxo Solana (Anchor e SPL transfers)
 - Agora: Fluxo EVM (Contratos em Solidity e transferências ERC-20 na Mantle Network)
 
 **O que permanece:**
+
 - State machine de negócio (formacao → ativo → liquidando → encerrado)
 - Lógica econômica (Slacker Tax 3%)
 - Provas criptográficas (SHA-256 proof hash)
@@ -36,7 +38,7 @@ stateDiagram-v2
 ### Detalhes dos Estados
 
 | Estado | Descrição | Transição |
-|:-------|:----------|:----------|
+| :------- | :---------- | :---------- |
 | `formacao` | Aceita participantes; stake coletado via transferência ERC-20 | Scheduler automático |
 | `ativo` | Período de performance em curso | Oráculo de IA |
 | `cancelado` | Quórum não atingido; refund total via ERC-20 | Automático |
@@ -49,7 +51,7 @@ stateDiagram-v2
 
 O Oráculo de IA avalia cumprimento de forma **estrita por janela de frequência**:
 
-```
+```text
 Para cada janela de frequência no período do deal:
   SE cumprimento_da_janela < quantidade_configurada:
     → participante = PERDEDOR (irreversível naquela janela)
@@ -60,7 +62,7 @@ Uma janela perdida = eliminado, independente de outras janelas.
 ### Sub-regras por Tipo de Verificação
 
 | `verification_type` | Canal | Sub-regras de validade |
-|:--------------------|:------|:-----------------------|
+| :-------------------- | :------ | :----------------------- |
 | `post_feito` | X | Conta pública; post > 100 chars; conteúdo único no período |
 | `seguidores_recebidos` | X, Instagram, TikTok, LinkedIn, YouTube | Delta líquido por janela (ganhos − perdas) ≥ N |
 | `impressoes` | X, Instagram, TikTok, LinkedIn, YouTube | Total de impressões na janela ≥ N |
@@ -78,7 +80,7 @@ Uma janela perdida = eliminado, independente de outras janelas.
 
 ## 4. Lógica de Liquidação (Slacker Tax)
 
-```
+```text
 slacker_pool      = n_perdedores × entry_amount
 platform_fee      = slacker_pool × 0.03
 reward_per_winner = (slacker_pool − platform_fee) / n_vencedores
@@ -86,6 +88,7 @@ payout_winner     = entry_amount + reward_per_winner
 ```
 
 **Implementação atual (ERC-20 direto):**
+
 ```typescript
 // lib/actions/settlement.ts — settleDealProtocol()
 // 1. Calcula vencedores via Oráculo de IA
@@ -99,14 +102,17 @@ payout_winner     = entry_amount + reward_per_winner
 ## 5. Segurança e Integridade
 
 ### Provas Criptográficas
+
 - **Rule Hash**: SHA-256 das regras capturado no `createDeal`
 - **Proof Hash**: SHA-256 do relatório forense gerado pelo Oráculo de IA no `settle`
 - Qualquer pessoa pode verificar off-chain se os dados batem com o hash registrado no Mantle Explorer.
 
 ### Multi-Oracle (Off-Chain)
+
 O sistema requer consenso de dois oráculos antes de executar qualquer liquidação, garantindo que as assinaturas correspondam aos hashes auditados.
 
 ### Managed Wallets
+
 As chaves privadas EVM dos usuários são geradas no servidor, encriptadas com AES-256 e armazenadas de forma segura no Supabase. Nunca expostas ao browser.
 
 ---
@@ -114,7 +120,7 @@ As chaves privadas EVM dos usuários são geradas no servidor, encriptadas com A
 ## 6. Endereços de Referência (Mantle Testnet)
 
 | Recurso | Endereço |
-|:--------|:---------|
+| :-------- | :--------- |
 | ERC-20 USDC (Mantle Testnet) | Endereço do contrato implantado na rede de teste |
 | TrueDeal Solidity Contract (v2) | Endereço do contrato inteligente de Escrow implantado |
 | Oracle 1 / Fee Payer | Derivado de `APP_FEE_PAYER_KEY` |

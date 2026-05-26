@@ -7,7 +7,7 @@
 ## 1. Stack Tecnológica
 
 | Camada | Tecnologia | Versão |
-|:-------|:-----------|:-------|
+| :------- | :----------- | :------- |
 | Frontend | Next.js (App Router) | 15 |
 | Estilização | Vanilla CSS + Tailwind v4 + Shadcn/ui | — |
 | Auth & Database | Supabase (PostgreSQL + Auth) | — |
@@ -24,7 +24,7 @@
 
 Cada usuário possui uma **managed wallet** EVM gerada programaticamente no servidor:
 
-```
+```text
 ┌─────────────────────────────────────────────┐
 │                 Supabase DB                 │
 │  user_wallets                               │
@@ -55,7 +55,7 @@ Cada usuário possui uma **managed wallet** EVM gerada programaticamente no serv
 ## 3. Fluxos do Usuário
 
 | # | Rota | Objetivo |
-|:--|:-----|:---------|
+| :-- | :----- | :--------- |
 | 1 | `/` (Dashboard) | Visualizar deals, ver saldo, filtrar por tipo |
 | 2 | `/create` | Configurar regras de um novo deal |
 | 3 | `/deal/[id]` | Acompanhar deal ativo, ver prova on-chain |
@@ -68,7 +68,7 @@ Cada usuário possui uma **managed wallet** EVM gerada programaticamente no serv
 
 ## 4. Ciclo de Vida On-Chain
 
-```
+```text
 Usuário join deal
        │
        ▼
@@ -88,7 +88,7 @@ Oráculo de IA: verifica janelas de compliance
 
 ## 5. Motor Econômico (Slacker Tax)
 
-```
+```text
 slacker_pool     = (n_perdedores × entry_amount)
 platform_fee     = slacker_pool × 0.03          ← 3% protocol fee
 reward_per_winner = (slacker_pool − platform_fee) / n_vencedores
@@ -100,7 +100,7 @@ payout_winner     = entry_amount + reward_per_winner
 ## 6. Gamificação (Shakes)
 
 | Evento | Shakes |
-|:-------|:-------|
+| :------- | :------- |
 | Deal ativado (criador) | +500 |
 | Deal ativado (participante) | +200 |
 | Daily check-in | progressivo |
@@ -111,7 +111,7 @@ payout_winner     = entry_amount + reward_per_winner
 ## 7. Segurança e Infraestrutura
 
 | Aspecto | Implementação |
-|:--------|:--------------|
+| :-------- | :-------------- |
 | Private keys de usuário | AES-256 encrypted no Supabase |
 | Fee payer key | `APP_FEE_PAYER_KEY` (Hexadecimal private key da carteira EVM do protocolo) |
 | USDC Token (Mantle Testnet) | Endereço do contrato ERC-20 USDC na Mantle |

@@ -4,6 +4,7 @@ description: Orientador de EAP e Cérebro Estratégico do projeto TrueDeal. Cont
 ---
 
 # Skill: TrueDeal Brain 🧠
+
 **Versão:** 2.3.0 — **Mantle L2 EVM Architecture (v0.3.0-testnet)**
 
 Esta skill é o repositório central de inteligência para o desenvolvimento do **TrueDeal**. Ela deve ser usada por agentes de IA para garantir consistência arquitetural, proteção da Propriedade Intelectual e alinhamento ao estado atual de execução do projeto.
@@ -24,6 +25,7 @@ Ao operar neste projeto, utilize **SEMPRE** os nomes de fachada em qualquer docu
 ## ⚖️ Tese Jurídica: Performance Agreements
 
 O TrueDeal **NÃO** é uma plataforma de apostas (gambling). Ele é uma infraestrutura para **Acordos de Performance**.
+
 - A liquidação é baseada em **Performance Digital Verificável** (Skill-based).
 - O motor de resolução é o **DealGuard Engine** — um "Conselho de Sentença Digital".
 - A custódia é feita via **Sovereign Escrow** em contratos Solidity na rede **Mantle L2 (EVM)**.
@@ -33,6 +35,7 @@ O TrueDeal **NÃO** é uma plataforma de apostas (gambling). Ele é uma infraest
 ## 🏗️ Estrutura Analítica do Projeto (EAP) — Estado Atual
 
 ### 1. Camada Soberana (Blockchain) — 🔄 Migração para Mantle L2
+
 - **Arquitetura alvo:** Transferências ERC-20 e contratos de Escrow em **Solidity (EVM)** na rede **Mantle Network**.
 - **Wallet:** Managed wallets EVM geradas no servidor com private keys em formato **hexadecimal** (`0x...`).
 - **RPC URL:** `MANTLE_RPC_URL` apontando para `https://rpc.testnet.mantle.xyz` (testnet) ou endpoint Mainnet.
@@ -41,15 +44,18 @@ O TrueDeal **NÃO** é uma plataforma de apostas (gambling). Ele é uma infraest
 - **Histórico:** Arquitetura anterior utilizava SPL transfers diretos na Solana Devnet (v0.2.0, legado).
 
 ### 2. Camada de Vault (Backend/Segurança) — ✅ Implementada
+
 - Managed wallets EVM com private keys AES-256 encriptadas no Supabase — **nunca expostas ao browser**.
 - Server Actions integradas ao Supabase (sempre `createServiceClient()` para operações privilegiadas).
 - **Testnet Faucet:** Tokens de teste creditados automaticamente no cadastro de cada usuário.
 
 ### 3. Camada de Evidência (Integrações) — 🔄 Em Escalonamento
+
 - Oráculos de API: X e Strava (OAuth flows em refinamento).
 - **Audit Consensus:** Pipeline de 5 etapas em `lib/actions/settlement.ts` conectado ao contrato Solidity na Mantle.
 
 ### 4. Camada de Interface (Frontend) — ✅ Implementada (Lukas)
+
 - Design System Premium (Flat Design + Glassmorphism).
 - Web3: Wagmi + RainbowKit + Viem para integração com Mantle EVM.
 
