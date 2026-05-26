@@ -35,11 +35,13 @@ Cada usuário possui um **managed wallet** — um keypair Solana gerado e gerenc
          ▼
 ┌─────────────────────────────────────────────┐
 │           Fee Payer (Oracle 1)              │
-│  APP_FEE_PAYER_KEY (base64)                 │
+│  APP_FEE_PAYER_KEY (JSON array — 64 bytes)  │
 │  ├── Paga taxas SOL de todas as TXs         │
 │  ├── USDC_MINT_AUTHORITY_KEY → minta USDC   │
 │  └── Armazena USDC da treasury              │
 └─────────────────────────────────────────────┘
+⚠️  Formato obrigatório: JSON array [1,2,3,...] — NÃO base64.
+    Base64 corrompe o caractere '+' na CLI do Vercel.
 ```
 
 **Fluxo de depósito (Join Deal):**

@@ -20,8 +20,8 @@ This script is designed for the final demonstration of the TrueDeal platform, hi
 ## Part 3: Live Tracking & Proof (1:30 - 2:15)
 - **Visual**: Open an active Deal page. Show the **RULE_SUBRULES** panel and the strict-window warning banner.
 - **Action**: Point to the red alert: *"1 janela perdida = eliminação permanente."*
-- **Action**: Click on "Ver prova on-chain". **Highlight the redirection to Solscan showing the actual Program ID: `HdMnEf...7mp`.**
-- **Narrative**: *"Transparency is at our core. Every participant sees exactly what will be audited—and exactly what the consequences are. Notice the 'Sovereign Proof' link: this takes you directly to the Solana Devnet, where the TrueDeal program manages the escrow and the settlement proof. This isn't a simulation—it's high-fidelity, on-chain accountability."*
+- **Action**: Click on "Ver prova on-chain". **Highlight the redirection to Solscan showing a real SPL USDC token transfer — the join deposit transaction signature stored in `deal_participants.tx_hash`.**
+- **Narrative**: *"Transparency is at our core. Every participant sees exactly what will be audited—and exactly what the consequences are. Notice the 'Sovereign Proof' link: this takes you directly to the Solana Devnet, where you can verify the USDC deposit on-chain via SPL token transfer. The DealGuard Engine generates a SHA-256 proof hash from the audit results, creating a cryptographic record of the settlement. This isn't a simulation—it's real, on-chain accountability."*
 
 ## Part 4: The Wallet (2:15 - 2:45)
 - **Visual**: Go to the Wallet tab. Toggle BRL/USD/SOL.
