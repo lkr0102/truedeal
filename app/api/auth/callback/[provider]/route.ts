@@ -36,7 +36,8 @@ export async function GET(
     const state = searchParams.get("state")
     const storedState = req.cookies.get("oauth_state")?.value
     if (!state || state !== storedState) {
-      return NextResponse.redirect(`${baseUrl}/login?error=state_mismatch`)
+      const errDest = provider === "x" ? `${baseUrl}/profile?social_error=state_mismatch` : `${baseUrl}/login?error=state_mismatch`
+      return NextResponse.redirect(errDest)
     }
   }
 
@@ -61,7 +62,7 @@ export async function GET(
   if (provider === "x") {
     const codeVerifier = req.cookies.get("x_code_verifier")?.value
     if (!codeVerifier) {
-      return NextResponse.redirect(`${baseUrl}/login?error=no_verifier`)
+      return NextResponse.redirect(`${baseUrl}/profile?social_error=no_verifier`)
     }
 
     try {
@@ -81,7 +82,7 @@ export async function GET(
       })
 
       if (!tokenRes.ok) {
-        return NextResponse.redirect(`${baseUrl}/login?error=x_token_failed`)
+        return NextResponse.redirect(`${baseUrl}/profile?social_error=x_token_failed`)
       }
 
       const tokenData = await tokenRes.json()
@@ -110,7 +111,7 @@ export async function GET(
       }
     } catch (err) {
       console.error("OAuth Error:", err)
-      return NextResponse.redirect(`${baseUrl}/login?error=oauth_exception`)
+      return NextResponse.redirect(`${baseUrl}/profile?social_error=oauth_exception`)
     }
   }
 

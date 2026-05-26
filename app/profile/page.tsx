@@ -14,5 +14,5 @@ export default async function ProfilePage() {
     fetchDeals(),
   ])
 
-  return <ProfileClient profile={profile} deals={deals} userId={user?.id ?? null} />
+  return <ProfileClient profile={profile} deals={deals} userId={user?.id ?? null} userEmail={user?.email ?? null} />
 }

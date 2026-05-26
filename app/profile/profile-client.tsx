@@ -6,10 +6,10 @@ import {
   Home, Compass, Wallet, User, Plus, CheckCircle2,
   ChevronRight,
   Trophy, Zap, Shield, Bell, HelpCircle, LogOut,
-  Target, Clock, Info, X, Loader2, Camera,
+  Target, Clock, Info, X, Loader2, Camera, Pencil, Mail, Trash2,
 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-import { getMySocialConnections, saveMembershipEmail, updateProfile } from "@/lib/actions/profile"
+import { getMySocialConnections, saveMembershipEmail, updateProfile, removeSocialConnection } from "@/lib/actions/profile"
 import type { Profile, DealWithParticipants } from "@/lib/supabase/types"
 
 // ── Design tokens ─────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ function BottomNav({ active }: { active: string }) {
 
 // ── Social verification helpers ─────────────────────────────────────────────
 
-type SocialKey    = "x" | "strava" | "wellhub" | "totalpass"
+type SocialKey    = "x" | "strava" | "youtube" | "totalpass"
 type ConnectMode  = "oauth" | "email"
 type ConnectState = "idle" | "connected" | "pending"
 
@@ -91,13 +91,14 @@ const PLATFORMS: Platform[] = [
     oauthPath:    "/api/auth/strava",
   },
   {
-    key:          "wellhub",
-    label:        "Wellhub",
-    dealCategory: "Academia & Fitness",
-    whyNeeded:    "Necessário para deals de frequência em academias parceiras Wellhub (ex-Gympass). A verificação de check-ins é feita via parceria com a plataforma.",
-    color:        "#00A651",
+    key:          "youtube",
+    label:        "YouTube",
+    dealCategory: "Social Media",
+    whyNeeded:    "Necessário para deals de crescimento de inscritos e visualizações no YouTube. O app lê seus dados via YouTube Data API para verificar automaticamente os resultados.",
+    color:        "#FF0000",
     textColor:    "#ffffff",
-    mode:         "email",
+    mode:         "oauth",
+    oauthPath:    "/api/auth/youtube",
   },
   {
     key:          "totalpass",
@@ -119,7 +120,7 @@ interface SocialConnection {
 }
 
 function PlatformIcon({ p }: { p: Platform }) {
-  const letters: Record<SocialKey, string> = { x: "𝕏", strava: "S", wellhub: "W", totalpass: "TP" }
+  const letters: Record<SocialKey, string> = { x: "𝕏", strava: "S", youtube: "▶", totalpass: "TP" }
   return (
     <div
       className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 font-black text-sm"
@@ -146,7 +147,7 @@ function MembershipModal({
   async function handleSave() {
     if (!email.trim() || !email.includes("@")) { setError("E-mail inválido"); return }
     setSaving(true)
-    const result = await saveMembershipEmail(platform.key as "wellhub" | "totalpass", email.trim())
+    const result = await saveMembershipEmail(platform.key as "totalpass", email.trim())
     if (result.error) { setError(result.error); setSaving(false); return }
     onSaved()
   }
@@ -227,25 +228,37 @@ function SocialCard({
   username,
   onOAuth,
   onEmailSaved,
+  onRemoved,
 }: {
   platform:     Platform
   state:        ConnectState
   username?:    string | null
   onOAuth:      () => void
   onEmailSaved: () => void
+  onRemoved:    () => void
 }) {
-  const [showTip, setShowTip] = useState(false)
-  const [showModal, setShowModal] = useState(false)
+  const [showTip,    setShowTip]    = useState(false)
+  const [showModal,  setShowModal]  = useState(false)
+  const [removing,   setRemoving]   = useState(false)
+  const [removeErr,  setRemoveErr]  = useState<string | null>(null)
 
   function handleConnect() {
-    if (platform.mode === "oauth")  { onOAuth(); return }
-    if (platform.mode === "email")  { setShowModal(true) }
+    if (platform.mode === "oauth") { onOAuth(); return }
+    if (platform.mode === "email") { setShowModal(true) }
+  }
+
+  async function handleRemove() {
+    setRemoving(true)
+    setRemoveErr(null)
+    const result = await removeSocialConnection(platform.key)
+    setRemoving(false)
+    if (result.error) { setRemoveErr(result.error); return }
+    onRemoved()
   }
 
   return (
     <>
       <div
-        className="rounded-2xl p-4 transition-all duration-200"
         style={{
           background: state === "connected" ? C.activeLight : state === "pending" ? `${platform.color}0D` : C.surface,
           border: state === "connected" ? `1px solid ${C.activeBorder}` : state === "pending" ? `1px solid ${platform.color}30` : `1px solid ${C.border}`,
@@ -275,8 +288,19 @@ function SocialCard({
 
           {state === "connected" ? (
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <CheckCircle2 style={{ width: 16, height: 16, color: C.brand }} />
-              <span className="text-xs font-bold" style={{ color: C.brand }}>Conectado</span>
+              <button
+                onClick={handleRemove}
+                disabled={removing}
+                style={{ fontSize: 11, fontWeight: 600, color: "#DC2626", padding: "4px 8px", borderRadius: 8, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.15)", cursor: "pointer" }}
+              >
+                {removing ? <Loader2 className="w-3 h-3 animate-spin" /> : "Remover"}
+              </button>
+              <button
+                onClick={handleConnect}
+                style={{ fontSize: 11, fontWeight: 600, color: C.brand, padding: "4px 8px", borderRadius: 8, background: C.activeLight, border: `1px solid ${C.activeBorder}`, cursor: "pointer" }}
+              >
+                Trocar
+              </button>
             </div>
           ) : state === "pending" ? (
             <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -293,6 +317,12 @@ function SocialCard({
             </button>
           )}
         </div>
+
+        {removeErr && (
+          <div className="mt-2 rounded-xl px-3 py-2 text-xs text-red-600" style={{ background: "rgba(220,38,38,0.06)", border: "1px solid rgba(220,38,38,0.15)" }}>
+            {removeErr}
+          </div>
+        )}
 
         {showTip && (
           <div
@@ -332,9 +362,10 @@ function getInitials(displayName: string): string {
 // ── Props ──────────────────────────────────────────────────────────────────────
 
 interface ProfileClientProps {
-  profile: Profile | null
-  deals: DealWithParticipants[]
-  userId: string | null
+  profile:   Profile | null
+  deals:     DealWithParticipants[]
+  userId:    string | null
+  userEmail: string | null
 }
 
 // ── Avatar ─────────────────────────────────────────────────────────────────────
@@ -399,10 +430,10 @@ function DashboardTab({ user }: DashboardTabProps) {
   }
 
   const [states, setStates] = useState<Record<SocialKey, ConnectState>>({
-    x: "idle", strava: "idle", wellhub: "idle", totalpass: "idle",
+    x: "idle", strava: "idle", youtube: "idle", totalpass: "idle",
   })
   const [usernames, setUsernames] = useState<Record<SocialKey, string | null>>({
-    x: null, strava: null, wellhub: null, totalpass: null,
+    x: null, strava: null, youtube: null, totalpass: null,
   })
 
   useEffect(() => {
@@ -438,6 +469,7 @@ function DashboardTab({ user }: DashboardTabProps) {
               username={usernames[platform.key]}
               onOAuth={() => { if (platform.oauthPath) window.location.href = platform.oauthPath }}
               onEmailSaved={() => setStates(prev => ({ ...prev, [platform.key]: "pending" }))}
+              onRemoved={() => setStates(prev => ({ ...prev, [platform.key]: "idle" }))}
             />
           ))}
         </div>
@@ -546,7 +578,7 @@ function ConfigTab({ onSignOut }: { onSignOut: () => void }) {
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 
-export default function ProfileClient({ profile, deals, userId }: ProfileClientProps) {
+export default function ProfileClient({ profile, deals, userId, userEmail }: ProfileClientProps) {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const socialError  = searchParams.get("social_error")
@@ -554,6 +586,30 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
 
   const fileRef     = useRef<HTMLInputElement>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
+
+  // ── Username / display name edit ──
+  const [editingName,  setEditingName]  = useState(false)
+  const [editDisplay,  setEditDisplay]  = useState(profile?.display_name ?? "")
+  const [editPrefix,   setEditPrefix]   = useState(() => {
+    const m = profile?.username?.match(/^(.+?)(\d{4})$/)
+    return m ? m[1] : (profile?.username ?? "")
+  })
+  const [savingName,   setSavingName]   = useState(false)
+  const [nameErr,      setNameErr]      = useState<string | null>(null)
+  const usernameSuffix = profile?.username?.match(/^.+?(\d{4})$/)?.[1] ?? null
+
+  async function handleSaveName() {
+    if (!editDisplay.trim()) { setNameErr("Nome não pode estar vazio"); return }
+    if (!editPrefix.trim())  { setNameErr("Username não pode estar vazio"); return }
+    setSavingName(true)
+    setNameErr(null)
+    const newUsername = usernameSuffix ? `${editPrefix.trim()}${usernameSuffix}` : editPrefix.trim()
+    const result = await updateProfile({ display_name: editDisplay.trim(), username: newUsername })
+    setSavingName(false)
+    if (result.error) { setNameErr(result.error); return }
+    setEditingName(false)
+    router.refresh()
+  }
 
   async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -668,17 +724,56 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
       <div style={{ padding: "48px 20px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
         <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handlePhotoChange} />
         <Avatar size={80} initials={initials} avatarUrl={avatarUrl} onClick={() => fileRef.current?.click()} />
-        <div style={{ textAlign: "center" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>{USER.name}</h1>
-            {USER.verified && <CheckCircle2 style={{ width: 18, height: 18, color: C.brand }} />}
+
+        {editingName ? (
+          <div style={{ width: "100%", maxWidth: 320, background: C.surface, borderRadius: 18, padding: 16, border: `1px solid ${C.border}` }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: C.mid, marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.06em", ...MONO }}>Editar perfil</p>
+            <label style={{ fontSize: 11, color: C.dim, display: "block", marginBottom: 4 }}>Nome de exibição</label>
+            <input
+              value={editDisplay}
+              onChange={e => { setEditDisplay(e.target.value); setNameErr(null) }}
+              placeholder="Seu nome"
+              style={{ width: "100%", padding: "9px 12px", borderRadius: 10, border: `1px solid ${C.border}`, fontSize: 13, color: C.text, background: C.surface2, outline: "none", boxSizing: "border-box", marginBottom: 10 }}
+            />
+            <label style={{ fontSize: 11, color: C.dim, display: "block", marginBottom: 4 }}>Username</label>
+            <div style={{ display: "flex", alignItems: "center", background: C.surface2, border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", gap: 4, marginBottom: 12 }}>
+              <input
+                value={editPrefix}
+                onChange={e => { setEditPrefix(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "")); setNameErr(null) }}
+                placeholder="username"
+                style={{ flex: 1, fontSize: 13, color: C.text, background: "transparent", border: "none", outline: "none" }}
+              />
+              {usernameSuffix && <span style={{ fontSize: 13, color: C.dim, flexShrink: 0 }}>#{usernameSuffix}</span>}
+            </div>
+            {nameErr && <p style={{ fontSize: 11, color: "#DC2626", marginBottom: 8 }}>{nameErr}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={() => setEditingName(false)} style={{ flex: 1, padding: "9px 0", borderRadius: 10, fontSize: 12, fontWeight: 600, color: C.mid, background: C.surface2, border: `1px solid ${C.border}`, cursor: "pointer" }}>Cancelar</button>
+              <button onClick={handleSaveName} disabled={savingName} style={{ flex: 2, padding: "9px 0", borderRadius: 10, fontSize: 12, fontWeight: 700, color: "#fff", background: C.brand, border: "none", cursor: "pointer", opacity: savingName ? 0.7 : 1 }}>
+                {savingName ? <Loader2 className="w-4 h-4 animate-spin mx-auto" /> : "Salvar"}
+              </button>
+            </div>
           </div>
-          {profile?.username && (
-            <p style={{ fontSize: 11, color: C.dim, marginTop: 4, fontStyle: "italic", letterSpacing: "0.01em" }}>
-              {formatHandle(profile.username)}
-            </p>
-          )}
-        </div>
+        ) : (
+          <div style={{ textAlign: "center" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <h1 style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", color: C.text }}>{USER.name}</h1>
+              {USER.verified && <CheckCircle2 style={{ width: 18, height: 18, color: C.brand }} />}
+              <button onClick={() => { setEditDisplay(profile?.display_name ?? ""); setEditPrefix(() => { const m = profile?.username?.match(/^(.+?)(\d{4})$/); return m ? m[1] : (profile?.username ?? "") }); setEditingName(true) }}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 2, color: C.dim, display: "flex", alignItems: "center" }}>
+                <Pencil style={{ width: 14, height: 14 }} />
+              </button>
+            </div>
+            {profile?.username && (
+              <p style={{ fontSize: 11, color: C.dim, marginTop: 4, fontStyle: "italic", letterSpacing: "0.01em" }}>
+                {formatHandle(profile.username)}
+              </p>
+            )}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, marginTop: 5 }}>
+              <Mail style={{ width: 11, height: 11, color: C.dim }} />
+              <span style={{ fontSize: 11, color: C.dim }}>{userEmail ?? "—"}</span>
+            </div>
+          </div>
+        )}
 
         {/* Stats card */}
         <div style={{ width: "100%", borderRadius: 20, padding: 20, background: C.surface, border: `1px solid ${C.border}` }}>

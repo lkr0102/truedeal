@@ -38,7 +38,7 @@ export async function generateMetadata(
   }
 }
 
-const GYM_CHANNELS = ["wellhub", "totalpass"]
+const GYM_CHANNELS = ["totalpass"]
 
 export default async function DealDetailPage({
   params,

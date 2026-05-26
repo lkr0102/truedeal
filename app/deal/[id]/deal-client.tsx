@@ -39,7 +39,7 @@ const C = {
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type VerifType  = "x" | "strava" | "gympass" | "wellhub" | "totalpass"
+type VerifType  = "x" | "strava" | "gympass" | "youtube" | "totalpass"
 type PrizeType  = "proporcional" | "primeiro" | "ranking"
 type DealStatus = "ativo" | "pendente" | "finalizado"
 
@@ -189,7 +189,7 @@ function mapDeal(d: DealWithParticipants, userId: string | null, lang: "pt" | "e
   const prizeMap: Record<string, PrizeType> = { winner: "primeiro", top3: "ranking", proportional: "proporcional" }
   const prizeType = prizeMap[d.distribution] ?? "primeiro"
 
-  const knownVerifs = ["x", "strava", "gympass", "wellhub", "totalpass"]
+  const knownVerifs = ["x", "strava", "gympass", "youtube", "totalpass"]
   const verifications = (d.verification_channels ?? []).filter(c => knownVerifs.includes(c)) as VerifType[]
 
   const participants_list: Participant[] = d.participants.map((p, i) => {
@@ -273,14 +273,14 @@ const VERIF_META: Record<VerifType, { bg: string; label: string; text?: string; 
   x:         { bg: "#000000", label: "X",         text: "𝕏"  },
   strava:    { bg: "#FC4C02", label: "Strava",     Icon: Activity },
   gympass:   { bg: "#00A651", label: "Gympass",    text: "GP" },
-  wellhub:   { bg: "#00A651", label: "Wellhub",    text: "W"  },
+  youtube:   { bg: "#FF0000", label: "YouTube",    text: "▶"  },
   totalpass: { bg: "#0047AB", label: "TotalPass",  text: "T"  },
 }
 
 const CHANNEL_LABELS: Record<string, string> = {
   x: "X", instagram: "Instagram", tiktok: "TikTok", linkedin: "LinkedIn",
   discord: "Discord", youtube: "YouTube", strava: "Strava",
-  wellhub: "Wellhub", totalpass: "TotalPass", gympass: "Gympass",
+  totalpass: "TotalPass", gympass: "Gympass",
 }
 
 const getRuleLabels = (lang: "pt" | "en"): Record<string, string> => ({
@@ -342,7 +342,7 @@ const getVerificationSubrules = (lang: "pt" | "en"): Record<string, { title: str
     items: [
       { text: lang === "pt" ? "Vá à academia e registre seu check-in no botão dentro do deal no app" : "Go to the gym and tap the check-in button inside the deal in the app", valid: true },
       { text: lang === "pt" ? "Máximo 1 check-in por dia — o sistema bloqueia duplicatas automaticamente" : "Max 1 check-in per day — duplicates are blocked automatically", valid: true },
-      { text: lang === "pt" ? "Vinculação com conta Wellhub ou TotalPass obrigatória antes de participar" : "Wellhub or TotalPass account must be linked before joining", valid: true },
+      { text: lang === "pt" ? "Vinculação com conta TotalPass obrigatória antes de participar" : "TotalPass account must be linked before joining", valid: true },
       { text: lang === "pt" ? "Prazo: registre antes de meia-noite (horário de Brasília)" : "Deadline: register before midnight (Brasília time)", valid: true },
       { text: lang === "pt" ? "Check-ins fora do período do deal não são contabilizados" : "Check-ins outside the deal period do not count", valid: false },
       { text: lang === "pt" ? "Check-ins de dias anteriores à data de início não são válidos" : "Check-ins before the deal start date are not valid", valid: false },
@@ -572,7 +572,7 @@ export default function DealClient({
   const [checkinFeedback,  setCheckinFeedback]  = useState<string | null>(null)
 
   // ── Gym check-in helpers ────────────────────────────────────────────────────
-  const GYM_CHANNELS = ["wellhub", "totalpass"]
+  const GYM_CHANNELS = ["totalpass"]
   const isGymDeal = (dealData.verification_channels ?? []).some(c => GYM_CHANNELS.includes(c))
 
   async function handleCheckin() {
@@ -699,7 +699,7 @@ export default function DealClient({
 
   // ── Social connection check ─────────────────────────────────────────────────
   const requiredChannel = deal.verificationChannels?.[0] ?? null
-  const emailOnlyPlatforms = new Set(["wellhub", "totalpass"])
+  const emailOnlyPlatforms = new Set(["totalpass"])
   const hasRequiredConnection = requiredChannel
     ? !!userSocialConnections?.some(c => {
         if (c.platform !== requiredChannel) return false
@@ -1683,7 +1683,7 @@ export default function DealClient({
             <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
               {showSocialPopup.map(ch => (
                 <div key={ch} style={{ display: "flex", alignItems: "center", gap: 12, padding: 12, borderRadius: 12, background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, color: "#fff", background: ch === "x" ? "#000" : ch === "strava" ? "#FC4C02" : ch === "wellhub" ? "#D00020" : ch === "totalpass" ? "#0055BB" : C.dim }}>
+                  <div style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 900, color: "#fff", background: ch === "x" ? "#000" : ch === "strava" ? "#FC4C02" : ch === "youtube" ? "#FF0000" : ch === "totalpass" ? "#0055BB" : C.dim }}>
                     {ch === "x" ? "𝕏" : ch[0].toUpperCase()}
                   </div>
                   <div>

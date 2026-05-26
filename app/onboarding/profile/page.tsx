@@ -40,7 +40,7 @@ function generateHandle(name: string): string {
 
 // ── Platform definitions ──────────────────────────────────────────────────────
 
-type SocialKey    = "x" | "strava" | "wellhub" | "totalpass"
+type SocialKey    = "x" | "strava" | "youtube" | "totalpass"
 type ConnectMode  = "oauth" | "email"
 type ConnectState = "idle" | "connected" | "pending"
 
@@ -67,9 +67,9 @@ const PLATFORMS: Platform[] = [
     color: "#FC4C02", textColor: "#ffffff", mode: "oauth", oauthPath: "/api/auth/strava",
   },
   {
-    key: "wellhub", label: "Wellhub", dealCategory: "Academia & Fitness",
-    whyNeeded: "Necessário para deals de frequência em academias parceiras Wellhub (ex-Gympass). A verificação de check-ins é feita via parceria com a plataforma.",
-    color: "#00A651", textColor: "#ffffff", mode: "email",
+    key: "youtube", label: "YouTube", dealCategory: "Social Media",
+    whyNeeded: "Necessário para deals de crescimento de inscritos e visualizações no YouTube. O app lê seus dados via YouTube Data API para verificar automaticamente os resultados.",
+    color: "#FF0000", textColor: "#ffffff", mode: "oauth", oauthPath: "/api/auth/youtube",
   },
   {
     key: "totalpass", label: "TotalPass", dealCategory: "Academia & Fitness",
@@ -81,7 +81,7 @@ const PLATFORMS: Platform[] = [
 // ── Platform icon ─────────────────────────────────────────────────────────────
 
 function PlatformIcon({ p }: { p: Platform }) {
-  const letters: Record<SocialKey, string> = { x: "𝕏", strava: "S", wellhub: "W", totalpass: "TP" }
+  const letters: Record<SocialKey, string> = { x: "𝕏", strava: "S", youtube: "▶", totalpass: "TP" }
   return (
     <div style={{ width: 44, height: 44, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontWeight: 900, fontSize: 14, background: p.color, color: p.textColor }}>
       {letters[p.key]}
@@ -99,7 +99,7 @@ function MembershipModal({ platform, onClose, onSaved }: { platform: Platform; o
   async function handleSave() {
     if (!email.trim() || !email.includes("@")) { setError("E-mail inválido"); return }
     setSaving(true)
-    const result = await saveMembershipEmail(platform.key as "wellhub" | "totalpass", email.trim())
+    const result = await saveMembershipEmail(platform.key as "totalpass", email.trim())
     if (result.error) { setError(result.error); setSaving(false); return }
     onSaved()
   }
@@ -245,10 +245,10 @@ function ProfileSetupContent() {
   const [socialError,  setSocialError]  = useState<string | null>(null)
 
   const [states, setStates] = useState<Record<SocialKey, ConnectState>>({
-    x: "idle", strava: "idle", wellhub: "idle", totalpass: "idle",
+    x: "idle", strava: "idle", youtube: "idle", totalpass: "idle",
   })
   const [usernames, setUsernames] = useState<Record<SocialKey, string | null>>({
-    x: null, strava: null, wellhub: null, totalpass: null,
+    x: null, strava: null, youtube: null, totalpass: null,
   })
 
   useEffect(() => {

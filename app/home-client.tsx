@@ -38,7 +38,7 @@ const MONO: React.CSSProperties = { fontFamily: "var(--font-dm-mono, 'DM Mono', 
 
 // ── UI Types ──────────────────────────────────────────────────────────────────
 
-type VerifType    = "x" | "strava" | "gympass" | "wellhub" | "totalpass"
+type VerifType    = "x" | "strava" | "gympass" | "youtube" | "totalpass"
 type PrizeType    = "proporcional" | "primeiro" | "ranking"
 type DealTypeUI   = "oficial" | "privado" | "público"
 type DealStatusUI = "ativo" | "pendente" | "finalizado"
@@ -89,7 +89,7 @@ function toDealUI(d: DealWithParticipants, userId: string | null): Deal {
   const uiType: DealTypeUI     = d.type === "publico" ? "público" : (d.type as DealTypeUI)
   const prizeType: PrizeType   = prizeMap[d.distribution] ?? "primeiro"
   const verifs: VerifType[]    = d.verification_channels.filter(
-    (c): c is VerifType => ["x","strava","gympass","wellhub","totalpass"].includes(c),
+    (c): c is VerifType => ["x","strava","gympass","youtube","totalpass"].includes(c),
   )
   const myP = userId ? d.participants.find((p) => p.user_id === userId) : null
 
@@ -156,7 +156,7 @@ const VERIF: Record<VerifType, VerifMeta> = {
   x:         { bg: "#000",    text: "𝕏" },
   strava:    { bg: "#FC4C02", Icon: Activity },
   gympass:   { bg: "#00A651", text: "GP" },
-  wellhub:   { bg: "#00A878", text: "W" },
+  youtube:   { bg: "#FF0000", text: "▶" },
   totalpass: { bg: "#FF6B35", text: "T" },
 }
 
@@ -779,7 +779,7 @@ type PriceFilter = "lt50" | "50to200" | "gt200" | null
 const CHANNEL_OPTS: { key: VerifType; label: string; bg: string }[] = [
   { key: "x",         label: "𝕏 (Twitter)", bg: "#000"    },
   { key: "strava",    label: "Strava",       bg: "#FC4C02" },
-  { key: "wellhub",   label: "Wellhub",      bg: "#00A878" },
+  { key: "youtube",   label: "YouTube",      bg: "#FF0000" },
   { key: "totalpass", label: "TotalPass",    bg: "#FF6B35" },
 ]
 const PRICE_OPTS: { key: PriceFilter; labelPt: string; labelEn: string; min?: number; max?: number }[] = [

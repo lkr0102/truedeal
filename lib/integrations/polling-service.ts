@@ -136,7 +136,7 @@ export async function auditDeal(dealId: string) {
         rawData = await fetchXUserPosts(xToken, conn.external_id, { startTime, endTime })
         isSuccess = validateXRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
 
-      } else if (channel === "wellhub" || channel === "totalpass") {
+      } else if (channel === "totalpass") {
         const { data: checkins, error: checkinErr } = await (supabase.from("deal_checkins") as any)
           .select("activity_at")
           .eq("deal_id",    dealId)

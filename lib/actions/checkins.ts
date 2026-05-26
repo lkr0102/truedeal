@@ -3,7 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
-const GYM_CHANNELS = ["wellhub", "totalpass"] as const
+const GYM_CHANNELS = ["totalpass"] as const
 
 export async function recordDealCheckin(
   dealId: string,
@@ -43,7 +43,7 @@ export async function recordDealCheckin(
     .single()
 
   if (!conn || !conn.member_email)
-    return { error: "No gym account linked. Connect Wellhub or TotalPass in your profile first." }
+    return { error: "No gym account linked. Connect TotalPass in your profile first." }
 
   // Insert — UNIQUE (deal_id, user_id, date) prevents double check-in on same day
   const today = new Date().toISOString().split("T")[0]

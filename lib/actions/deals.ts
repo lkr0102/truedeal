@@ -17,7 +17,6 @@ const CHANNEL_LABELS: Record<string, string> = {
   discord: "Discord",
   youtube: "YouTube",
   strava: "Strava",
-  wellhub: "Wellhub",
   totalpass: "TotalPass",
 }
 
@@ -153,7 +152,7 @@ export async function createDeal(input: CreateDealInput) {
 
   // Guard: creator must have the required social channels connected
   if (input.verification_channels.length > 0) {
-    const emailOnlyPlatforms = new Set(["wellhub", "totalpass"])
+    const emailOnlyPlatforms = new Set(["totalpass"])
     const { data: conns } = await (supabase.from("social_connections") as any)
       .select("platform, status, username, member_email, external_id")
       .eq("user_id", user.id)

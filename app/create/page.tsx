@@ -42,14 +42,13 @@ const CHANNELS: Record<string, { id: string; label: string; desc: string; descEn
   ],
   fitness: [
     { id: "strava",    label: "Strava",    desc: "Km corridos, horas de exercício e pace", descEn: "Km run, workout hours and pace",   available: true,  color: "#FC4C02" },
-    { id: "wellhub",   label: "Wellhub",   desc: "Check-ins em academias parceiras",       descEn: "Check-ins at partner gyms",        available: true,  color: "#00A878" },
     { id: "totalpass", label: "TotalPass", desc: "Check-ins em academias parceiras",       descEn: "Check-ins at partner gyms",        available: true,  color: "#FF6B35" },
   ],
 }
 
 const CHANNEL_ICONS: Record<string, string> = {
   x: "𝕏", instagram: "IG", tiktok: "TK", linkedin: "in",
-  discord: "D", youtube: "▶", strava: "S", wellhub: "W", totalpass: "T",
+  discord: "D", youtube: "▶", strava: "S", totalpass: "T",
 }
 
 const RULES: Record<string, { id: string; label: string; labelEn: string; desc: string; descEn: string; available: boolean }[]> = {
@@ -64,10 +63,6 @@ const RULES: Record<string, { id: string; label: string; labelEn: string; desc: 
     { id: "km_run",        label: "Kms corridos",       labelEn: "Km run",        desc: "Correr pelo menos N km durante a janela (apenas atividades Run)",  descEn: "Run at least N km during the window (Run activities only)",   available: true  },
     { id: "pace",          label: "Pace médio",          labelEn: "Average pace",  desc: "Manter pace médio ≤ ao configurado pelo criador por janela",      descEn: "Keep average pace ≤ configured by creator per window",        available: false },
     { id: "workout_hours", label: "Horas de exercício", labelEn: "Workout hours", desc: "Registrar N horas de atividade no Strava por janela",             descEn: "Log N hours of activity in Strava per window",               available: false },
-  ],
-  wellhub: [
-    { id: "checkin",          label: "Check-in diário",      labelEn: "Daily check-in",   desc: "Fazer N check-ins em academia parceira Wellhub por janela",  descEn: "Do N check-ins at a Wellhub partner gym per window",   available: true  },
-    { id: "different_venues", label: "Ambientes diferentes", labelEn: "Different venues", desc: "Visitar N academias distintas via Wellhub por janela",       descEn: "Visit N different Wellhub gyms per window",           available: false },
   ],
   totalpass: [
     { id: "checkin",          label: "Check-in diário",      labelEn: "Daily check-in",   desc: "Fazer N check-ins em academia parceira TotalPass por janela", descEn: "Do N check-ins at a TotalPass partner gym per window",  available: true  },
@@ -86,7 +81,7 @@ const AMOUNT_PRESETS = [25, 50, 100, 200, 500]
 
 const CHANNEL_LABELS: Record<string, string> = {
   x: "X (Twitter)", instagram: "Instagram", tiktok: "TikTok", linkedin: "LinkedIn",
-  discord: "Discord", youtube: "YouTube", strava: "Strava", wellhub: "Wellhub", totalpass: "TotalPass",
+  discord: "Discord", youtube: "YouTube", strava: "Strava", totalpass: "TotalPass",
 }
 
 const DISTRIBUTION_TYPES = [
@@ -222,30 +217,30 @@ function getRuleSubrules(lang: Language): Record<string, { title: string; items:
     checkin: {
       title: lang === "pt" ? "Sub-regras · Check-in em Academia" : "Sub-rules · Gym Check-in",
       items: lang === "pt" ? [
-        "Check-in presencial em academia parceira Wellhub ou TotalPass",
+        "Check-in presencial em academia parceira TotalPass",
         "Verificação automática via API — sem ação manual necessária",
-        "Apenas academias credenciadas na rede parceira são aceitas",
+        "Apenas academias credenciadas na rede TotalPass são aceitas",
         "Prazo: até 23h59 (horário de Brasília) de cada janela",
         "Máximo 1 check-in válido por dia — múltiplos não acumulam",
       ] : [
-        "In-person check-in at a Wellhub or TotalPass partner gym",
+        "In-person check-in at a TotalPass partner gym",
         "Automatic verification via API — no manual action required",
-        "Only credentialed partner network gyms are accepted",
+        "Only credentialed TotalPass partner network gyms are accepted",
         "Deadline: by 11:59 PM (Brasília time) of each window",
         "Max 1 valid check-in per day — multiple at same location don't stack",
       ],
-      hint: lang === "pt" ? "📍 Basta fazer check-in pelo Wellhub ou TotalPass — sincronizamos automaticamente" : "📍 Just check in via Wellhub or TotalPass — we sync automatically",
+      hint: lang === "pt" ? "📍 Basta fazer check-in pelo TotalPass — sincronizamos automaticamente" : "📍 Just check in via TotalPass — we sync automatically",
     },
     different_venues: {
       title: lang === "pt" ? "Regras — Ambientes diferentes" : "Rules — Different venues",
       items: lang === "pt" ? [
         "Número de academias ou espaços distintos visitados na janela",
         "Mesmo local múltiplas vezes = 1 ambiente único",
-        "Apenas locais credenciados na rede Wellhub ou TotalPass",
+        "Apenas locais credenciados na rede TotalPass",
       ] : [
         "Number of distinct gyms or venues visited within the window",
         "Visiting the same location multiple times counts as 1 venue",
-        "Only credentialed Wellhub or TotalPass network locations",
+        "Only credentialed TotalPass network locations",
       ],
       hint: lang === "pt" ? "🏋️ Varie as academias para acumular ambientes diferentes" : "🏋️ Switch gyms to stack different venues",
     },
@@ -1404,8 +1399,8 @@ export default function CreateDealPage() {
               {missingSocial.map(ch => (
                 <div key={ch} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: "rgba(0,0,0,0.04)", border: "1px solid rgba(0,0,0,0.07)" }}>
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-black text-white"
-                    style={{ background: ch === "x" ? "#000" : ch === "strava" ? "#FC4C02" : ch === "wellhub" ? "#00A651" : ch === "totalpass" ? "#0047AB" : "#6B7280" }}>
-                    {ch === "x" ? "𝕏" : ch === "strava" ? "S" : ch === "wellhub" ? "W" : ch === "totalpass" ? "TP" : ch[0].toUpperCase()}
+                    style={{ background: ch === "x" ? "#000" : ch === "strava" ? "#FC4C02" : ch === "youtube" ? "#FF0000" : ch === "totalpass" ? "#0047AB" : "#6B7280" }}>
+                    {ch === "x" ? "𝕏" : ch === "strava" ? "S" : ch === "youtube" ? "▶" : ch === "totalpass" ? "TP" : ch[0].toUpperCase()}
                   </div>
                   <div>
                     <p className="text-sm font-semibold text-gray-800">{CHANNEL_LABELS[ch] ?? ch}</p>

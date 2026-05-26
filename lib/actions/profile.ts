@@ -198,7 +198,7 @@ export async function getMySocialConnections() {
   return { connections: (data ?? []) as { platform: string; status: string; username: string | null; member_email: string | null; external_id: string | null }[] }
 }
 
-export async function saveMembershipEmail(platform: "wellhub" | "totalpass", memberEmail: string) {
+export async function saveMembershipEmail(platform: "totalpass", memberEmail: string) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: "Não autenticado" }
@@ -210,6 +210,40 @@ export async function saveMembershipEmail(platform: "wellhub" | "totalpass", mem
 
   if (error) return { error: (error as any).message }
   revalidatePath("/onboarding/profile")
+  return { success: true }
+}
+
+export async function removeSocialConnection(platform: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: "Não autenticado" }
+
+  // Check if user has active deals using this channel
+  const { data: participants } = await (supabase.from("deal_participants") as any)
+    .select("deal_id")
+    .eq("user_id", user.id)
+    .eq("status", "active")
+
+  if (participants?.length > 0) {
+    const dealIds = (participants as any[]).map((p: any) => p.deal_id)
+    const { data: activeDeals } = await (supabase.from("deals") as any)
+      .select("id")
+      .in("id", dealIds)
+      .eq("status", "ativo")
+      .contains("verification_channels", [platform])
+
+    if (activeDeals?.length > 0) {
+      return { error: "Você tem um deal ativo usando esta plataforma. Finalize o deal antes de desvincular." }
+    }
+  }
+
+  const { error } = await (supabase.from("social_connections") as any)
+    .delete()
+    .eq("user_id", user.id)
+    .eq("platform", platform)
+
+  if (error) return { error: (error as any).message }
+  revalidatePath("/profile")
   return { success: true }
 }
 
