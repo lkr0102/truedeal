@@ -907,7 +907,7 @@ export default function HomeClient({ initialDeals, profile, userId, usdcBalance,
   }, [])
 
   return (
-    <div style={{ height: "100dvh", background: C.bg, display: "flex", flexDirection: "column", overflowY: "auto", paddingBottom: 90 }}>
+    <div style={{ minHeight: "100dvh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
 
       <NotificationPopover isOpen={showNotif}   onClose={() => setShowNotif(false)} />
       <ProfilePopover isOpen={showProfile} onClose={() => setShowProfile(false)} profile={profile} userId={userId} />

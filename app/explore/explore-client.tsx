@@ -536,7 +536,7 @@ export default function ExploreClient({
   ]
 
   return (
-    <div style={{ height: "100dvh", background: C.bg, display: "flex", flexDirection: "column", overflowY: "auto", paddingBottom: 90 }}>
+    <div style={{ minHeight: "100dvh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
       {/* Top bar */}
       <div style={{ position: "sticky", top: 0, zIndex: 30, background: C.bg, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px 8px" }}>
         <div>

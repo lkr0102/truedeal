@@ -648,7 +648,7 @@ export default function ProfileClient({ profile, deals, userId }: ProfileClientP
   }
 
   return (
-    <div style={{ height: "100dvh", background: C.bg, display: "flex", flexDirection: "column", overflowY: "auto", paddingBottom: 90 }}>
+    <div style={{ minHeight: "100dvh", background: C.bg, display: "flex", flexDirection: "column", paddingBottom: 90 }}>
 
       {socialError && (
         <div style={{ position: "fixed", top: 16, left: 16, right: 16, zIndex: 50, borderRadius: 16, padding: "12px 16px", fontSize: 13, fontWeight: 500, color: "#fff", display: "flex", alignItems: "flex-start", gap: 8, background: "rgba(220,38,38,0.95)" }}>
