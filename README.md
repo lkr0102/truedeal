@@ -14,7 +14,7 @@
 
 **TrueDeal is a goal-staking protocol that gamifies personal achievement by adding real financial consequences to the commitments people already make — but never keep.**
 
-Users set a measurable rule, stake USDC alongside friends, and let TrueDeal handle everything else. Verification runs automatically through native API integrations — Strava, X (Twitter), and fitness networks like Wellhub and TotalPass. When the deadline hits, **DealGuard** — our proprietary dual-oracle consensus engine backed by Sentinel AI — validates every result before triggering instant settlement on Solana.
+Users set a measurable rule, stake USDC alongside friends, and let TrueDeal handle everything else. Verification runs automatically through native API integrations — Strava, X (Twitter), and fitness networks like Wellhub and TotalPass. When the deadline hits, **DealGuard** — our proprietary dual-oracle consensus engine backed by behavioral AI — validates every result before triggering instant settlement on the **Mantle Network (L2 EVM)**.
 
 Winners recover their stake plus a share of the losers' pool. A **3% Slacker Tax** applies only to those who didn't deliver.
 
@@ -28,7 +28,7 @@ Most people don't fail their goals because they lack motivation. They fail becau
 
 Prediction markets proved something useful: when people put real money on a belief, they become more committed and more honest with themselves. The same logic applies to any personal goal. We built TrueDeal to be that missing stimulus.
 
-The timing is right because Solana makes everything easier: fast settlement, a growing user base, and one of the most consistent builder ecosystems in crypto. Features like Blinks bring TrueDeal directly into X, turning a social post into a live, joinable deal. Together with account abstraction, this brings the experience to Web2 users with zero friction. Consumer apps on Solana are still underbuilt. TrueDeal is here for everyone else.
+The timing is right because **Mantle Network** makes everything easier: near-zero gas fees via modular data availability, EVM compatibility for rapid development, and one of the most active L2 builder ecosystems in crypto. Account Abstraction (EIP-4337) brings TrueDeal directly to Web2 users with zero friction — no seed phrases, no gas management. Consumer apps on Mantle are still underbuilt. TrueDeal is here for everyone else.
 
 ---
 
@@ -65,25 +65,26 @@ But Moonwalk is limited to fitness and works exclusively with step counting. The
 
 ## Key Features
 
-- **Sovereign Escrow** — Funds are locked in a deterministic Program Derived Address (PDA) on Solana. No middleman, just code.
+- **Sovereign Escrow (Mantle L2)** — Funds are locked in deterministic smart contracts (Solidity) on the Mantle Network. No middleman, just code.
 - **Strict Compliance Rules** — Participants must meet the exact rule in every frequency window. One missed window = loser, regardless of other periods.
-- **Automated Verification** — Real-world oracles (Strava, X/Twitter, Wellhub, TotalPass) verify goal completion. Sub-rules ensure authenticity: public accounts, unique content, minimum character counts, fraud detection via Sentinel AI.
+- **Automated Verification** — Real-world oracles (Strava, X/Twitter, Wellhub, TotalPass) verify goal completion. Sub-rules ensure authenticity: public accounts, unique content, minimum character counts, fraud detection via our behavioral AI oracle.
 - **Slacker Tax** — A 3% protocol fee on the loser pool. Winners are never charged.
 - **Auto-Scheduler** — Deals start automatically at 00:00 GMT-3 on the configured date. No admin action required.
 - **Shakes** — TrueDeal's reputation system. Earn Shakes when your deal activates (500 for creators, 200 for participants). Future utility: fee discounts, Sovereign tier.
-- **Account Abstraction** — Users get a managed Solana wallet on signup. No browser extension needed.
+- **Account Abstraction (EIP-4337)** — Users get a managed EVM wallet on signup. No browser extension or seed phrase needed.
+- **Yield-Bearing Escrow (mETH)** — Staked funds earn yield via Mantle LSP while locked in the agreement. Winners share the accumulated rewards.
 
 ---
 
 ## Tech Stack
 
-| Layer          | Technology                                      |
-|:---------------|:------------------------------------------------|
-| Blockchain     | Solana · Anchor Framework (Rust)                |
-| Frontend       | Next.js 16 · TailwindCSS · Lucide Icons         |
-| Backend / Auth | Supabase (PostgreSQL · Auth · Storage)          |
-| Verification   | Strava API · X API · Sentinel AI (DealGuard)    |
-| Wallet         | Account Abstraction (AES-256-GCM managed keys)  |
+| Layer          | Technology                                             |
+|:---------------|:-------------------------------------------------------|
+| Blockchain     | Mantle Network (EVM L2) · Solidity Smart Contracts     |
+| Frontend       | Next.js 15 · TailwindCSS v4 · Wagmi · RainbowKit       |
+| Backend / Auth | Supabase (PostgreSQL · Auth · Storage)                 |
+| Verification   | Strava API · X API · Behavioral AI Oracle (DealGuard)  |
+| Wallet         | Managed EVM Wallets (AES-256-GCM) · Account Abstraction (EIP-4337) |
 
 ---
 
@@ -143,15 +144,15 @@ npm install
 ### 2. Configure Environment
 Create a `.env.local` based on `.env.example`:
 ```env
-NEXT_PUBLIC_SOLANA_NETWORK=devnet
-NEXT_PUBLIC_SOLANA_RPC_URL=https://api.devnet.solana.com
+NEXT_PUBLIC_MANTLE_NETWORK=testnet
+NEXT_PUBLIC_MANTLE_RPC_URL=https://rpc.testnet.mantle.xyz
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 APP_ENCRYPTION_KEY=your-32-byte-hex-key
-# Optional: enables real on-chain settlement
-APP_FEE_PAYER_KEY=base64-oracle1-private-key
-APP_ORACLE2_KEY=base64-oracle2-private-key
+# Required for on-chain settlement (hex private keys)
+APP_FEE_PAYER_KEY=0x-hex-oracle1-private-key
+APP_ORACLE2_KEY=0x-hex-oracle2-private-key
 ```
 
 > Without oracle keys, the app runs in **Demo Mode** — all UX flows work, settlement is simulated without gas.
