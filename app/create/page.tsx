@@ -4,7 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ChevronLeft, ChevronRight, ChevronDown,
-  Plus, Minus, Check, Info, X, AlertCircle, ShieldCheck, Lock, Globe, ExternalLink,
+  Plus, Minus, Check, Info, X, AlertCircle, ShieldCheck, Lock, Globe, ExternalLink, Calendar,
 } from "lucide-react"
 import { createDeal } from "@/lib/actions/deals"
 import { getMyUsdcBalance } from "@/lib/actions/wallet"
@@ -96,10 +96,13 @@ const DISTRIBUTION_TYPES = [
 ]
 
 const PERIOD_PRESETS = [
-  { id: "1w", label: "1 sem",   labelEn: "1 wk",  days: 7  },
-  { id: "2w", label: "2 sem",   labelEn: "2 wk",  days: 14 },
-  { id: "1m", label: "1 mês",   labelEn: "1 mo",  days: 30 },
-  { id: "2m", label: "2 meses", labelEn: "2 mo",  days: 60 },
+  { id: "1d", label: "1 dia",   labelEn: "1 day",  days: 1  },
+  { id: "2d", label: "2 dias",  labelEn: "2 days", days: 2  },
+  { id: "3d", label: "3 dias",  labelEn: "3 days", days: 3  },
+  { id: "1w", label: "1 sem",   labelEn: "1 wk",   days: 7  },
+  { id: "2w", label: "2 sem",   labelEn: "2 wk",   days: 14 },
+  { id: "1m", label: "1 mês",   labelEn: "1 mo",   days: 30 },
+  { id: "2m", label: "2 meses", labelEn: "2 mo",   days: 60 },
 ]
 
 function getRuleSubrules(lang: Language): Record<string, { title: string; items: string[]; hint?: string }> {
@@ -929,7 +932,10 @@ export default function CreateDealPage() {
             <div style={{ fontSize: 11, fontWeight: 600, color: C.mid, marginBottom: 8, marginTop: 4 }}>
               {language === "pt" ? "Período do acordo" : "Deal period"}
             </div>
-            <div style={{ display: "flex", gap: 5, marginBottom: 10, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: mono, marginBottom: 6 }}>
+              {language === "pt" ? "Sugestões mais comuns" : "Common presets"}
+            </div>
+            <div style={{ display: "flex", gap: 5, marginBottom: 12, flexWrap: "wrap" }}>
               {PERIOD_PRESETS.map(p => (
                 <button key={p.id}
                   onClick={() => selectPreset(p.id)}
@@ -938,19 +944,24 @@ export default function CreateDealPage() {
                 </button>
               ))}
             </div>
+            <div style={{ fontSize: 9, fontWeight: 700, color: C.dim, textTransform: "uppercase", letterSpacing: "0.08em", fontFamily: mono, marginBottom: 6 }}>
+              {language === "pt" ? "Ou escolha as datas" : "Or pick dates"}
+            </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 7, alignItems: "center", marginBottom: 10 }}>
               <button
                 onClick={() => { setShowCal("start"); setCalMonth(new Date(startDate.getFullYear(), startDate.getMonth(), 1)) }}
-                style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 13px", textAlign: "left", cursor: "pointer" }}>
+                style={{ position: "relative", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 13px", textAlign: "left", cursor: "pointer" }}>
                 <div style={{ fontSize: 9, fontFamily: mono, color: C.dim, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>{t("date_start", language)}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{fmtShort(startDate)}</div>
+                <Calendar style={{ position: "absolute", top: 9, right: 9, width: 11, height: 11, stroke: C.dim }} />
               </button>
               <div style={{ color: C.dim, textAlign: "center", fontSize: 13 }}>→</div>
               <button
                 onClick={() => { setShowCal("end"); setCalMonth(new Date(endDate.getFullYear(), endDate.getMonth(), 1)) }}
-                style={{ background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 13px", textAlign: "right", cursor: "pointer" }}>
+                style={{ position: "relative", background: C.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: "11px 13px", textAlign: "right", cursor: "pointer" }}>
                 <div style={{ fontSize: 9, fontFamily: mono, color: C.dim, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>{t("date_end", language)}</div>
                 <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>{fmtShort(endDate)}</div>
+                <Calendar style={{ position: "absolute", top: 9, left: 9, width: 11, height: 11, stroke: C.dim }} />
               </button>
             </div>
             <div style={{ display: "inline-block", background: C.activeLight, color: C.brand, border: `1px solid ${C.activeBorder}`, borderRadius: 100, padding: "3px 9px", fontSize: 10, fontWeight: 600, marginBottom: 12, fontFamily: mono }}>
@@ -1502,10 +1513,16 @@ export default function CreateDealPage() {
               </p>
             </div>
 
-            <button onClick={() => router.push(`/deal/${confirmedDeal.deal.id}`)}
-              style={{ width: "100%", padding: "16px 0", borderRadius: 100, fontWeight: 700, fontSize: 15, color: "#fff", background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, border: "none", cursor: "pointer", boxShadow: "0 4px 18px rgba(0,184,82,0.3)" }}>
-              {language === "pt" ? "Ver meu deal" : "See my deal"}
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <button onClick={() => router.push(`/deal/${confirmedDeal.deal.id}`)}
+                style={{ width: "100%", padding: "15px 0", borderRadius: 100, fontWeight: 700, fontSize: 15, color: "#fff", background: `linear-gradient(135deg,${C.brandDark},${C.brand})`, border: "none", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,184,82,0.28)", letterSpacing: "-0.01em" }}>
+                {language === "pt" ? "Ver meu deal" : "See my deal"}
+              </button>
+              <button onClick={() => router.push("/")}
+                style={{ width: "100%", padding: "14px 0", borderRadius: 100, fontWeight: 600, fontSize: 14, color: C.mid, background: "transparent", border: `1.5px solid ${C.border}`, cursor: "pointer", letterSpacing: "-0.01em" }}>
+                {language === "pt" ? "Voltar para tela inicial" : "Back to home"}
+              </button>
+            </div>
           </div>
         </div>
       )}

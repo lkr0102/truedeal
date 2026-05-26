@@ -1,6 +1,6 @@
 # TrueDeal — Changelog · Maio 2026
 
-**Período coberto:** 16–25 de Maio de 2026  
+**Período coberto:** 16–26 de Maio de 2026  
 **Responsável:** Lukas (Frontend / Product)  
 **Branch:** `main` — todos os commits estão na produção (Vercel auto-deploy)
 
@@ -8,7 +8,7 @@
 
 ## Resumo Executivo
 
-Neste ciclo de sprints foram entregues **melhorias de UX em toda a plataforma** e **correção de bugs críticos no motor de liquidação (DealGuard Engine)**, com foco em:
+Neste ciclo de sprints foram entregues **melhorias de UX em toda a plataforma**, **correção de bugs críticos no motor de liquidação (DealGuard Engine)** e **infraestrutura de carteiras reconstruída do zero**, com foco em:
 
 1. Filtro de deals no home redesenhado (Notion-style)
 2. Modais de confirmação de depósito (Create e Join)
@@ -17,10 +17,67 @@ Neste ciclo de sprints foram entregues **melhorias de UX em toda a plataforma** 
 5. Banners de home com navegação e identidade visual
 6. **Correção de 5 bugs críticos no DealGuard Engine** — deals não eram liquidados e compliance era avaliado incorretamente
 7. **Validação por período (daily/weekly)** — um post no dia 1 não cobre o dia 2
+8. **Modo escuro forçado como light** — app sempre exibe versão clara independente do sistema operacional
+9. **Pipeline de carteiras reconstruído** — geração confiável no cadastro + cron retroativo para usuários existentes + migração de chave de criptografia
+10. **UX do criador de deal melhorada** — presets curtos (1/2/3 dias), labels de seção, ícone de calendário nos seletores de data e botão "Voltar para tela inicial" na tela de confirmação
 
 ---
 
 ## Detalhamento por Commit
+
+---
+
+### `[26/05]` — UX: Melhorias no criador de deal (período + tela de confirmação)
+
+**Contexto:** Testes com usuários revelaram dois pontos de atrito: (1) o seletor de período não tinha opções curtas para deals de 1–3 dias e não deixava claro que as datas eram clicáveis; (2) a tela pós-criação não oferecia saída para quem não queria ver o deal imediatamente.
+
+**Mudanças em `app/create/page.tsx`:**
+
+- **Novos presets curtos:** `1 dia`, `2 dias`, `3 dias` adicionados ao início da lista `PERIOD_PRESETS` (antes só havia 1 sem / 2 sem / 1 mês / 2 meses)
+- **Label "Sugestões mais comuns"** acima da grade de presets — deixa claro que os botões são atalhos editáveis
+- **Label "Ou escolha as datas"** acima dos seletores de data — separa visualmente as duas formas de definir o período
+- **Ícone de calendário** (Lucide `Calendar`) em cada botão de data, indicando interatividade
+- **Botão "Voltar para tela inicial"** adicionado abaixo de "Ver meu deal" na tela de confirmação — estilo outline/ghost, `router.push("/")`
+
+---
+
+### `[25–26/05]` — Fix: Modo escuro forçado + pipeline de geração de carteiras
+
+**Commit:** `0d71415f`
+
+#### Modo escuro (dark mode) forçado como light
+
+**Problema:** Usuários com sistema operacional em dark mode (iOS, Android) viam o app completamente diferente — cores invertidas, backgrounds escuros — porque o browser aplicava estilos UA de dark mode.
+
+**Fix:**
+- `app/globals.css` — `color-scheme: light` adicionado como primeira propriedade do `:root`. Bloqueia aplicação de UA dark styles em elementos nativos (inputs, scrollbars, etc.)
+- `app/layout.tsx` — `colorScheme: "light"` adicionado ao export `viewport`. Emite `<meta name="color-scheme" content="light">` para cobertura completa cross-browser (especialmente iOS Safari)
+
+**Resultado:** Todos os acessos — independente da preferência do sistema — exibem a versão light do app.
+
+---
+
+#### Pipeline de geração de carteiras reconstruído
+
+**Problema:** Usuários novos ficavam com status "Gerando..." eternamente na tela de carteira. Três causas raiz identificadas:
+
+1. **`WALLET_MASTER_KEY` nomeada incorretamente** no Vercel (docs anteriores listavam `WALLET_ENCRYPTION_KEY`; código usa `WALLET_MASTER_KEY`) → `encryptSecret()` nunca era chamada
+2. **Guard silencioso no auth callback:** `if (!existingWallet && process.env.WALLET_MASTER_KEY)` — se a env var estava ausente/errada, criação era pulada sem log
+3. **Cliente com sessão de usuário (`createClient()`)** sujeito a edge cases de RLS no auth callback (cookies ainda não propagados após `exchangeCodeForSession`)
+
+**Fixes aplicados:**
+
+- `app/auth/callback/route.ts` — substituído `createClient()` por `createServiceClient()` para operações de DB; removido guard condicional; adicionado check de erro no INSERT com log descritivo
+- `lib/actions/wallet.ts` (`ensureUserWallet`) — mesma troca para service client; keypair/encrypt envolvido em try/catch com retorno de erro tipado
+- `app/wallet/page.tsx` + `app/wallet/wallet-client.tsx` — captura e exibição de `walletError`; tela mostra "Erro ao gerar carteira" em vez de "Gerando..." infinito
+
+**Cron retroativo criado:** `app/api/cron/provision-wallets/route.ts`
+- Roda diariamente às 06h UTC (configurado em `vercel.json`)
+- Busca todos os perfis sem linha em `user_wallets` e provisiona wallets para cada um
+- Autenticado via `Authorization: Bearer CRON_SECRET`
+- Primeira execução manual provisionou **16 wallets** para usuários existentes
+
+**Migração de chave:** Chaves antigas deletadas do Vercel; nova `WALLET_MASTER_KEY` (AES-256-GCM, 32 bytes) gerada e configurada; todas as linhas de `user_wallets` e `solana_public_key` em `profiles` zeradas para recriação limpa com a nova chave.
 
 ---
 
