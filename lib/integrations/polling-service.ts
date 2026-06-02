@@ -98,7 +98,7 @@ export async function auditDeal(dealId: string) {
 
   // 2. Iterate through participants and audit their performance
   for (const participant of deal.participants) {
-    const connections = participant.profile.social_connections || []
+    const connections = participant.profile?.social_connections || []
     let isSuccess = false
     let maxRiskScore = 0
     let fraudReason: string | null = null

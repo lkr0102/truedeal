@@ -96,7 +96,7 @@ function toDealUI(d: DealWithParticipants, userId: string | null): Deal {
   return {
     id: d.id, title: d.title, type: uiType, status: uiStatus, prizeType, pot: d.pot_total,
     valuePerPerson: d.entry_amount, participants: d.participant_count,
-    progress: Math.min(1, goneDays / totalDays), daysGone: goneDays, daysTotal: totalDays,
+    progress: Math.min(1, goneDays / totalDays), daysGone: Math.min(goneDays, totalDays), daysTotal: totalDays,
     verifications: verifs, isParticipating: myP != null,
     myRank:       myP != null ? (myP?.rank ?? undefined) : undefined,
     potentialWin: myP != null ? Math.round(d.net_pot * 0.9) : undefined,

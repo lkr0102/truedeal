@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServiceClient } from "@/lib/supabase/server"
 import { settleDealProtocol } from "@/lib/actions/settlement"
 
-// Vercel Cron calls this route every hour (see vercel.json).
+// Vercel Cron calls this route daily at 12:00 UTC (see vercel.json).
 // Finds all deals with status='ativo' whose end_date has passed
 // and runs the full DealGuard settlement pipeline on each one.
 export async function GET(request: NextRequest) {

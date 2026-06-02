@@ -34,13 +34,14 @@ export async function settleDealProtocol(
   // ── 3. Supabase Pre-settlement Update ───────────────────────────────────
   // Service role bypasses RLS — settlement is an oracle operation, not user-driven.
   const supabase = await createServiceClient()
-  await (supabase.from("deals") as any)
+  const { error: preUpdateErr } = await (supabase.from("deals") as any)
     .update({
       status:     "liquidando",
       proof_hash: proofHashHex,
       audit_logs: audit.results,
     })
     .eq("id", dealId)
+  if (preUpdateErr) throw new Error(`[DealGuard] Pre-settlement DB update failed: ${preUpdateErr.message}`)
 
   // ── 4. SPL Payout ────────────────────────────────────────────────────────
   const winnerUserIds = audit.results
@@ -83,12 +84,13 @@ export async function settleDealProtocol(
   }
 
   // ── 5. Supabase Post-settlement Update ──────────────────────────────────
-  await (supabase.from("deals") as any)
+  const { error: postUpdateErr } = await (supabase.from("deals") as any)
     .update({
       status:              "encerrado",
       solana_tx_signature: txSignature,
     })
     .eq("id", dealId)
+  if (postUpdateErr) throw new Error(`[DealGuard] Post-settlement DB update failed: ${postUpdateErr.message}`)
 
   // Mark winners/losers in deal_participants
   for (const result of audit.results) {
