@@ -467,7 +467,7 @@ function DashboardTab({ user }: DashboardTabProps) {
               platform={platform}
               state={states[platform.key]}
               username={usernames[platform.key]}
-              onOAuth={() => { if (platform.oauthPath) window.location.href = platform.oauthPath }}
+              onOAuth={() => { if (platform.oauthPath) window.location.href = `${platform.oauthPath}?next=/profile` }}
               onEmailSaved={() => setStates(prev => ({ ...prev, [platform.key]: "pending" }))}
               onRemoved={() => setStates(prev => ({ ...prev, [platform.key]: "idle" }))}
             />
@@ -580,9 +580,10 @@ function ConfigTab({ onSignOut }: { onSignOut: () => void }) {
 
 export default function ProfileClient({ profile, deals, userId, userEmail }: ProfileClientProps) {
   const router       = useRouter()
-  const searchParams = useSearchParams()
-  const socialError  = searchParams.get("social_error")
-  const socialSuccess = searchParams.get("social_success")
+  const searchParams   = useSearchParams()
+  const socialError    = searchParams.get("social_error")
+  const socialSuccess  = searchParams.get("social_success")
+  const socialConnected = searchParams.get("social_connected")
 
   const fileRef     = useRef<HTMLInputElement>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
@@ -701,6 +702,13 @@ export default function ProfileClient({ profile, deals, userId, userEmail }: Pro
     no_verifier:      "Sessão expirada. Tente conectar novamente.",
     state_mismatch:   "Erro de segurança CSRF. Tente conectar novamente.",
     oauth_exception:  "Erro inesperado na autenticação. Tente novamente.",
+    strava_denied:    "Autorização negada. Aceite as permissões no Strava para conectar.",
+    strava_token:     "Falha ao obter token do Strava. Tente conectar novamente.",
+  }
+
+  const SOCIAL_SUCCESS_LABELS: Record<string, string> = {
+    strava: "Strava conectado com sucesso!",
+    x:      "X (Twitter) conectado com sucesso!",
   }
 
   return (
@@ -713,10 +721,10 @@ export default function ProfileClient({ profile, deals, userId, userEmail }: Pro
         </div>
       )}
 
-      {socialSuccess === "x" && (
+      {(socialSuccess || socialConnected) && SOCIAL_SUCCESS_LABELS[socialSuccess ?? socialConnected ?? ""] && (
         <div style={{ position: "fixed", top: 16, left: 16, right: 16, zIndex: 50, borderRadius: 16, padding: "12px 16px", fontSize: 13, fontWeight: 500, color: "#fff", display: "flex", alignItems: "center", gap: 8, background: "rgba(0,184,82,0.95)" }}>
           <CheckCircle2 style={{ width: 16, height: 16, flexShrink: 0 }} />
-          <span>X (Twitter) conectado com sucesso!</span>
+          <span>{SOCIAL_SUCCESS_LABELS[socialSuccess ?? socialConnected ?? ""]}</span>
         </div>
       )}
 

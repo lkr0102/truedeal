@@ -1,15 +1,20 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code  = searchParams.get("code")
   const error = searchParams.get("error")
 
-  const redirectBase = `${origin}/onboarding/profile`
+  // Read the return destination set by the initiation route; clear it after use
+  const nextPath    = request.cookies.get("strava_oauth_next")?.value ?? "/onboarding/profile"
+  const base        = process.env.NEXT_PUBLIC_APP_URL ?? origin
+  const redirectBase = `${base}${nextPath}`
 
   if (error || !code) {
-    return NextResponse.redirect(`${redirectBase}?social_error=strava_denied`)
+    const res = NextResponse.redirect(`${redirectBase}?social_error=strava_denied`)
+    res.cookies.delete("strava_oauth_next")
+    return res
   }
 
   // Exchange authorization code for access token
@@ -25,7 +30,9 @@ export async function GET(request: Request) {
   })
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(`${redirectBase}?social_error=strava_token`)
+    const res = NextResponse.redirect(`${redirectBase}?social_error=strava_token`)
+    res.cookies.delete("strava_oauth_next")
+    return res
   }
 
   const token = await tokenRes.json()
@@ -61,5 +68,7 @@ export async function GET(request: Request) {
     { onConflict: "user_id,platform" },
   )
 
-  return NextResponse.redirect(`${redirectBase}?social_connected=strava`)
+  const res = NextResponse.redirect(`${redirectBase}?social_connected=strava`)
+  res.cookies.delete("strava_oauth_next")
+  return res
 }
