@@ -763,7 +763,7 @@ export default function DealClient({
       {/* ── TOP BAR ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 20px 10px" }}>
         <button
-          onClick={() => router.back()}
+          onClick={() => { if (window.history.length > 1) { router.back() } else { router.push("/") } }}
           style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 13, fontWeight: 600, color: C.mid, background: "none", border: "none", cursor: "pointer" }}
         >
           <ArrowLeft style={{ width: 14, height: 14 }} />

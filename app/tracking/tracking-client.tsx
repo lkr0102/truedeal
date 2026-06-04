@@ -270,7 +270,7 @@ export default function TrackingClient({
     >
       {/* Header */}
       <div style={{ padding: "48px 20px 12px", display: "flex", gap: 12, alignItems: "center" }}>
-        <button onClick={() => router.back()} style={btnBase}>
+        <button onClick={() => { if (window.history.length > 1) { router.back() } else { router.push("/") } }} style={btnBase}>
           <ArrowLeft size={18} color="#374151" />
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
