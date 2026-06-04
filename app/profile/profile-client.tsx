@@ -436,22 +436,33 @@ function DashboardTab({ user }: DashboardTabProps) {
     x: null, strava: null, youtube: null, totalpass: null,
   })
 
-  useEffect(() => {
+  function refreshConnections() {
     getMySocialConnections().then(({ connections }) => {
-      const newStates = { ...states }
-      const newUsernames = { ...usernames }
+      const newStates    = { x: "idle", strava: "idle", youtube: "idle", totalpass: "idle" } as Record<SocialKey, ConnectState>
+      const newUsernames = { x: null,   strava: null,   youtube: null,   totalpass: null   } as Record<SocialKey, string | null>
       for (const c of connections) {
         const key = c.platform as SocialKey
         if (key in newStates) {
-          newStates[key] = c.status === "pending" ? "pending" : "connected"
+          newStates[key]    = c.status === "pending" ? "pending" : "connected"
           newUsernames[key] = c.username ?? null
         }
       }
       setStates(newStates)
       setUsernames(newUsernames)
     })
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }
+
+  useEffect(() => { refreshConnections() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for OAuth success/error messages from the popup window
+  useEffect(() => {
+    function handleMessage(e: MessageEvent) {
+      if (e.origin !== window.location.origin) return
+      if (e.data?.type === "OAUTH_SUCCESS") refreshConnections()
+    }
+    window.addEventListener("message", handleMessage)
+    return () => window.removeEventListener("message", handleMessage)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="px-5 pb-8 space-y-8">
@@ -467,7 +478,14 @@ function DashboardTab({ user }: DashboardTabProps) {
               platform={platform}
               state={states[platform.key]}
               username={usernames[platform.key]}
-              onOAuth={() => { if (platform.oauthPath) window.location.href = `${platform.oauthPath}?next=/profile` }}
+              onOAuth={() => {
+                if (!platform.oauthPath) return
+                const popup = window.open(platform.oauthPath, "truedeal_oauth", "width=560,height=720,left=200,top=80")
+                if (!popup || popup.closed) {
+                  // Popup blocked — fall back to full-page redirect
+                  window.location.href = platform.oauthPath
+                }
+              }}
               onEmailSaved={() => setStates(prev => ({ ...prev, [platform.key]: "pending" }))}
               onRemoved={() => setStates(prev => ({ ...prev, [platform.key]: "idle" }))}
             />

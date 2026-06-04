@@ -109,20 +109,23 @@ export async function GET(
 
   const redirect = NextResponse.redirect(authUrl)
 
-  // Guarda state e code_verifier (X) em cookies httpOnly por 5 minutos
+  const isProduction = process.env.NODE_ENV === "production"
+  // Guarda state e code_verifier (X) em cookies httpOnly por 10 minutos
   redirect.cookies.set("oauth_state", state, {
     httpOnly: true,
     sameSite: "lax",
-    maxAge: 300,
-    path: "/",
+    secure:   isProduction,
+    maxAge:   600,
+    path:     "/",
   })
 
   if (codeVerifier) {
     redirect.cookies.set("x_code_verifier", codeVerifier, {
       httpOnly: true,
       sameSite: "lax",
-      maxAge: 300,
-      path: "/",
+      secure:   isProduction,
+      maxAge:   600,
+      path:     "/",
     })
   }
 

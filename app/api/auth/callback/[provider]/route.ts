@@ -36,7 +36,9 @@ export async function GET(
     const state = searchParams.get("state")
     const storedState = req.cookies.get("oauth_state")?.value
     if (!state || state !== storedState) {
-      const errDest = provider === "x" ? `${baseUrl}/profile?social_error=state_mismatch` : `${baseUrl}/login?error=state_mismatch`
+      const errDest = provider === "x"
+        ? `${baseUrl}/oauth-success?provider=x&error=state_mismatch`
+        : `${baseUrl}/login?error=state_mismatch`
       return NextResponse.redirect(errDest)
     }
   }
@@ -96,26 +98,31 @@ export async function GET(
       const supabase = await createClient()
       const { data: { user } } = await supabase.auth.getUser()
 
-      if (user) {
-        await (supabase.from("social_connections") as any).upsert({
-          user_id:          user.id,
-          platform:         "x",
-          status:           "connected",
-          external_id:      xUser.id,
-          username:         xUser.username,
-          access_token:     tokenData.access_token,
-          refresh_token:    tokenData.refresh_token,
-          token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
-          metadata:         { profile_image_url: xUser.profile_image_url },
-        }, { onConflict: "user_id,platform" })
+      if (!user) {
+        console.error("[OAuth/x] No authenticated user found in callback — session lost during redirect")
+        return NextResponse.redirect(`${baseUrl}/oauth-success?provider=x&error=session_lost`)
       }
+
+      await (supabase.from("social_connections") as any).upsert({
+        user_id:          user.id,
+        platform:         "x",
+        status:           "connected",
+        external_id:      xUser.id,
+        username:         xUser.username,
+        access_token:     tokenData.access_token,
+        refresh_token:    tokenData.refresh_token,
+        token_expires_at: new Date(Date.now() + tokenData.expires_in * 1000).toISOString(),
+        metadata:         { profile_image_url: xUser.profile_image_url },
+      }, { onConflict: "user_id,platform" })
     } catch (err) {
       console.error("OAuth Error:", err)
-      return NextResponse.redirect(`${baseUrl}/profile?social_error=oauth_exception`)
+      return NextResponse.redirect(`${baseUrl}/oauth-success?provider=x&error=oauth_exception`)
     }
   }
 
-  const dest = provider === "x" ? `${baseUrl}/profile?social_success=x` : `${baseUrl}/onboarding/profile`
+  const dest = provider === "x"
+    ? `${baseUrl}/oauth-success?provider=x`
+    : `${baseUrl}/onboarding/profile`
   const redirect = NextResponse.redirect(dest)
   redirect.cookies.delete("oauth_state")
   redirect.cookies.delete("x_code_verifier")

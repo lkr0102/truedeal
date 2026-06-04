@@ -557,19 +557,20 @@ export async function joinDeal(dealId: string) {
       })
     }
 
-    // 3) Milestone notification (5 / 10 / 15 / 20 / 25 / 50 participants)
-    const MILESTONES = [5, 10, 15, 20, 25, 50]
-    if (MILESTONES.includes(total)) {
-      const { data: others } = await (svc.from("deal_participants") as any)
-        .select("user_id").eq("deal_id", dealId).neq("user_id", user.id).eq("status", "active")
-      for (const p of others ?? []) {
-        await createNotification(svc, {
-          user_id:  p.user_id, type: "deal_milestone", deal_id: dealId,
-          title_pt: `${total} participantes! 🔥`,  title_en: `${total} participants! 🔥`,
-          body_pt:  `O deal "${deal.title}" chegou a ${total} competidores. O pote agora é $${pot}!`,
-          body_en:  `Deal "${deal.title}" now has ${total} competitors. The pot grew to $${pot}!`,
-        })
-      }
+    // 3) Notify all other existing active participants (not joiner, not creator) every time someone joins
+    const { data: others } = await (svc.from("deal_participants") as any)
+      .select("user_id")
+      .eq("deal_id", dealId)
+      .neq("user_id", user.id)
+      .neq("user_id", deal.creator_id)
+      .eq("status", "active")
+    for (const p of others ?? []) {
+      await createNotification(svc, {
+        user_id:  p.user_id, type: "deal_joined", deal_id: dealId,
+        title_pt: "Novo participante! 🎯", title_en: "New participant! 🎯",
+        body_pt:  `${joinerName} entrou no deal "${deal.title}". Agora são ${total} competindo por $${pot}.`,
+        body_en:  `${joinerName} joined deal "${deal.title}". Now ${total} people competing for $${pot}.`,
+      })
     }
   } catch (err: any) {
     console.error("[notifications] joinDeal notify failed:", err?.message)

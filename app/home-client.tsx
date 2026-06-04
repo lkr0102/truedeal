@@ -151,13 +151,13 @@ function formatCountdown(ms: number, lang: Language): { label: string; urgency: 
 
 // ── Verif meta ────────────────────────────────────────────────────────────────
 
-type VerifMeta = { bg: string; text?: string; Icon?: React.FC<{ className?: string }> }
+type VerifMeta = { bg: string; text?: string; Icon?: React.FC<{ className?: string }>; label: string }
 const VERIF: Record<VerifType, VerifMeta> = {
-  x:         { bg: "#000",    text: "𝕏" },
-  strava:    { bg: "#FC4C02", Icon: Activity },
-  gympass:   { bg: "#00A651", text: "GP" },
-  youtube:   { bg: "#FF0000", text: "▶" },
-  totalpass: { bg: "#FF6B35", text: "T" },
+  x:         { bg: "#000",    text: "𝕏",       label: "Twitter"   },
+  strava:    { bg: "#FC4C02", Icon: Activity,  label: "Strava"    },
+  gympass:   { bg: "#00A651", text: "GP",      label: "GymPass"   },
+  youtube:   { bg: "#FF0000", text: "▶",       label: "YouTube"   },
+  totalpass: { bg: "#FF6B35", text: "TP",      label: "TotalPass" },
 }
 
 // ── Deal Card ─────────────────────────────────────────────────────────────────
@@ -213,23 +213,9 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
             </span>
           )}
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 3 }}>
-          {deal.verifications.length > 0 && (
-            <div style={{ display: "flex" }}>
-              {deal.verifications.map((v, i) => {
-                const m = VERIF[v]
-                return (
-                  <div key={v} style={{ width: 20, height: 20, borderRadius: "50%", background: m.bg, border: `2px solid ${C.surface}`, marginLeft: i > 0 ? -5 : 0, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {m.Icon ? <m.Icon className="w-2.5 h-2.5 text-white" /> : <span style={{ fontSize: 9, fontWeight: 700, color: "#fff" }}>{m.text}</span>}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-          <span style={{ fontSize: 9, fontWeight: 600, color: C.dim, ...MONO, letterSpacing: "0.05em" }}>
-            #{deal.shortId}
-          </span>
-        </div>
+        <span style={{ fontSize: 9, fontWeight: 600, color: C.dim, ...MONO, letterSpacing: "0.05em" }}>
+          #{deal.shortId}
+        </span>
       </div>
 
       {/* Title */}
@@ -238,9 +224,27 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
       </div>
 
       {/* Description */}
-      <div style={{ fontSize: 11, color: C.mid, marginBottom: 9, lineHeight: 1.4 }}>
+      <div style={{ fontSize: 11, color: C.mid, marginBottom: deal.verifications.length > 0 ? 6 : 9, lineHeight: 1.4 }}>
         {buildRuleDisplay(deal, lang)}
       </div>
+
+      {/* Verification channel pills */}
+      {deal.verifications.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 9 }}>
+          {deal.verifications.map((v) => {
+            const m = VERIF[v]
+            const isDark = m.bg === "#000"
+            return (
+              <div key={v} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: isDark ? "rgba(0,0,0,0.07)" : `${m.bg}18`, border: `1px solid ${isDark ? "rgba(0,0,0,0.14)" : m.bg + "44"}`, borderRadius: 100, padding: "3px 10px 3px 4px" }}>
+                <div style={{ width: 20, height: 20, borderRadius: "50%", background: m.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  {m.Icon ? <m.Icon className="w-3 h-3 text-white" /> : <span style={{ fontSize: 10, fontWeight: 800, color: "#fff", lineHeight: 1 }}>{m.text}</span>}
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 700, color: isDark ? C.text : m.bg }}>{m.label}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Progress bar (active only) */}
       {deal.status === "ativo" && deal.progress > 0 && (
@@ -269,20 +273,20 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
         <div style={{ fontSize: 11, color: C.mid, display: "flex", gap: 8, alignItems: "center" }}>
           {/* Entry */}
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Entry</span>
-            <span style={{ fontWeight: 600, color: C.text }}>${deal.valuePerPerson}</span>
+            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Entrada</span>
+            <span style={{ fontWeight: 800, color: C.text, fontSize: 13 }}>${deal.valuePerPerson}</span>
           </div>
           <span style={{ color: C.border }}>·</span>
           {/* Participants */}
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
             <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Players</span>
-            <span style={{ fontWeight: 600, color: C.text }}>{deal.participants}</span>
+            <span style={{ fontWeight: 600, color: C.mid }}>{deal.participants}</span>
           </div>
           <span style={{ color: C.border }}>·</span>
           {/* Period */}
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Period</span>
-            <span style={{ fontWeight: 600, color: C.text, fontSize: 10 }}>
+            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Período</span>
+            <span style={{ fontWeight: 600, color: C.mid, fontSize: 10 }}>
               {deal.startDateISO && deal.endDateISO
                 ? (() => {
                     const fmt = (iso: string) => { const d = new Date(iso); return `${d.getUTCDate()}/${String(d.getUTCMonth() + 1).padStart(2, "0")}` }
@@ -294,8 +298,8 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
           <span style={{ color: C.border }}>·</span>
           {/* Prize Pot */}
           <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Prize Pot</span>
-            <span style={{ fontWeight: 700, color: deal.pot > 0 ? C.brand : C.dim }}>${deal.pot}</span>
+            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Pote</span>
+            <span style={{ fontWeight: 800, color: deal.pot > 0 ? C.brand : C.dim, fontSize: 14 }}>${deal.pot}</span>
           </div>
         </div>
         {(() => {
