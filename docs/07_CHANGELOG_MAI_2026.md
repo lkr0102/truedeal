@@ -1,6 +1,6 @@
 # TrueDeal — Changelog · Maio 2026
 
-**Período coberto:** 16–26 de Maio de 2026  
+**Período coberto:** 16–26 de Maio de 2026 (última entrada: 26/05 — commit `7193a916`)  
 **Responsável:** Lukas (Frontend / Product)  
 **Branch:** `main` — todos os commits estão na produção (Vercel auto-deploy)
 
@@ -22,6 +22,7 @@ Neste ciclo de sprints foram entregues **melhorias de UX em toda a plataforma**,
 10. **UX do criador de deal melhorada** — presets curtos (1/2/3 dias), labels de seção, ícone de calendário nos seletores de data e botão "Voltar para tela inicial" na tela de confirmação
 11. **Profile drawer redesenhado** — bell/notificações movido para dentro do drawer, dark mode desabilitado com badge "Em breve", header simplificado (sem nome duplicado)
 12. **Sistema de notificações in-app completo** — 10 tipos com gatilhos FOMO/greed, entrega em tempo real via Supabase Realtime, badge de não-lidas no avatar, conteúdo bilíngue PT/EN armazenado no INSERT
+13. **Profile overhaul** — edição inline de nome/username, email visível no perfil, social cards estilo Galxe (Remover + Trocar), YouTube adicionado, Wellhub removido, fix de redirect de erro do X OAuth
 
 ---
 
@@ -339,6 +340,78 @@ export async function getMyUsdcBalance(): Promise<number>
 
 ---
 
+### `[26/05]` — Feature: Profile overhaul — edição inline, YouTube, remoção Wellhub, fix X OAuth
+
+**Commit:** `7193a916`
+
+Sprint de maturação do perfil do usuário: edição in-page de nome/username, cards de plataformas social estilo Galxe, adição do YouTube como canal OAuth, remoção definitiva do Wellhub e correção do redirect de erro do X.
+
+#### 1. Edição inline de username e nome de exibição
+
+**Antes:** Sem forma de editar username ou nome no perfil — campos somente-leitura.
+
+**Agora:** Botão de lápis ao lado do nome abre um formulário inline (sem modal separado):
+- **Nome de exibição** — input livre
+- **Username** — apenas o prefixo é editável; o sufixo `#XXXX` (4 dígitos gerados no cadastro) fica fixo, estilo Discord/Galxe
+- Validação client-side antes de chamar a server action `updateProfile`
+
+#### 2. Email exibido abaixo do handle
+
+O email da conta autenticada (Supabase Auth) é mostrado abaixo do username no cabeçalho do perfil — referência visual para o usuário confirmar de qual conta está usando.
+
+#### 3. Social cards estilo Galxe
+
+Quando uma plataforma já está conectada, os botões mudam:
+
+| Estado | Botões |
+|--------|--------|
+| `idle` | `[Conectar]` |
+| `connected` | `[Remover]` + `[Trocar]` |
+| `pending` | ícone de relógio + label "Pendente" |
+
+- **"Remover"** chama `removeSocialConnection(platform)` — server action com guard: bloqueia remoção se o usuário tiver deals ativos que usam esse canal de verificação
+- **"Trocar"** reinicia o fluxo OAuth para reconectar com conta diferente
+
+#### 4. `removeSocialConnection` server action
+
+**Novo em `lib/actions/profile.ts`:**
+
+```typescript
+export async function removeSocialConnection(platform: string)
+// 1. Busca deals ativos do usuário
+// 2. Se algum deal usa este canal → retorna { error: "..." }
+// 3. DELETE em social_connections WHERE user_id = auth.uid() AND platform = ?
+```
+
+Guard evita situação em que usuário remove o X durante um deal que exige X para verificação, tornando a validação impossível.
+
+#### 5. YouTube adicionado como plataforma OAuth
+
+YouTube aparece na lista de plataformas do perfil com fluxo OAuth via `/api/auth/youtube` (mesmo provider handler genérico).
+
+#### 6. Wellhub removido definitivamente
+
+Wellhub era placeholder sem parceria real. Removido de todos os pontos:
+
+| Arquivo | Mudança |
+|---------|---------|
+| `app/create/page.tsx` | Removido do seletor de canais de verificação |
+| `app/deal/[id]/deal-client.tsx` | Removido da lista de canais suportados |
+| `app/home-client.tsx` | Removido dos filtros do home |
+| `lib/integrations/polling-service.ts` | Removido do polling de verificação |
+
+TotalPass mantém-se como alternativa de academia (via e-mail de membership, sem OAuth).
+
+#### 7. Fix: X OAuth error redirect
+
+**Antes:** Erros no callback do X OAuth (ex: `state_mismatch`, `no_verifier`) redirecionavam para `/login?error=...` — o usuário perdia a sessão e tinha de fazer login novamente.
+
+**Agora:** Erros do X redirecionam para `/profile?social_error=...` — sessão preservada, mensagem de erro exibida no perfil.
+
+**Arquivo:** `app/api/auth/callback/[provider]/route.ts`
+
+---
+
 ## Arquitetura de Carteiras (Referência)
 
 Todos os depósitos usam **SPL Token transfers diretos** (não o programa Anchor legado):
@@ -370,10 +443,10 @@ Usuário → Server Action → fee-payer keypair assina → SPL transfer USDC
 
 ## Pendentes / Próximas Sprints
 
-- [ ] Strava end-to-end (bloqueado por limite de athlete na conta devnet)
-- [ ] X OAuth test completo
+- [ ] Strava end-to-end (bloqueado por limite de athlete na conta devnet) — redirect fix entregue em 03/06
+- [x] X OAuth — redirect de erro corrigido (26/05), popup flow entregue (03/06)
 - [ ] i18n completo PT/EN (há strings hardcoded ainda)
-- [ ] Wellhub/TotalPass: validação server-side do check-in
+- [x] Wellhub removido definitivamente (26/05 — commit `7193a916`)
 - [ ] Mainnet prep: trocar USDC mint, security audit, rate limiting
 - [ ] Faucet "Claim 1000 USDC" — testar fluxo completo
 - [ ] OG image: adicionar logo SVG renderizado no card (atualmente usa path inline)
