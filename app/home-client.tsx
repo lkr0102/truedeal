@@ -123,15 +123,18 @@ const RULE_LABELS: Record<string, { pt: string; en: string }> = {
   different_venues: { pt: "Locais únicos", en: "Unique venues" },
 }
 const FREQ_LABELS: Record<string, { pt: string; en: string }> = {
-  daily: { pt: "Diário", en: "Daily" }, weekly: { pt: "Semanal", en: "Weekly" },
-  monthly: { pt: "Mensal", en: "Monthly" }, yearly: { pt: "Anual", en: "Yearly" },
+  daily:   { pt: "Diariamente",  en: "Daily"   },
+  weekly:  { pt: "Semanalmente", en: "Weekly"  },
+  monthly: { pt: "Mensalmente",  en: "Monthly" },
+  yearly:  { pt: "Anualmente",   en: "Yearly"  },
 }
-function buildRuleDisplay(deal: Deal, lang: Language): string {
-  const ruleLabel = deal.verificationType ? (RULE_LABELS[deal.verificationType]?.[lang] ?? deal.verificationType) : null
-  const freqLabel = deal.ruleFrequency    ? (FREQ_LABELS[deal.ruleFrequency]?.[lang]    ?? deal.ruleFrequency)    : null
-  const prefix    = deal.ruleTarget != null ? `${deal.ruleTarget} × ` : ""
-  const combined  = ruleLabel ? (prefix + ruleLabel).trim() : null
-  return [combined, freqLabel].filter(Boolean).join(" · ") || "—"
+function formatDuration(days: number, lang: Language): string {
+  if (days <= 1) return lang === "pt" ? "1 Dia"    : "1 Day"
+  if (days <  7) return lang === "pt" ? `${days} Dias`   : `${days} Days`
+  if (days < 14) return lang === "pt" ? "1 Semana" : "1 Week"
+  if (days < 30) return lang === "pt" ? `${Math.round(days / 7)} Semanas` : `${Math.round(days / 7)} Weeks`
+  if (days < 60) return lang === "pt" ? "1 Mês"    : "1 Month"
+  return lang === "pt" ? `${Math.round(days / 30)} Meses` : `${Math.round(days / 30)} Months`
 }
 
 // ── Countdown helpers ─────────────────────────────────────────────────────────
@@ -223,14 +226,39 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
         {deal.title}
       </div>
 
-      {/* Description */}
-      <div style={{ fontSize: 11, color: C.mid, marginBottom: deal.verifications.length > 0 ? 6 : 9, lineHeight: 1.4 }}>
-        {buildRuleDisplay(deal, lang)}
-      </div>
+      {/* Rule info — labeled 3-column grid */}
+      {(deal.verificationType || deal.ruleTarget != null || deal.ruleFrequency) && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5, marginBottom: 8 }}>
+          {[
+            {
+              lbl: lang === "pt" ? "Regra" : "Rule",
+              val: deal.verificationType ? (RULE_LABELS[deal.verificationType]?.[lang] ?? deal.verificationType) : "—",
+            },
+            {
+              lbl: lang === "pt" ? "Quantidade" : "Quantity",
+              val: deal.ruleTarget != null ? `${deal.ruleTarget}×` : "—",
+            },
+            {
+              lbl: lang === "pt" ? "Frequência" : "Frequency",
+              val: deal.ruleFrequency ? (FREQ_LABELS[deal.ruleFrequency]?.[lang] ?? deal.ruleFrequency) : "—",
+            },
+          ].map(({ lbl, val }) => (
+            <div key={lbl} style={{ background: C.surface2, borderRadius: 9, padding: "6px 8px" }}>
+              <div style={{ fontSize: 7.5, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 2 }}>
+                {lbl}
+              </div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>
+                {val}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Verification channel pills */}
-      {deal.verifications.length > 0 && (
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 9 }}>
+      {/* Verification channel pills + period — same row */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+        {/* Channel pills (left) */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
           {deal.verifications.map((v) => {
             const m = VERIF[v]
             const isDark = m.bg === "#000"
@@ -244,7 +272,21 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
             )
           })}
         </div>
-      )}
+        {/* Period (right) */}
+        {deal.startDateISO && deal.endDateISO && (
+          <div style={{ textAlign: "right" as const, flexShrink: 0, marginLeft: 8 }}>
+            <div style={{ fontSize: 7.5, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 1 }}>
+              {lang === "pt" ? "Duração" : "Period"}
+            </div>
+            <div style={{ fontSize: 10, fontWeight: 700, color: C.mid, lineHeight: 1.2 }}>
+              {(() => {
+                const fmt = (iso: string) => { const d = new Date(iso); return `${d.getUTCDate()}/${String(d.getUTCMonth() + 1).padStart(2, "0")}` }
+                return `${formatDuration(deal.daysTotal, lang)} · ${fmt(deal.startDateISO)}–${fmt(deal.endDateISO)}`
+              })()}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Progress bar (active only) */}
       {deal.status === "ativo" && deal.progress > 0 && (
@@ -268,72 +310,78 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
         </div>
       )}
 
-      {/* Stats row + footer */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 9, borderTop: `1px solid ${C.border2}` }}>
-        <div style={{ fontSize: 11, color: C.mid, display: "flex", gap: 8, alignItems: "center" }}>
-          {/* Entry */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Entrada</span>
-            <span style={{ fontWeight: 800, color: C.text, fontSize: 13 }}>${deal.valuePerPerson}</span>
+      {/* Footer */}
+      {(() => {
+        const isPrivate = deal.type === "privado"
+        const isPending = deal.status === "pendente"
+        const canJoin   = isPending && !deal.isParticipating
+        const isRequest = canJoin && isPrivate
+
+        const smallLabel = deal.isParticipating
+          ? (deal.status === "ativo" ? (lang === "pt" ? "Progresso" : "Progress") : (lang === "pt" ? "Resultados" : "Results"))
+          : (lang === "pt" ? "Ver" : "View")
+        const smallBg = deal.isParticipating
+          ? (deal.status === "ativo" ? C.activeLight : C.surface2)
+          : C.surface2
+        const smallColor = deal.isParticipating ? (deal.status === "ativo" ? C.brand : C.mid) : C.mid
+        const smallOutline = deal.status === "ativo" ? `1px solid ${C.activeBorder}` : undefined
+
+        return (
+          <div style={{ paddingTop: 9, borderTop: `1px solid ${C.border2}` }}>
+            {/* Stats row */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: canJoin ? 10 : 0 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>
+                  {lang === "pt" ? "Entrada" : "Entry"}
+                </span>
+                <span style={{ fontWeight: 800, color: C.text, fontSize: 13 }}>${deal.valuePerPerson}</span>
+              </div>
+              <span style={{ color: C.border }}>·</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Players</span>
+                <span style={{ fontWeight: 600, color: C.mid, fontSize: 12 }}>{deal.participants}</span>
+              </div>
+              <span style={{ color: C.border }}>·</span>
+              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>
+                  {lang === "pt" ? "Pote" : "Pot"}
+                </span>
+                <span style={{ fontWeight: 800, color: deal.pot > 0 ? C.brand : C.dim, fontSize: 14 }}>${deal.pot}</span>
+              </div>
+              {!canJoin && (
+                <div style={{ marginLeft: "auto" }}>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onClick() }}
+                    style={{ padding: "7px 14px", borderRadius: 100, fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", background: smallBg, color: smallColor, outline: smallOutline }}
+                  >
+                    {smallLabel}
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Full-width join / request button */}
+            {canJoin && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onClick() }}
+                style={{
+                  width: "100%", padding: "13px 16px", borderRadius: 12, border: "none", cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+                  fontSize: 14, fontWeight: 700, letterSpacing: "-0.01em",
+                  background: isRequest ? "#7C3AED" : C.forming,
+                  color: "#fff",
+                  boxShadow: isRequest ? "0 4px 14px rgba(124,58,237,0.3)" : `0 4px 14px ${C.forming}50`,
+                }}
+              >
+                {isRequest && <Lock style={{ width: 14, height: 14 }} />}
+                {isRequest
+                  ? (lang === "pt" ? "Solicitar entrada" : "Request to join")
+                  : (lang === "pt" ? `Participe agora! · $${deal.valuePerPerson}` : `Join now · $${deal.valuePerPerson}`)}
+              </button>
+            )}
           </div>
-          <span style={{ color: C.border }}>·</span>
-          {/* Participants */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Players</span>
-            <span style={{ fontWeight: 600, color: C.mid }}>{deal.participants}</span>
-          </div>
-          <span style={{ color: C.border }}>·</span>
-          {/* Period */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Período</span>
-            <span style={{ fontWeight: 600, color: C.mid, fontSize: 10 }}>
-              {deal.startDateISO && deal.endDateISO
-                ? (() => {
-                    const fmt = (iso: string) => { const d = new Date(iso); return `${d.getUTCDate()}/${String(d.getUTCMonth() + 1).padStart(2, "0")}` }
-                    return `${fmt(deal.startDateISO)}–${fmt(deal.endDateISO)}`
-                  })()
-                : `${deal.daysTotal}d`}
-            </span>
-          </div>
-          <span style={{ color: C.border }}>·</span>
-          {/* Prize Pot */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-            <span style={{ fontSize: 8, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>Pote</span>
-            <span style={{ fontWeight: 800, color: deal.pot > 0 ? C.brand : C.dim, fontSize: 14 }}>${deal.pot}</span>
-          </div>
-        </div>
-        {(() => {
-          const isPrivate  = deal.type === "privado"
-          const isPending  = deal.status === "pendente"
-          const canJoin    = isPending && !deal.isParticipating
-          const isRequest  = canJoin && isPrivate
-          const bg = deal.isParticipating
-            ? (deal.status === "ativo" ? C.activeLight : C.surface2)
-            : isPending
-              ? (isPrivate ? "rgba(124,58,237,0.1)" : C.forming)
-              : C.surface2
-          const color = deal.isParticipating
-            ? (deal.status === "ativo" ? C.brand : C.mid)
-            : isPending
-              ? (isPrivate ? "#7C3AED" : "#fff")
-              : C.mid
-          const outline = deal.status === "ativo" ? `1px solid ${C.activeBorder}` : isRequest ? "1px solid rgba(124,58,237,0.3)" : undefined
-          const label = deal.isParticipating
-            ? (deal.status === "ativo" ? (lang === "pt" ? "Progresso" : "Progress") : (lang === "pt" ? "Resultados" : "Results"))
-            : isPending
-              ? (isPrivate ? (lang === "pt" ? "Solicitar" : "Request") : (lang === "pt" ? "Entrar" : "Join"))
-              : (lang === "pt" ? "Ver" : "View")
-          return (
-            <button
-              onClick={(e) => { e.stopPropagation(); onClick() }}
-              style={{ padding: "7px 14px", borderRadius: 100, fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", background: bg, color, outline }}
-            >
-              {isRequest && <Lock style={{ width: 9, height: 9, display: "inline", marginRight: 4, verticalAlign: "middle" }} />}
-              {label}
-            </button>
-          )
-        })()}
-      </div>
+        )
+      })()}
     </div>
   )
 }
