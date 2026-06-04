@@ -226,28 +226,36 @@ function DealCard({ deal, onClick, lang }: { deal: Deal; onClick: () => void; la
         {deal.title}
       </div>
 
-      {/* Rule info — labeled 3-column grid */}
+      {/* Rule info — 3-column labeled row, no background */}
       {(deal.verificationType || deal.ruleTarget != null || deal.ruleFrequency) && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5, marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", marginBottom: 9, paddingBottom: 9, borderBottom: `1px solid ${C.border2}` }}>
           {[
             {
               lbl: lang === "pt" ? "Regra" : "Rule",
               val: deal.verificationType ? (RULE_LABELS[deal.verificationType]?.[lang] ?? deal.verificationType) : "—",
             },
             {
-              lbl: lang === "pt" ? "Quantidade" : "Quantity",
+              lbl: lang === "pt" ? "Quantidade" : "Qty.",
               val: deal.ruleTarget != null ? `${deal.ruleTarget}×` : "—",
             },
             {
               lbl: lang === "pt" ? "Frequência" : "Frequency",
               val: deal.ruleFrequency ? (FREQ_LABELS[deal.ruleFrequency]?.[lang] ?? deal.ruleFrequency) : "—",
             },
-          ].map(({ lbl, val }) => (
-            <div key={lbl} style={{ background: C.surface2, borderRadius: 9, padding: "6px 8px" }}>
+          ].map(({ lbl, val }, i) => (
+            <div
+              key={lbl}
+              style={{
+                flex: 1,
+                paddingLeft: i > 0 ? 10 : 0,
+                marginLeft:  i > 0 ? 10 : 0,
+                borderLeft:  i > 0 ? `1px solid ${C.border2}` : "none",
+              }}
+            >
               <div style={{ fontSize: 7.5, ...MONO, color: C.dim, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 2 }}>
                 {lbl}
               </div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: C.text, lineHeight: 1.2 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: C.text }}>
                 {val}
               </div>
             </div>
