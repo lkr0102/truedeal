@@ -228,7 +228,7 @@ export async function createDeal(input: CreateDealInput) {
       joinAgreementUSDC,
       deriveAgreementPDA,
     } = await import("@/lib/solana/anchor-client")
-    const { generateEvidenceHash } = await import("@/lib/integrations/crypto-proof")
+    const { generateRuleHash } = await import("@/lib/integrations/crypto-proof")
 
     const { data: walletData } = await (supabase.from("user_wallets") as any)
       .select("encrypted_secret")
@@ -239,8 +239,8 @@ export async function createDeal(input: CreateDealInput) {
       const feePayer    = getFeePayer()
       const userKeypair = decryptSecret(walletData.encrypted_secret)
 
-      // Hash of empty audit results serves as the rule commitment at init time
-      const ruleHashHex   = generateEvidenceHash(deal.id, [])
+      // Commit to the deal's verifiable rules — stored immutably on-chain in the vault PDA
+      const ruleHashHex   = generateRuleHash(deal)
       const ruleHashBytes = Buffer.from(ruleHashHex, "hex")
 
       await initPerformanceAgreement(feePayer, deal.id, toUSDCUnits(input.entry_amount), ruleHashBytes)

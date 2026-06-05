@@ -5,6 +5,38 @@ import crypto from "crypto"
  * Gera hashes de prova forense (32 bytes) para submissão on-chain.
  */
 
+/**
+ * Rule hash: SHA-256 commitment to the deal's verifiable rules, stored on-chain at init.
+ * Encodes the deal's immutable parameters so any external party can verify the oracle
+ * audited against the same rules that were committed at creation time.
+ */
+export function generateRuleHash(deal: {
+  id:                    string
+  verification_type:     string
+  verification_channels: string[]
+  rule_target:           number | null
+  rule_frequency:        string | null
+  entry_amount:          number | string
+  start_date:            string | null
+  end_date:              string | null
+}): string {
+  const data = JSON.stringify({
+    dealId:                deal.id,
+    verification_type:     deal.verification_type,
+    verification_channels: [...(deal.verification_channels ?? [])].sort(),
+    rule_target:           deal.rule_target,
+    rule_frequency:        deal.rule_frequency,
+    entry_amount:          String(deal.entry_amount),
+    start_date:            deal.start_date,
+    end_date:              deal.end_date,
+  })
+  return crypto.createHash("sha256").update(data).digest("hex")
+}
+
+/**
+ * Evidence hash: SHA-256 of the DealGuard audit results, stored on-chain at settlement.
+ * Proves which participants passed/failed according to the committed rules.
+ */
 export function generateEvidenceHash(dealId: string, results: any[]): string {
   const data = JSON.stringify({
     dealId,
