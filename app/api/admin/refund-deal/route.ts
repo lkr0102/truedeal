@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
 
   // Fetch deal
   const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
-    .select("entry_amount, status, title")
+    .select("entry_amount, status, title, pda_address")
     .eq("id", deal_id)
     .single()
 
@@ -57,8 +57,17 @@ export async function POST(request: NextRequest) {
   }
 
   const feePayer = getFeePayer()
-  const { cancelAgreement } = await import("@/lib/solana/anchor-client")
-  const txSignature = await cancelAgreement(feePayer, deal_id, pubkeys)
+  let txSignature: string
+  if (deal.pda_address) {
+    const { cancelAgreement } = await import("@/lib/solana/anchor-client")
+    txSignature = await cancelAgreement(feePayer, deal_id, pubkeys)
+  } else {
+    // Pre-migration deal: USDC is in feePayer's ATA (custodial), not vault PDA
+    const { refundUsdcDirect } = await import("@/lib/solana/escrow")
+    const { toUSDCUnits }       = await import("@/lib/solana/constants")
+    const txSigs = await refundUsdcDirect(feePayer, pubkeys, toUSDCUnits(deal.entry_amount))
+    txSignature = txSigs[txSigs.length - 1] ?? `REFUND_${deal_id.slice(0, 8)}`
+  }
 
   // Mark deal as cancelled in DB
   await (supabase.from("deals") as any)

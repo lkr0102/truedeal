@@ -34,7 +34,7 @@ export async function sweepStaleDeals() {
     const sweepDate = new Date(Date.now() - 3 * 3600 * 1000).toISOString().split("T")[0]
 
     const { data: stale } = await (supabase.from("deals") as any)
-      .select("id, title, entry_amount, deal_participants(id, user_id)")
+      .select("id, title, entry_amount, pda_address, deal_participants(id, user_id)")
       .eq("status", "formacao")
       .lte("start_date", sweepDate)
 
@@ -46,7 +46,7 @@ export async function sweepStaleDeals() {
 
     const toCancel: { id: string; title: string; entry_amount: number; participants: any[] }[] = (stale as any[])
       .filter((d: any) => (d.deal_participants?.length ?? 0) < 2)
-      .map((d: any) => ({ id: d.id, title: d.title ?? "", entry_amount: d.entry_amount ?? 0, participants: d.deal_participants ?? [] }))
+      .map((d: any) => ({ id: d.id, title: d.title ?? "", entry_amount: d.entry_amount ?? 0, pda_address: d.pda_address ?? null, participants: d.deal_participants ?? [] }))
 
     for (const dealId of toActivate) {
       await (supabase.from("deals") as any).update({ status: "ativo" }).eq("id", dealId)
@@ -86,10 +86,17 @@ export async function sweepStaleDeals() {
             .map((w: any) => new PublicKey(w.public_key))
 
           if (pubkeys.length > 0) {
-            const { getFeePayer }     = await import("@/lib/solana/fee-payer")
-            const { cancelAgreement } = await import("@/lib/solana/anchor-client")
+            const { getFeePayer } = await import("@/lib/solana/fee-payer")
             const feePayer = getFeePayer()
-            await cancelAgreement(feePayer, deal.id, pubkeys)
+            if (deal.pda_address) {
+              const { cancelAgreement } = await import("@/lib/solana/anchor-client")
+              await cancelAgreement(feePayer, deal.id, pubkeys)
+            } else {
+              // Pre-migration deal: USDC in feePayer ATA, not vault PDA
+              const { refundUsdcDirect } = await import("@/lib/solana/escrow")
+              const { toUSDCUnits }       = await import("@/lib/solana/constants")
+              await refundUsdcDirect(feePayer, pubkeys, toUSDCUnits(deal.entry_amount))
+            }
           }
         }
       } catch (err: any) {
@@ -504,7 +511,7 @@ export async function joinDeal(dealId: string) {
 
   // Verifica se o deal existe e tem vagas
   const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
-    .select("id, status, max_participants, mode, entry_amount, verification_channels, creator_id, title")
+    .select("id, status, max_participants, mode, entry_amount, verification_channels, creator_id, title, pda_address")
     .eq("id", dealId)
     .single()
 
@@ -607,13 +614,19 @@ export async function joinDeal(dealId: string) {
       .single()
 
     if (walletData?.encrypted_secret && deal.entry_amount > 0 && process.env.APP_FEE_PAYER_KEY) {
-      const { getFeePayer }      = await import("@/lib/solana/fee-payer")
-      const { joinAgreementUSDC } = await import("@/lib/solana/anchor-client")
-
+      const { getFeePayer } = await import("@/lib/solana/fee-payer")
       const userKeypair = decryptSecret(walletData.encrypted_secret)
       const feePayer    = getFeePayer()
 
-      txSignature = await joinAgreementUSDC(userKeypair, feePayer, dealId)
+      if (deal.pda_address) {
+        const { joinAgreementUSDC } = await import("@/lib/solana/anchor-client")
+        txSignature = await joinAgreementUSDC(userKeypair, feePayer, dealId)
+      } else {
+        // Pre-migration deal: no vault PDA, stake to feePayer ATA (custodial)
+        const { stakeUsdc }   = await import("@/lib/solana/escrow")
+        const { toUSDCUnits } = await import("@/lib/solana/constants")
+        txSignature = await stakeUsdc(userKeypair, feePayer, toUSDCUnits(deal.entry_amount))
+      }
 
       await (supabase.from("deal_participants") as any)
         .update({ transaction_hash: txSignature })

@@ -49,7 +49,7 @@ export async function settleDealProtocol(
 
   // Fetch deal title for notifications
   const { data: deal } = await (supabase.from("deals") as any)
-    .select("entry_amount, title")
+    .select("entry_amount, title, pda_address")
     .eq("id", dealId)
     .single()
 
@@ -69,15 +69,22 @@ export async function settleDealProtocol(
   if (!hasOracleKey) {
     console.warn(`[DealGuard] Settlement demo mode — APP_FEE_PAYER_KEY not set.`)
     txSignature = `DEMO_TX_${Date.now()}_${dealId.slice(0, 8)}`
+  } else if (!deal?.pda_address) {
+    // Pre-migration deal: USDC is in feePayer's ATA (custodial), no vault PDA exists on-chain
+    const { settleUsdcDirect } = await import("../solana/escrow")
+    const { toUSDCUnits }      = await import("../solana/constants")
+    const feePayer   = getFeePayer()
+    const loserCount = audit.results.filter((r: any) => r.is_success === false).length
+    const txSigs = await settleUsdcDirect(feePayer, winnerPubkeys, loserCount, toUSDCUnits(deal.entry_amount))
+    txSignature = txSigs[txSigs.length - 1] ?? `SETTLE_${dealId.slice(0, 8)}`
+    console.log(`[Escrow] Custodial settlement complete (pre-migration deal). Last tx: ${txSignature}`)
   } else {
-    const {
-      settlePerformanceAgreement,
-    } = await import("../solana/anchor-client")
+    const { settlePerformanceAgreement } = await import("../solana/anchor-client")
     const { getOrCreateAssociatedTokenAccount } = await import("@solana/spl-token")
     const { USDC_MINT } = await import("../solana/constants")
 
-    const feePayer  = getFeePayer()
-    const oracle2   = getOracle2()
+    const feePayer   = getFeePayer()
+    const oracle2    = getOracle2()
     const connection = getConnection()
 
     // Ensure treasury ATA exists (feePayer's USDC ATA receives platform fee)
