@@ -115,6 +115,28 @@
     .tag.env { background: rgba(0, 184, 82, 0.1); color: var(--brand); border: 1px solid rgba(0, 184, 82, 0.2); }
     .tag.code { background: rgba(232, 98, 10, 0.1); color: var(--forming); border: 1px solid rgba(232, 98, 10, 0.2); }
     .tag.infra { background: rgba(37, 99, 235, 0.1); color: #2563EB; border: 1px solid rgba(37, 99, 235, 0.2); }
+    .checkbox-item.resolved .checkbox-title {
+      text-decoration: line-through;
+      color: var(--mid);
+    }
+    .checkbox-item.resolved .checkbox-desc {
+      color: var(--mid);
+    }
+    .status-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .status-badge.resolved-badge {
+      background: rgba(0, 184, 82, 0.15);
+      color: var(--brand);
+      border: 1px solid rgba(0, 184, 82, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -160,27 +182,33 @@
     <div class="section">
       <h2>🛡️ 2. Blockchain & Contratos (Anchor)</h2>
 
-      <div class="checkbox-item">
-        <input type="checkbox" onchange="updateProgress()">
+      <div class="checkbox-item resolved">
+        <input type="checkbox" checked onchange="updateProgress()">
         <div class="checkbox-content">
-          <p class="checkbox-title">Oráculos para Multi-Sig <span class="tag env">ENV</span> <span class="tag infra">INFRA</span></p>
-          <p class="checkbox-desc">O changelog mostra a migração completa para Anchor com assinatura dual-oracle na liquidação. É OBRIGATÓRIO ter <code>APP_FEE_PAYER_KEY</code> e <code>ORACLE_2_PRIVATE_KEY</code> configurados para as transferências ocorrerem on-chain.</p>
+          <p class="checkbox-title">Oráculos para Multi-Sig <span class="tag env">ENV</span> <span class="tag infra">INFRA</span> <span class="status-badge resolved-badge">Resolvido</span></p>
+          <p class="checkbox-desc"><strong>Pronto!</strong> Chaves geradas e salvas no <code>.env.local</code>. <br>
+            • Oracle 1 (Fee Payer): <code>9ex39hdoBJQ1xjhikjUZLQaSxTXqtHAhGfd3UsayYfaZ</code> (Financiado com 2 SOL no Devnet)<br>
+            • Oracle 2 (Signing Oracle): <code>12W1WU43n83kFimpMvZw7YzpdvDkBMuFVQvDPjN7nSfb</code>
+          </p>
         </div>
       </div>
 
-      <div class="checkbox-item">
-        <input type="checkbox" onchange="updateProgress()">
+      <div class="checkbox-item resolved">
+        <input type="checkbox" checked onchange="updateProgress()">
         <div class="checkbox-content">
-          <p class="checkbox-title">USDC Mock na Devnet <span class="tag env">ENV</span> <span class="tag infra">INFRA</span></p>
-          <p class="checkbox-desc">O ambiente precisa da variável <code>NEXT_PUBLIC_USDC_MINT_DEVNET</code> preenchida com a pubkey gerada pelo script <code>scripts/create-devnet-usdc.cjs</code>.</p>
+          <p class="checkbox-title">USDC Mock na Devnet <span class="tag env">ENV</span> <span class="tag infra">INFRA</span> <span class="status-badge resolved-badge">Resolvido</span></p>
+          <p class="checkbox-desc"><strong>Pronto!</strong> Criado e configurado! <br>
+            • USDC Mint: <code>9P7QpjYFj3jBheoAbwqdPRe2iQQFxGivtoSwtgfhSzZi</code> (1M USDC mock cunhados para o treasury)<br>
+            • Variável <code>NEXT_PUBLIC_USDC_MINT_DEVNET</code> atualizada no <code>.env.local</code>.
+          </p>
         </div>
       </div>
 
-      <div class="checkbox-item">
-        <input type="checkbox" onchange="updateProgress()">
+      <div class="checkbox-item resolved">
+        <input type="checkbox" checked onchange="updateProgress()">
         <div class="checkbox-content">
-          <p class="checkbox-title">Chave da Carteira Custodial <span class="tag env">ENV</span></p>
-          <p class="checkbox-desc">Falta a <code>WALLET_MASTER_KEY</code> (32 bytes em HEX) para a criptografia AES-256-GCM dos usuários.</p>
+          <p class="checkbox-title">Chave da Carteira Custodial <span class="tag env">ENV</span> <span class="status-badge resolved-badge">Resolvido</span></p>
+          <p class="checkbox-desc"><strong>Pronto!</strong> Variável <code>WALLET_MASTER_KEY</code> gerada (segredo seguro de 32 bytes em HEX) e configurada para criptografia AES-256-GCM.</p>
         </div>
       </div>
     </div>
@@ -210,11 +238,11 @@
     <div class="section">
       <h2>⚙️ 4. Servidor e Cron Jobs</h2>
 
-      <div class="checkbox-item">
-        <input type="checkbox" onchange="updateProgress()">
+      <div class="checkbox-item resolved">
+        <input type="checkbox" checked onchange="updateProgress()">
         <div class="checkbox-content">
-          <p class="checkbox-title">Autenticação do Vercel Cron <span class="tag env">ENV</span> <span class="tag infra">INFRA</span></p>
-          <p class="checkbox-desc">A rota <code>/api/admin/settle-deal</code> (recentemente adicionada pelo Lukas para settlement manual/backup) e a rota do Oracle Airdrop exigem a configuração do header <code>Authorization: Bearer CRON_SECRET</code>. Falta definir <code>CRON_SECRET</code>.</p>
+          <p class="checkbox-title">Autenticação do Vercel Cron <span class="tag env">ENV</span> <span class="tag infra">INFRA</span> <span class="status-badge resolved-badge">Resolvido</span></p>
+          <p class="checkbox-desc"><strong>Pronto!</strong> A variável <code>CRON_SECRET</code> (segredo de 32 bytes em HEX) foi gerada e configurada no <code>.env.local</code> para a rota <code>/api/admin/settle-deal</code> e rotas de airdrop.</p>
         </div>
       </div>
     </div>
@@ -227,11 +255,18 @@
       const total = checkboxes.length;
       let checked = 0;
       checkboxes.forEach(cb => {
-        if (cb.checked) checked++;
+        if (cb.checked) {
+          checked++;
+          cb.closest('.checkbox-item').classList.add('resolved');
+        } else {
+          cb.closest('.checkbox-item').classList.remove('resolved');
+        }
       });
       const percent = Math.round((checked / total) * 100);
       document.getElementById('progressBar').style.width = percent + '%';
     }
+    // Inicializar no carregamento da página
+    window.addEventListener('DOMContentLoaded', updateProgress);
   </script>
 </body>
 </html>
