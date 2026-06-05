@@ -1,0 +1,629 @@
+export type Truedeal = {
+  "version": "0.1.0",
+  "name": "truedeal",
+  "instructions": [
+    {
+      "name": "initPerformanceAgreement",
+      "docs": [
+        "Initializes a new Sovereign Performance Agreement.",
+        "Creates a USDC SPL vault PDA to hold all participant stakes."
+      ],
+      "accounts": [
+        {
+          "name": "agreementAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "USDC escrow vault — PDA-owned SPL token account, created at init"
+          ]
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "usdcMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "agreementId",
+          "type": "string"
+        },
+        {
+          "name": "guaranteeAmount",
+          "type": "u64"
+        },
+        {
+          "name": "ruleHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "joinAgreement",
+      "docs": [
+        "Participants join by transferring USDC from their ATA to the PDA vault."
+      ],
+      "accounts": [
+        {
+          "name": "agreementAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "participant",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "participantUsdcAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "usdcMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settlePerformanceAgreement",
+      "docs": [
+        "Sovereign Payout: settles via DualGuard Consensus.",
+        "Slacker Tax: 3% of losers' pool to treasury; remainder split among winners.",
+        "Winners are passed as remaining_accounts (their USDC ATAs)."
+      ],
+      "accounts": [
+        {
+          "name": "agreementAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracle1",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "oracle2",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasuryTokenAccount",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Treasury USDC ATA — receives the 3% platform fee"
+          ]
+        },
+        {
+          "name": "usdcMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "winnersCount",
+          "type": "u64"
+        },
+        {
+          "name": "proofHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "cancelAgreement",
+      "docs": [
+        "Cancel Agreement: refunds all participants equally from the vault.",
+        "Called when a deal is cancelled (e.g. quorum not reached before start_date).",
+        "oracle_1 must sign to prevent unauthorized cancellation.",
+        "Participant USDC ATAs are passed as remaining_accounts (writable)."
+      ],
+      "accounts": [
+        {
+          "name": "agreementAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracle1",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "usdcMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "agreementAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "publicKey"
+          },
+          {
+            "name": "agreementId",
+            "type": "string"
+          },
+          {
+            "name": "guaranteeAmount",
+            "type": "u64"
+          },
+          {
+            "name": "totalGuarantee",
+            "type": "u64"
+          },
+          {
+            "name": "participantCount",
+            "type": "u64"
+          },
+          {
+            "name": "winnersCount",
+            "type": "u64"
+          },
+          {
+            "name": "vault",
+            "type": "publicKey"
+          },
+          {
+            "name": "ruleHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proofHash",
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "AgreementStatus"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "AgreementStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Formation"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Settled"
+          },
+          {
+            "name": "Cancelled"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidStatus",
+      "msg": "The agreement is not in a valid status for this operation."
+    },
+    {
+      "code": 6001,
+      "name": "DealGuardConsensusFailed",
+      "msg": "DealGuard consensus validation failed. Missing required node signatures."
+    },
+    {
+      "code": 6002,
+      "name": "InvalidTokenAccount",
+      "msg": "Token account invalid: mint or owner does not match."
+    },
+    {
+      "code": 6003,
+      "name": "WinnersCountMismatch",
+      "msg": "Winners count does not match the number of winner accounts provided."
+    }
+  ]
+};
+
+export const IDL: Truedeal = {
+  "version": "0.1.0",
+  "name": "truedeal",
+  "instructions": [
+    {
+      "name": "initPerformanceAgreement",
+      "docs": [
+        "Initializes a new Sovereign Performance Agreement.",
+        "Creates a USDC SPL vault PDA to hold all participant stakes."
+      ],
+      "accounts": [
+        {
+          "name": "agreementAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "USDC escrow vault — PDA-owned SPL token account, created at init"
+          ]
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "usdcMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "agreementId",
+          "type": "string"
+        },
+        {
+          "name": "guaranteeAmount",
+          "type": "u64"
+        },
+        {
+          "name": "ruleHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "joinAgreement",
+      "docs": [
+        "Participants join by transferring USDC from their ATA to the PDA vault."
+      ],
+      "accounts": [
+        {
+          "name": "agreementAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "participant",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "participantUsdcAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "usdcMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "settlePerformanceAgreement",
+      "docs": [
+        "Sovereign Payout: settles via DualGuard Consensus.",
+        "Slacker Tax: 3% of losers' pool to treasury; remainder split among winners.",
+        "Winners are passed as remaining_accounts (their USDC ATAs)."
+      ],
+      "accounts": [
+        {
+          "name": "agreementAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracle1",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "oracle2",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "treasuryTokenAccount",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "Treasury USDC ATA — receives the 3% platform fee"
+          ]
+        },
+        {
+          "name": "usdcMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "winnersCount",
+          "type": "u64"
+        },
+        {
+          "name": "proofHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "cancelAgreement",
+      "docs": [
+        "Cancel Agreement: refunds all participants equally from the vault.",
+        "Called when a deal is cancelled (e.g. quorum not reached before start_date).",
+        "oracle_1 must sign to prevent unauthorized cancellation.",
+        "Participant USDC ATAs are passed as remaining_accounts (writable)."
+      ],
+      "accounts": [
+        {
+          "name": "agreementAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracle1",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "vault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "usdcMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "agreementAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "publicKey"
+          },
+          {
+            "name": "agreementId",
+            "type": "string"
+          },
+          {
+            "name": "guaranteeAmount",
+            "type": "u64"
+          },
+          {
+            "name": "totalGuarantee",
+            "type": "u64"
+          },
+          {
+            "name": "participantCount",
+            "type": "u64"
+          },
+          {
+            "name": "winnersCount",
+            "type": "u64"
+          },
+          {
+            "name": "vault",
+            "type": "publicKey"
+          },
+          {
+            "name": "ruleHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proofHash",
+            "type": {
+              "option": {
+                "array": [
+                  "u8",
+                  32
+                ]
+              }
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "AgreementStatus"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "AgreementStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Formation"
+          },
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Settled"
+          },
+          {
+            "name": "Cancelled"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidStatus",
+      "msg": "The agreement is not in a valid status for this operation."
+    },
+    {
+      "code": 6001,
+      "name": "DealGuardConsensusFailed",
+      "msg": "DealGuard consensus validation failed. Missing required node signatures."
+    },
+    {
+      "code": 6002,
+      "name": "InvalidTokenAccount",
+      "msg": "Token account invalid: mint or owner does not match."
+    },
+    {
+      "code": 6003,
+      "name": "WinnersCountMismatch",
+      "msg": "Winners count does not match the number of winner accounts provided."
+    }
+  ]
+};

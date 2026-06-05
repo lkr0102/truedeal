@@ -96,8 +96,6 @@ Note the import of [HashMapExt]. This is needed for the constructor.
 #![cfg_attr(all(not(test), not(feature = "std")), no_std)]
 #![cfg_attr(feature = "specialize", feature(min_specialization))]
 #![cfg_attr(feature = "specialize", feature(build_hasher_simple_hash_one))]
-#![cfg_attr(feature = "stdsimd", feature(stdsimd))]
-
 #[macro_use]
 mod convert;
 

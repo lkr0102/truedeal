@@ -1,13 +1,16 @@
 
+[toolchain]
+solana_version = "2.2.0"
+
 [features]
 resolution = true
 skip-lint = false
 
 [programs.localnet]
-truedeal = "885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFb2"
+truedeal = "7sb3HQQbaCPYiT2x3tZZGMJyn5qRNiy4PgvCvb2BzZS8"
 
 [programs.devnet]
-truedeal = "885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFb2"
+truedeal = "7sb3HQQbaCPYiT2x3tZZGMJyn5qRNiy4PgvCvb2BzZS8"
 
 [registry]
 url = "https://anchor.projectserum.com"

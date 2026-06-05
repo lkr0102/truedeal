@@ -10,7 +10,7 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 // IP: Architecture incorporates DealGuard Engine & Risk Guardian (Symbeon Labs).
 // ============================================================================
 
-declare_id!("885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ");
+declare_id!("7sb3HQQbaCPYiT2x3tZZGMJyn5qRNiy4PgvCvb2BzZS8");
 
 #[program]
 pub mod truedeal {
@@ -194,7 +194,7 @@ pub mod truedeal {
                         Transfer {
                             from:      ctx.accounts.vault.to_account_info(),
                             to:        participant_ata.to_account_info(),
-                            authority: ctx.accounts.agreement_account.to_account_info(),
+                            authority: agreement.to_account_info(),
                         },
                         signer,
                     ),

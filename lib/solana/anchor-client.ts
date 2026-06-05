@@ -12,7 +12,7 @@ import idl from "./idl.json"
 // ── Constants ────────────────────────────────────────────────────────────────
 
 export const PROGRAM_ID = new PublicKey(
-  process.env.NEXT_PUBLIC_TRUEDEAL_PROGRAM_ID ?? "885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ"
+  process.env.NEXT_PUBLIC_TRUEDEAL_PROGRAM_ID ?? "7sb3HQQbaCPYiT2x3tZZGMJyn5qRNiy4PgvCvb2BzZS8"
 )
 
 const AGREEMENT_SEED = Buffer.from("agreement")
