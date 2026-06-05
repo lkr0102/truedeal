@@ -8,8 +8,11 @@ import crypto from "crypto"
 export function generateEvidenceHash(dealId: string, results: any[]): string {
   const data = JSON.stringify({
     dealId,
-    results: results.sort((a, b) => a.user_id.localeCompare(b.user_id)),
-    timestamp: Date.now(),
+    results: results.map(r => ({
+      user_id:    r.user_id,
+      is_success: r.is_success,
+      risk_score: r.risk_score ?? 0,
+    })).sort((a, b) => a.user_id.localeCompare(b.user_id)),
   })
 
   return crypto.createHash("sha256").update(data).digest("hex")

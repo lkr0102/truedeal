@@ -8,6 +8,7 @@ import {
   mintTo,
   getAccount,
 } from "@solana/spl-token";
+import { Keypair } from "@solana/web3.js";
 import { expect } from "chai";
 
 describe("truedeal_full_workflow_validation", () => {
@@ -63,25 +64,27 @@ describe("truedeal_full_workflow_validation", () => {
       6,
     );
 
-    treasuryTokenAccount = await createAccount(
-      provider.connection, (creator as any).payer, mint, creator.publicKey,
-    );
+    // Provide explicit keypairs to avoid the ATA program (v1.1+ rejects some owners on devnet)
+    const treasuryKp     = Keypair.generate();
+    const creatorKp      = Keypair.generate();
+    const participant2Kp = Keypair.generate();
 
-    creatorTokenAccount = await createAccount(
-      provider.connection, (creator as any).payer, mint, creator.publicKey,
-    );
+    treasuryTokenAccount     = await createAccount(provider.connection, (creator as any).payer, mint, creator.publicKey,       treasuryKp);
+    creatorTokenAccount      = await createAccount(provider.connection, (creator as any).payer, mint, creator.publicKey,       creatorKp);
+    participant2TokenAccount = await createAccount(provider.connection, (creator as any).payer, mint, participant2.publicKey,   participant2Kp);
 
-    participant2TokenAccount = await createAccount(
-      provider.connection, (creator as any).payer, mint, participant2.publicKey,
-    );
+    await mintTo(provider.connection, (creator as any).payer, mint, creatorTokenAccount,     creator.publicKey, 10_000_000);
+    await mintTo(provider.connection, (creator as any).payer, mint, participant2TokenAccount, creator.publicKey, 10_000_000);
 
-    await mintTo(provider.connection, (creator as any).payer, mint, creatorTokenAccount,       creator.publicKey, 10_000_000);
-    await mintTo(provider.connection, (creator as any).payer, mint, participant2TokenAccount,   creator.publicKey, 10_000_000);
-
-    // Fund participant2 and oracle2 with SOL for tx fees
+    // Fund participant2 and oracle2 with SOL — non-critical (provider pays all fees in .rpc())
     for (const kp of [participant2, oracle2]) {
-      const sig = await provider.connection.requestAirdrop(kp.publicKey, 1_000_000_000);
-      await provider.connection.confirmTransaction(sig);
+      try {
+        const sig = await provider.connection.requestAirdrop(kp.publicKey, 500_000_000);
+        const { blockhash, lastValidBlockHeight } = await provider.connection.getLatestBlockhash();
+        await provider.connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight });
+      } catch {
+        console.warn(`  (airdrop skipped for ${kp.publicKey.toBase58().slice(0, 8)}… — devnet rate limit, provider covers fees)`);
+      }
     }
   });
 
@@ -201,9 +204,10 @@ describe("truedeal_full_workflow_validation", () => {
     const [agrPDA] = agreementPDA(cancelAgreementId);
     const [vltPDA] = vaultPDA(cancelAgreementId);
 
-    // Create a new cancel-specific token account for the participant
+    // Create a new cancel-specific token account for the participant (explicit keypair avoids ATA program)
+    const cancelParticipantKp  = Keypair.generate();
     const cancelParticipantATA = await createAccount(
-      provider.connection, (creator as any).payer, mint, creator.publicKey,
+      provider.connection, (creator as any).payer, mint, creator.publicKey, cancelParticipantKp,
     );
     await mintTo(provider.connection, (creator as any).payer, mint, cancelParticipantATA, creator.publicKey, 5_000_000);
 

@@ -2,7 +2,6 @@ import { AnchorProvider, Program, type Idl, BN } from "@coral-xyz/anchor"
 import { PublicKey, Keypair, SystemProgram } from "@solana/web3.js"
 import {
   TOKEN_PROGRAM_ID,
-  getAssociatedTokenAddress,
   getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token"
 import { getConnection } from "./fee-payer"
@@ -147,8 +146,7 @@ export async function cancelAgreement(
   const [agreementAccount] = deriveAgreementPDA(agreementId)
   const [vault]            = deriveVaultPDA(agreementId)
 
-  // Derive USDC ATAs for each participant
-  const { getOrCreateAssociatedTokenAccount } = await import("@solana/spl-token")
+  // Ensure each participant's USDC ATA exists before the on-chain transfer
   const participantATAs = await Promise.all(
     participantPublicKeys.map(pk =>
       getOrCreateAssociatedTokenAccount(connection, oracle1, USDC_MINT, pk)
@@ -191,15 +189,19 @@ export async function settlePerformanceAgreement(
   proofHash: Uint8Array,
   winnersCount: bigint,
 ): Promise<string> {
-  const provider = getProvider(oracle1)
-  const program  = getProgram(provider)
+  const connection = getConnection()
+  const provider   = getProvider(oracle1)
+  const program    = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
   const [vault]            = deriveVaultPDA(agreementId)
 
-  // remaining_accounts must be USDC ATAs, not wallet pubkeys
-  const winnerATAs = await Promise.all(
-    winnerWalletPubkeys.map(pk => getAssociatedTokenAddress(USDC_MINT, pk))
+  // Ensure each winner's USDC ATA exists — creates if missing (e.g. new user who never received USDC)
+  const winnerATAAccounts = await Promise.all(
+    winnerWalletPubkeys.map(pk =>
+      getOrCreateAssociatedTokenAccount(connection, oracle1, USDC_MINT, pk)
+    )
   )
+  const winnerATAs = winnerATAAccounts.map(a => a.address)
 
   const txSignature = await program.methods
     .settlePerformanceAgreement(

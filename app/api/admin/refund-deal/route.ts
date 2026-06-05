@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { PublicKey } from "@solana/web3.js"
 import { createServiceClient } from "@/lib/supabase/server"
-import { refundUsdcDirect } from "@/lib/solana/escrow"
 import { getFeePayer } from "@/lib/solana/fee-payer"
 
 // Admin-only: refund all participants of a cancelled deal back to their wallets.
+// Calls cancelAgreement on the Anchor program — funds flow from vault PDA → participant ATAs.
 // Protected by CRON_SECRET — same mechanism as the settlement cron.
 // Usage: POST /api/admin/refund-deal  { "deal_id": "..." }
 // Header: Authorization: Bearer <CRON_SECRET>
@@ -19,15 +19,13 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createServiceClient()
 
-  // Fetch deal entry amount
+  // Fetch deal
   const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
     .select("entry_amount, status, title")
     .eq("id", deal_id)
     .single()
 
   if (dealErr || !deal) return NextResponse.json({ error: "Deal not found" }, { status: 404 })
-
-  const stakeAmountMicro = BigInt(Math.round((deal.entry_amount ?? 0) * 1_000_000))
 
   // Fetch all participant wallet pubkeys
   const { data: participants, error: partErr } = await (supabase.from("deal_participants") as any)
@@ -59,21 +57,26 @@ export async function POST(request: NextRequest) {
   }
 
   const feePayer = getFeePayer()
-  const txSignatures = await refundUsdcDirect(feePayer, pubkeys, stakeAmountMicro)
+  const { cancelAgreement } = await import("@/lib/solana/anchor-client")
+  const txSignature = await cancelAgreement(feePayer, deal_id, pubkeys)
 
-  // Log refund tx in audit_logs
+  // Mark deal as cancelled in DB
   await (supabase.from("deals") as any)
-    .update({ audit_logs: { refund_tx: txSignatures, refunded_at: new Date().toISOString() } })
+    .update({
+      status:              "encerrado",
+      solana_tx_signature: txSignature,
+      audit_logs:          { refund_tx: txSignature, refunded_at: new Date().toISOString() },
+    })
     .eq("id", deal_id)
 
-  console.log(`[admin/refund-deal] Refunded deal ${deal_id}: ${txSignatures.join(", ")}`)
+  console.log(`[admin/refund-deal] Cancelled deal ${deal_id} via Anchor: ${txSignature}`)
 
   return NextResponse.json({
     ok: true,
     deal_id,
-    title: deal.title,
-    refunded_to: pubkeys.map(p => p.toBase58()),
+    title:            deal.title,
+    refunded_to:      pubkeys.map(p => p.toBase58()),
     amount_each_usdc: deal.entry_amount,
-    txSignatures,
+    txSignature,
   })
 }
