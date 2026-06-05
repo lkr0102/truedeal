@@ -104,6 +104,9 @@ export async function auditDeal(dealId: string) {
 
   const results = []
 
+  // fitness_connector: "e" (AND — all channels must pass) | "ou" (OR — any channel suffices)
+  const fitnessConnector: string = deal.fitness_connector ?? "ou"
+
   // 2. Iterate through participants and audit their performance
   for (const participant of deal.participants) {
     const connections = participant.profile?.social_connections || []
@@ -112,11 +115,19 @@ export async function auditDeal(dealId: string) {
     let fraudReason: string | null = null
     let apiError: string | null = null
 
+    // Per-channel results — combined at the end via fitness_connector
+    const channelResults: boolean[] = []
+
     for (const channel of deal.verification_channels) {
       const conn = connections.find((c: any) => c.platform === channel)
-      if (!conn || !conn.access_token) continue
+      if (!conn || !conn.access_token) {
+        // Channel not connected → failure for this channel
+        channelResults.push(false)
+        continue
+      }
 
       let rawData: any[] = []
+      let channelSuccess = false
 
       if (channel === "strava") {
         let token = conn.access_token
@@ -131,7 +142,7 @@ export async function auditDeal(dealId: string) {
           after:  afterEpoch,
           before: beforeEpoch,
         })
-        isSuccess = validateStravaRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
+        channelSuccess = validateStravaRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
 
       } else if (channel === "x") {
         let xToken = conn.access_token
@@ -153,10 +164,11 @@ export async function auditDeal(dealId: string) {
         if (xFetchErr) {
           console.error(`[DealGuard] X API fetch failed for participant ${participant.user_id}: ${xFetchErr}`)
           apiError = xFetchErr
-          continue // try next channel before giving up
+          channelResults.push(false)
+          continue
         }
         rawData = xPosts
-        isSuccess = validateXRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
+        channelSuccess = validateXRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
 
       } else if (channel === "totalpass") {
         // UTC-3: query window matches day boundaries in BRT
@@ -181,7 +193,7 @@ export async function auditDeal(dealId: string) {
           rawData = checkins
           const DAY_MS = 24 * 60 * 60 * 1000
           if (deal.rule_frequency === "daily" && deal.start_date && deal.end_date) {
-            isSuccess = getDateRange(deal.start_date, deal.end_date).every(day => {
+            channelSuccess = getDateRange(deal.start_date, deal.end_date).every(day => {
               const wStart = new Date(day + "T03:00:00Z").getTime()
               const wEnd   = wStart + DAY_MS - 1
               return checkins.filter((c: any) => {
@@ -190,7 +202,7 @@ export async function auditDeal(dealId: string) {
               }).length >= ruleTarget
             })
           } else if (deal.rule_frequency === "weekly" && deal.start_date && deal.end_date) {
-            isSuccess = getWeekRanges(deal.start_date, deal.end_date).every(([wStart, wEnd]) => {
+            channelSuccess = getWeekRanges(deal.start_date, deal.end_date).every(([wStart, wEnd]) => {
               const windowStart = new Date(wStart + "T03:00:00Z").getTime()
               const endDt = new Date(wEnd + "T02:59:59.999Z")
               endDt.setUTCDate(endDt.getUTCDate() + 1)
@@ -201,7 +213,7 @@ export async function auditDeal(dealId: string) {
               }).length >= ruleTarget
             })
           } else {
-            isSuccess = checkins.length >= ruleTarget
+            channelSuccess = checkins.length >= ruleTarget
           }
         }
       }
@@ -213,12 +225,21 @@ export async function auditDeal(dealId: string) {
 
         if (sentinel.isFraudulent) {
           console.warn(`[Sentinel] Fraude detectada para usuário ${participant.user_id}: ${sentinel.reason}`)
-          isSuccess = false
+          channelSuccess = false
           fraudReason = sentinel.reason
         }
       }
 
-      if (isSuccess) break // Success in one channel is sufficient
+      channelResults.push(channelSuccess)
+    }
+
+    // Combine channel results according to fitness_connector
+    if (channelResults.length === 0) {
+      isSuccess = false
+    } else if (fitnessConnector === "e") {
+      isSuccess = channelResults.every(r => r)
+    } else {
+      isSuccess = channelResults.some(r => r)
     }
 
     results.push({

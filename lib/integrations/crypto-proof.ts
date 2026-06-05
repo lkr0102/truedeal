@@ -14,9 +14,11 @@ export function generateRuleHash(deal: {
   id:                    string
   verification_type:     string
   verification_channels: string[]
+  fitness_connector?:    string | null
   rule_target:           number | null
   rule_frequency:        string | null
   entry_amount:          number | string
+  distribution?:         string | null
   start_date:            string | null
   end_date:              string | null
 }): string {
@@ -24,9 +26,11 @@ export function generateRuleHash(deal: {
     dealId:                deal.id,
     verification_type:     deal.verification_type,
     verification_channels: [...(deal.verification_channels ?? [])].sort(),
+    fitness_connector:     deal.fitness_connector ?? "ou",
     rule_target:           deal.rule_target,
     rule_frequency:        deal.rule_frequency,
     entry_amount:          String(deal.entry_amount),
+    distribution:          deal.distribution ?? "proportional",
     start_date:            deal.start_date,
     end_date:              deal.end_date,
   })

@@ -475,6 +475,7 @@ export default function CreateDealPage() {
       category:              category as DealCategory,
       verification_type:     rule ?? "",
       verification_channels: selectedChannels,
+      fitness_connector:     selectedChannels.length >= 2 ? fitnessConnector : undefined,
       rule_target:           quantity,
       rule_frequency:        frequency ?? "daily",
       entry_amount:          effectiveAmount,

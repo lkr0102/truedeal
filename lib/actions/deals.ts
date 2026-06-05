@@ -139,6 +139,7 @@ export interface CreateDealInput {
   category:              DealCategory
   verification_type:     string
   verification_channels: string[]
+  fitness_connector?:    "e" | "ou"   // AND/OR logic between multiple fitness channels
   rule_target:           number        // numeric goal (e.g. 10 for "10 km" or "10 posts")
   rule_frequency:        string        // 'daily' | 'weekly' | 'monthly' | 'yearly'
   entry_amount:          number
@@ -186,6 +187,7 @@ export async function createDeal(input: CreateDealInput) {
     category:              input.category,
     verification_type:     input.verification_type,
     verification_channels: input.verification_channels,
+    fitness_connector:     input.fitness_connector ?? "ou",
     rule_target:           input.rule_target,
     rule_frequency:        input.rule_frequency,
     entry_amount:          input.entry_amount,
@@ -524,20 +526,28 @@ export async function joinDeal(dealId: string) {
 
   if ((count ?? 0) >= deal.max_participants) return { error: "Acordo lotado" }
 
-  const requiredChannel = Array.isArray(deal.verification_channels) ? deal.verification_channels[0] : null
-  if (requiredChannel) {
-    const channelLabel = CHANNEL_LABELS[requiredChannel] ?? requiredChannel
-    const { data: connections, error: connErr } = await (supabase.from("social_connections") as any)
+  const requiredChannels: string[] = Array.isArray(deal.verification_channels) ? deal.verification_channels : []
+  if (requiredChannels.length > 0) {
+    const emailOnlyPlatforms = new Set(["totalpass"])
+    const { data: conns, error: connErr } = await (supabase.from("social_connections") as any)
       .select("platform, status, username, member_email, external_id")
       .eq("user_id", user.id)
-      .eq("platform", requiredChannel)
-      .neq("status", "pending")
-      .limit(1)
+      .in("platform", requiredChannels)
 
     if (connErr) return { error: "Erro ao verificar sua conta social" }
-    const connection = Array.isArray(connections) ? connections[0] : null
-    if (!connection || !(connection.username || connection.member_email || connection.external_id)) {
-      return { error: `Você precisa vincular sua conta do ${channelLabel} para participar deste deal.` }
+
+    const connected = new Set(
+      ((conns ?? []) as any[])
+        .filter(c => {
+          if (!c.username && !c.member_email && !c.external_id) return false
+          return emailOnlyPlatforms.has(c.platform) || c.status !== "pending"
+        })
+        .map(c => c.platform)
+    )
+    const missing = requiredChannels.filter(ch => !connected.has(ch))
+    if (missing.length > 0) {
+      const labels = missing.map(ch => CHANNEL_LABELS[ch] ?? ch).join(", ")
+      return { error: `Você precisa vincular sua conta do ${labels} para participar deste deal.` }
     }
   }
 
