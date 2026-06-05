@@ -513,7 +513,7 @@ export async function joinDeal(dealId: string) {
 
   // Verifica se o deal existe e tem vagas
   const { data: deal, error: dealErr } = await (supabase.from("deals") as any)
-    .select("id, status, max_participants, mode, entry_amount, verification_channels, creator_id, title, pda_address")
+    .select("id, status, max_participants, mode, entry_amount, verification_channels, fitness_connector, creator_id, title, pda_address")
     .eq("id", dealId)
     .single()
 
@@ -544,10 +544,22 @@ export async function joinDeal(dealId: string) {
         })
         .map(c => c.platform)
     )
-    const missing = requiredChannels.filter(ch => !connected.has(ch))
-    if (missing.length > 0) {
-      const labels = missing.map(ch => CHANNEL_LABELS[ch] ?? ch).join(", ")
-      return { error: `Você precisa vincular sua conta do ${labels} para participar deste deal.` }
+
+    const connector: string = deal.fitness_connector ?? "ou"
+    if (connector === "e") {
+      // AND deal: participant must have ALL required channels connected
+      const missing = requiredChannels.filter(ch => !connected.has(ch))
+      if (missing.length > 0) {
+        const labels = missing.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" e ")
+        return { error: `Você precisa vincular sua conta do ${labels} para participar deste deal.` }
+      }
+    } else {
+      // OR deal: participant needs at least ONE required channel connected
+      const hasAny = requiredChannels.some(ch => connected.has(ch))
+      if (!hasAny) {
+        const labels = requiredChannels.map(ch => CHANNEL_LABELS[ch] ?? ch).join(" ou ")
+        return { error: `Você precisa vincular ao menos uma conta (${labels}) para participar deste deal.` }
+      }
     }
   }
 
