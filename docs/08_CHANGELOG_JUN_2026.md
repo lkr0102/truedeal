@@ -526,3 +526,219 @@ export async function fetchXUserPostsSafe(
 | `lib/integrations/polling-service.ts` | Janelas de fetch UTC-3 (Strava epoch + X ISO); totalpass UTC-3; `api_error` tracking |
 | `lib/actions/settlement.ts` | Error handling no loop de update de `deal_participants` |
 | `app/api/admin/settle-deal/[id]/route.ts` | **NOVO** — trigger manual de settlement protegido por `CRON_SECRET` |
+
+---
+
+### `[05/06 — Sessão Anchor]` — Migração completa para Anchor on-chain + auditoria de pagamentos
+
+**Commits:** `e8a21218` (migração), `11dc8fd8` (deploy devnet), `fa60ccc0` (5 bugs de auditoria)
+
+#### Contexto
+
+O sistema de pagamento tinha dois caminhos paralelos:
+- **Custodial (escrow.ts):** USDC fica no ATA do feePayer — era o caminho real em produção.
+- **Anchor (anchor-client.ts):** vault PDA on-chain, dual-oracle, proof_hash — estava implementado mas nunca chamado.
+
+Nesta sessão o caminho custodial foi completamente removido do fluxo de fundos. Toda movimentação de USDC passa agora pelo programa Anchor on-chain.
+
+---
+
+#### Deploy — Programa Anchor na Solana Devnet
+
+**Program ID implantado:** `7sb3HQQbaCPYiT2x3tZZGMJyn5qRNiy4PgvCvb2BzZS8`  
+**Rede:** Solana Devnet  
+**Arquivo:** `contracts/solana/programs/truedeal/src/lib.rs`
+
+Instruções on-chain:
+| Instrução | Descrição |
+|-----------|-----------|
+| `initPerformanceAgreement` | Cria AgreementAccount PDA + vault SPL em uma tx |
+| `joinAgreement` | Transfere USDC do ATA do participante → vault PDA |
+| `settlePerformanceAgreement` | Dual-oracle: vault → ATAs dos vencedores + 3% treasury |
+| `cancelAgreement` | Reembolsa todos os participantes proporcionalmente do vault |
+
+**Seeds das PDAs:**
+- AgreementAccount: `[b"agreement", agreement_id.as_bytes()]`
+- Vault: `[b"vault", agreement_id.as_bytes()]`
+
+**Slacker Tax:** 3% do loser pool → treasury ATA. Distributable = loser pool × 97%. Vencedores recebem stake de volta + distributable / winners_count.
+
+---
+
+#### Migração — `lib/actions/deals.ts`
+
+| Função | Antes | Depois |
+|--------|-------|--------|
+| `createDeal` | `stakeUsdc()` (custodial) | `initPerformanceAgreement()` + `joinAgreementUSDC()` |
+| `joinDeal` | `stakeUsdc()` (custodial) | `joinAgreementUSDC()` |
+| `sweepStaleDeals` | `refundUsdcDirect()` (custodial) | `cancelAgreement()` |
+
+**`createDeal`** agora persiste o endereço da PDA em `deals.pda_address` após `initPerformanceAgreement`. Isso permite rastrear o vault no Solana Explorer por deal.
+
+---
+
+#### Migração — `lib/actions/settlement.ts`
+
+O bloco "SPL Payout" que chamava `settleUsdcDirect()` foi substituído pelo settlement Anchor com dual-oracle:
+
+```typescript
+// era:
+const { settleUsdcDirect } = await import("../solana/escrow")
+txSignatures = await settleUsdcDirect(feePayer, winnerPubkeys, loserCount, stakeAmountMicro)
+
+// agora:
+const anchorTxSig = await settlePerformanceAgreement(
+  feePayer,                 // oracle1 (APP_FEE_PAYER_KEY)
+  oracle2,                  // oracle2 (ORACLE_2_PRIVATE_KEY — chave separada)
+  dealId,
+  winnerWalletPubkeys,      // pubkeys das wallets dos vencedores
+  treasuryATAInfo.address,  // ATA do feePayer recebe 3%
+  proofHashBytes,           // SHA-256 dos resultados da auditoria
+  BigInt(winnerWalletPubkeys.length),
+)
+```
+
+---
+
+#### 5 bugs encontrados e corrigidos na auditoria pós-migração
+
+##### B1 — CRÍTICO: `admin/refund-deal` usava escrow custodial após migração Anchor
+
+**Arquivo:** `app/api/admin/refund-deal/route.ts`
+
+**Problema:** O endpoint importava `refundUsdcDirect` que lê do ATA do feePayer. Após a migração, os fundos estão no vault PDA — a função não encontrava USDC nenhum ou movimentava saldo errado.
+
+```typescript
+// era (QUEBRADO pós-Anchor):
+import { refundUsdcDirect } from "@/lib/solana/escrow"
+const txSignatures = await refundUsdcDirect(feePayer, pubkeys, stakeAmountMicro)
+
+// agora:
+const { cancelAgreement } = await import("@/lib/solana/anchor-client")
+const txSignature = await cancelAgreement(feePayer, deal_id, pubkeys)
+```
+
+---
+
+##### B2 — ALTO: Testes — `createAccount` sem keypair explícito → ATA program rejeitava no devnet
+
+**Arquivo:** `contracts/solana/tests/truedeal.ts`
+
+**Causa raiz:** `@solana/spl-token@0.3.x`'s `createAccount(conn, payer, mint, owner)` sem keypair roteia internamente pelo ATA program v1.1+. No devnet, o ATA program rejeita alguns padrões de owner com "Provided owner is not allowed".
+
+**Fix:** Passar `Keypair.generate()` explicitamente — o path com keypair usa `SystemProgram.createAccount` + `InitializeAccount` e contorna o ATA program inteiramente.
+
+```typescript
+// era:
+treasuryTokenAccount = await createAccount(provider.connection, payer, mint, creator.publicKey)
+
+// agora:
+const treasuryKp = Keypair.generate()
+treasuryTokenAccount = await createAccount(provider.connection, payer, mint, creator.publicKey, treasuryKp)
+```
+
+---
+
+##### B3 — ALTO: `settlePerformanceAgreement` — ATAs dos vencedores podiam não existir
+
+**Arquivo:** `lib/solana/anchor-client.ts`
+
+**Problema:** `getAssociatedTokenAddress` é puramente derivativo — não cria a ATA. Se o vencedor nunca recebeu USDC, sua ATA não existe e a transferência on-chain falhava com "account not found".
+
+```typescript
+// era:
+const winnerATAs = await Promise.all(
+  winnerWalletPubkeys.map(pk => getAssociatedTokenAddress(USDC_MINT, pk))
+)
+
+// agora:
+const winnerATAAccounts = await Promise.all(
+  winnerWalletPubkeys.map(pk =>
+    getOrCreateAssociatedTokenAccount(connection, oracle1, USDC_MINT, pk)
+  )
+)
+const winnerATAs = winnerATAAccounts.map(a => a.address)
+```
+
+---
+
+##### B4 — BAIXO: `cancelAgreement` — import dinâmico duplicado
+
+**Arquivo:** `lib/solana/anchor-client.ts`
+
+`cancelAgreement` tinha `const { getOrCreateAssociatedTokenAccount } = await import("@solana/spl-token")` dentro da função, sendo que a mesma função já estava importada no topo do arquivo. Removido o import dinâmico redundante.
+
+---
+
+##### B5 — BAIXO: Hash de prova não-determinístico — `verifyEvidenceHash` sempre retornava `false`
+
+**Arquivo:** `lib/integrations/crypto-proof.ts`
+
+**Problema:** `generateEvidenceHash` incluía `timestamp: Date.now()` no payload. Cada chamada produzia um hash diferente. `verifyEvidenceHash` recalculava o hash em um momento diferente → strings nunca coincidiam → a verificação de integridade da prova estava completamente inoperante.
+
+```typescript
+// era:
+const data = JSON.stringify({ dealId, results, timestamp: Date.now() })
+
+// agora (determinístico — mesmo input produz sempre o mesmo hash):
+const data = JSON.stringify({
+  dealId,
+  results: results.map(r => ({
+    user_id:    r.user_id,
+    is_success: r.is_success,
+    risk_score: r.risk_score ?? 0,
+  })).sort((a, b) => a.user_id.localeCompare(b.user_id)),
+})
+```
+
+---
+
+#### Infraestrutura de testes — `contracts/solana/`
+
+Criados `package.json` e `tsconfig.json` para execução de testes via `ts-mocha` sem `anchor test` (que tentaria reimplantar o programa, custando ~1.89 SOL).
+
+**Como executar:**
+```bash
+cd contracts/solana
+ANCHOR_PROVIDER_URL=https://api.devnet.solana.com \
+ANCHOR_WALLET=~/.config/solana/id.json \
+npx ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts
+```
+
+**Resultado: 5/5 testes passando contra Solana Devnet (36s)**
+```
+✔ 0. Setup: Mint and Token Accounts          (25918ms)
+✔ 1. Initialize Agreement                    (1600ms)
+✔ 2. Participants Join (João and Mock-Lukas) (1879ms)
+💰 JOAO Final Balance: 10970000
+🏛️ TREASURY Final Balance: 30000
+✔ 3. Settle Agreement: João Wins, Lukas Loses (Slacker Tax Applied) (1216ms)
+Balance before cancel: 4000000
+Balance after cancel: 5000000
+✔ 4. Cancel Agreement: refunds participant when quorum not reached (5484ms)
+```
+
+**Matemática verificada:**
+- Total pot: 2,000,000 µUSDC (2 participantes × 1 USDC)
+- Loser pool: 1,000,000
+- Slacker Tax 3%: 30,000 → treasury ✓
+- Distributable: 970,000 → João (único vencedor) ✓
+- Balance final João: 10,000,000 − 1,000,000 + 1,970,000 = **10,970,000** ✓
+- Cancel: 5,000,000 → 4,000,000 (após join) → 5,000,000 (após cancel) ✓
+
+---
+
+## Arquivos Modificados — Sprint 05/06 Anchor
+
+| Arquivo | Mudança |
+|---------|---------|
+| `contracts/solana/programs/truedeal/src/lib.rs` | Programa implantado — 4 instruções com dual-oracle e Slacker Tax |
+| `lib/solana/anchor-client.ts` | B3: `getOrCreateAssociatedTokenAccount` winners; B4: import duplicado removido |
+| `lib/solana/idl.json` | IDL sincronizado com o programa implantado |
+| `lib/integrations/crypto-proof.ts` | B5: hash determinístico — `timestamp` removido |
+| `lib/actions/deals.ts` | `createDeal`/`joinDeal` → Anchor; `sweepStaleDeals` → `cancelAgreement` |
+| `lib/actions/settlement.ts` | `settleUsdcDirect` → `settlePerformanceAgreement` dual-oracle |
+| `app/api/admin/refund-deal/route.ts` | B1: `refundUsdcDirect` → `cancelAgreement` (vault PDA) |
+| `contracts/solana/tests/truedeal.ts` | B2: keypairs explícitos; airdrop tolerante a rate limit; teste de cancel |
+| `contracts/solana/package.json` | **NOVO** — infraestrutura ts-mocha |
+| `contracts/solana/tsconfig.json` | **NOVO** — TypeScript config para testes |
