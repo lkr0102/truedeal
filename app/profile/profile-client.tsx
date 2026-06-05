@@ -480,9 +480,15 @@ function DashboardTab({ user }: DashboardTabProps) {
               username={usernames[platform.key]}
               onOAuth={() => {
                 if (!platform.oauthPath) return
+                // Mobile browsers (iOS Safari especially) drop httpOnly cookies
+                // across cross-site popup navigations — always use full-page redirect on mobile
+                const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || window.screen.width < 768
+                if (isMobile) {
+                  window.location.href = platform.oauthPath
+                  return
+                }
                 const popup = window.open(platform.oauthPath, "truedeal_oauth", "width=560,height=720,left=200,top=80")
                 if (!popup || popup.closed) {
-                  // Popup blocked — fall back to full-page redirect
                   window.location.href = platform.oauthPath
                 }
               }}
@@ -605,6 +611,13 @@ export default function ProfileClient({ profile, deals, userId, userEmail }: Pro
 
   const fileRef     = useRef<HTMLInputElement>(null)
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null)
+
+  // Clean up OAuth result params from URL after toast is shown
+  useEffect(() => {
+    if (!socialSuccess && !socialError && !socialConnected) return
+    const timer = setTimeout(() => router.replace("/profile", { scroll: false }), 3500)
+    return () => clearTimeout(timer)
+  }, [socialSuccess, socialError, socialConnected]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Username / display name edit ──
   const [editingName,  setEditingName]  = useState(false)

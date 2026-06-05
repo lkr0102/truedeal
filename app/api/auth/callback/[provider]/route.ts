@@ -64,7 +64,7 @@ export async function GET(
   if (provider === "x") {
     const codeVerifier = req.cookies.get("x_code_verifier")?.value
     if (!codeVerifier) {
-      return NextResponse.redirect(`${baseUrl}/profile?social_error=no_verifier`)
+      return NextResponse.redirect(`${baseUrl}/oauth-success?provider=x&error=no_verifier`)
     }
 
     try {
@@ -84,7 +84,7 @@ export async function GET(
       })
 
       if (!tokenRes.ok) {
-        return NextResponse.redirect(`${baseUrl}/profile?social_error=x_token_failed`)
+        return NextResponse.redirect(`${baseUrl}/oauth-success?provider=x&error=x_token_failed`)
       }
 
       const tokenData = await tokenRes.json()
