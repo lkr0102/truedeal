@@ -94,11 +94,14 @@ export async function settleDealProtocol(
 
   // Mark winners/losers in deal_participants
   for (const result of audit.results) {
-    await supabase
+    const { error: participantErr } = await supabase
       .from("deal_participants")
       .update({ status: result.is_success ? "winner" : "eliminated" })
       .eq("deal_id", dealId)
       .eq("user_id", result.user_id)
+    if (participantErr) {
+      console.error(`[DealGuard] Failed to update participant ${result.user_id}:`, participantErr.message)
+    }
   }
 
   // Notify all participants with their result

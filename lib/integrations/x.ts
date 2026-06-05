@@ -12,7 +12,7 @@ export async function refreshXToken(
 ): Promise<string | null> {
   try {
     const credentials = Buffer.from(
-      `${process.env.TWITTER_CLIENT_ID}:${process.env.TWITTER_CLIENT_SECRET}`
+      `${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`
     ).toString("base64")
     const res = await fetch("https://api.twitter.com/2/oauth2/token", {
       method: "POST",
@@ -60,6 +60,15 @@ export async function fetchXUserPosts(
   userId: string,
   options: XFetchOptions = {},
 ): Promise<XPost[]> {
+  const { data } = await fetchXUserPostsSafe(accessToken, userId, options)
+  return data
+}
+
+export async function fetchXUserPostsSafe(
+  accessToken: string,
+  userId: string,
+  options: XFetchOptions = {},
+): Promise<{ data: XPost[]; error: string | null }> {
   try {
     const params = new URLSearchParams({
       "tweet.fields": "public_metrics,created_at",
@@ -74,14 +83,17 @@ export async function fetchXUserPosts(
     )
 
     if (!response.ok) {
-      throw new Error(`X API Error: ${response.statusText}`)
+      const msg = `X API Error ${response.status}: ${response.statusText}`
+      console.error("Failed to fetch X posts:", msg)
+      return { data: [], error: msg }
     }
 
-    const data = await response.json()
-    return data.data || []
-  } catch (error) {
-    console.error("Failed to fetch X posts:", error)
-    return []
+    const json = await response.json()
+    return { data: json.data || [], error: null }
+  } catch (err: any) {
+    const msg = err?.message ?? "unknown error"
+    console.error("Failed to fetch X posts:", msg)
+    return { data: [], error: msg }
   }
 }
 
@@ -117,8 +129,17 @@ function countXMetric(posts: XPost[], rule: string): number {
   }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// UTC-3 (BRT) day window: 00:00 BRT = 03:00 UTC, 23:59:59.999 BRT = 02:59:59.999 UTC next day.
+function dayWindowBRT(dateStr: string): [number, number] {
+  const start = new Date(dateStr + "T03:00:00Z").getTime()
+  return [start, start + DAY_MS - 1]
+}
+
 /**
  * 🔍 DealGuard Logic: Validate Rule
+ * All windows use UTC-3 (BRT) as the platform timezone standard.
  */
 export function validateXRule(
   posts: XPost[],
@@ -130,15 +151,25 @@ export function validateXRule(
 ): boolean {
   if (frequency === "daily" && startDate && endDate) {
     return getDateRange(startDate, endDate).every(day => {
-      const dayPosts = posts.filter(p => p.created_at?.startsWith(day))
+      const [wStart, wEnd] = dayWindowBRT(day)
+      const dayPosts = posts.filter(p => {
+        if (!p.created_at) return false
+        const t = new Date(p.created_at).getTime()
+        return t >= wStart && t <= wEnd
+      })
       return countXMetric(dayPosts, rule) >= targetValue
     })
   }
   if (frequency === "weekly" && startDate && endDate) {
     return getWeekRanges(startDate, endDate).every(([wStart, wEnd]) => {
+      const windowStart = new Date(wStart + "T03:00:00Z").getTime()
+      const endDt = new Date(wEnd + "T02:59:59.999Z")
+      endDt.setUTCDate(endDt.getUTCDate() + 1)
+      const windowEnd = endDt.getTime()
       const weekPosts = posts.filter(p => {
-        const d = p.created_at ? p.created_at.split("T")[0] : ""
-        return d >= wStart && d <= wEnd
+        if (!p.created_at) return false
+        const t = new Date(p.created_at).getTime()
+        return t >= windowStart && t <= windowEnd
       })
       return countXMetric(weekPosts, rule) >= targetValue
     })

@@ -1,6 +1,6 @@
 import { createServiceClient } from "@/lib/supabase/server"
 import { fetchStravaActivities, validateStravaRule } from "./strava"
-import { fetchXUserPosts, refreshXToken, validateXRule } from "./x"
+import { fetchXUserPostsSafe, refreshXToken, validateXRule } from "./x"
 import { analyzeEvidence } from "./sentinel-core"
 
 function getDateRange(startDate: string, endDate: string): string[] {
@@ -86,9 +86,17 @@ export async function auditDeal(dealId: string) {
   if (dealErr || !deal) return { error: "Deal not found" }
   if (deal.status !== "ativo") return { error: "Deal is not active" }
 
-  // Convert deal period to Unix epoch for Strava / date-based APIs
-  const afterEpoch  = deal.start_date ? Math.floor(new Date(deal.start_date).getTime() / 1000) : undefined
-  const beforeEpoch = deal.end_date   ? Math.floor(new Date(deal.end_date  ).getTime() / 1000) + 86399 : undefined
+  // UTC-3 (BRT) is the platform standard.
+  // Day boundary: 00:00 BRT = 03:00 UTC, 23:59:59 BRT = 02:59:59 UTC next day.
+  const afterEpoch = deal.start_date
+    ? Math.floor(new Date(deal.start_date + "T03:00:00Z").getTime() / 1000)
+    : undefined
+  let beforeEpoch: number | undefined
+  if (deal.end_date) {
+    const dt = new Date(deal.end_date + "T02:59:59Z")
+    dt.setUTCDate(dt.getUTCDate() + 1)
+    beforeEpoch = Math.floor(dt.getTime() / 1000)
+  }
 
   // Fallback: if rule_target was never persisted (legacy deal), use safe defaults
   const ruleTarget: number    = deal.rule_target    ?? 1
@@ -102,6 +110,7 @@ export async function auditDeal(dealId: string) {
     let isSuccess = false
     let maxRiskScore = 0
     let fraudReason: string | null = null
+    let apiError: string | null = null
 
     for (const channel of deal.verification_channels) {
       const conn = connections.find((c: any) => c.platform === channel)
@@ -130,34 +139,67 @@ export async function auditDeal(dealId: string) {
         if (xExpiresAt > 0 && Date.now() / 1000 > xExpiresAt - 300 && conn.refresh_token) {
           xToken = (await refreshXToken(supabase, conn.id, conn.refresh_token)) ?? xToken
         }
-        const startTime = deal.start_date ? new Date(deal.start_date).toISOString() : undefined
-        // end_time is exclusive in the X API — use end of day so the last day is fully included
-        const endTime   = deal.end_date   ? new Date(deal.end_date + "T23:59:59.999Z").toISOString() : undefined
-        rawData = await fetchXUserPosts(xToken, conn.external_id, { startTime, endTime })
+        const startTime = deal.start_date
+          ? new Date(deal.start_date + "T03:00:00Z").toISOString()
+          : undefined
+        // end_time: 23:59:59 BRT = 02:59:59Z of the following day
+        let endTime: string | undefined
+        if (deal.end_date) {
+          const endDt = new Date(deal.end_date + "T02:59:59.999Z")
+          endDt.setUTCDate(endDt.getUTCDate() + 1)
+          endTime = endDt.toISOString()
+        }
+        const { data: xPosts, error: xFetchErr } = await fetchXUserPostsSafe(xToken, conn.external_id, { startTime, endTime })
+        if (xFetchErr) {
+          console.error(`[DealGuard] X API fetch failed for participant ${participant.user_id}: ${xFetchErr}`)
+          apiError = xFetchErr
+          continue // try next channel before giving up
+        }
+        rawData = xPosts
         isSuccess = validateXRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
 
       } else if (channel === "totalpass") {
+        // UTC-3: query window matches day boundaries in BRT
+        const tpStartIso = deal.start_date
+          ? new Date(deal.start_date + "T03:00:00Z").toISOString()
+          : deal.start_date
+        let tpEndIso = deal.end_date
+        if (deal.end_date) {
+          const dt = new Date(deal.end_date + "T02:59:59.999Z")
+          dt.setUTCDate(dt.getUTCDate() + 1)
+          tpEndIso = dt.toISOString()
+        }
         const { data: checkins, error: checkinErr } = await (supabase.from("deal_checkins") as any)
           .select("activity_at")
           .eq("deal_id",    dealId)
           .eq("user_id",    participant.user_id)
           .eq("source",     channel)
-          .gte("activity_at", deal.start_date)
-          .lte("activity_at", deal.end_date)
+          .gte("activity_at", tpStartIso)
+          .lte("activity_at", tpEndIso)
 
         if (!checkinErr && checkins) {
           rawData = checkins
+          const DAY_MS = 24 * 60 * 60 * 1000
           if (deal.rule_frequency === "daily" && deal.start_date && deal.end_date) {
-            isSuccess = getDateRange(deal.start_date, deal.end_date).every(day =>
-              checkins.filter((c: any) => String(c.activity_at).startsWith(day)).length >= ruleTarget
-            )
-          } else if (deal.rule_frequency === "weekly" && deal.start_date && deal.end_date) {
-            isSuccess = getWeekRanges(deal.start_date, deal.end_date).every(([wStart, wEnd]) =>
-              checkins.filter((c: any) => {
-                const d = String(c.activity_at).split("T")[0]
-                return d >= wStart && d <= wEnd
+            isSuccess = getDateRange(deal.start_date, deal.end_date).every(day => {
+              const wStart = new Date(day + "T03:00:00Z").getTime()
+              const wEnd   = wStart + DAY_MS - 1
+              return checkins.filter((c: any) => {
+                const t = new Date(c.activity_at).getTime()
+                return t >= wStart && t <= wEnd
               }).length >= ruleTarget
-            )
+            })
+          } else if (deal.rule_frequency === "weekly" && deal.start_date && deal.end_date) {
+            isSuccess = getWeekRanges(deal.start_date, deal.end_date).every(([wStart, wEnd]) => {
+              const windowStart = new Date(wStart + "T03:00:00Z").getTime()
+              const endDt = new Date(wEnd + "T02:59:59.999Z")
+              endDt.setUTCDate(endDt.getUTCDate() + 1)
+              const windowEnd = endDt.getTime()
+              return checkins.filter((c: any) => {
+                const t = new Date(c.activity_at).getTime()
+                return t >= windowStart && t <= windowEnd
+              }).length >= ruleTarget
+            })
           } else {
             isSuccess = checkins.length >= ruleTarget
           }
@@ -184,6 +226,7 @@ export async function auditDeal(dealId: string) {
       is_success:   isSuccess,
       risk_score:   maxRiskScore,
       fraud_reason: fraudReason,
+      ...(apiError && !isSuccess ? { api_error: apiError } : {}),
     })
   }
 

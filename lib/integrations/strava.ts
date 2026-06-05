@@ -75,8 +75,17 @@ function computeStravaMetric(activities: StravaActivity[], rule: string): number
   }
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000
+
+// UTC-3 (BRT) day window: 00:00 BRT = 03:00 UTC, 23:59:59.999 BRT = 02:59:59.999 UTC next day.
+function dayWindowBRT(dateStr: string): [number, number] {
+  const start = new Date(dateStr + "T03:00:00Z").getTime()
+  return [start, start + DAY_MS - 1]
+}
+
 /**
  * 🔍 DealGuard Logic: Validate Rule
+ * All windows use UTC-3 (BRT) as the platform timezone standard.
  */
 export function validateStravaRule(
   activities: StravaActivity[],
@@ -88,15 +97,23 @@ export function validateStravaRule(
 ): boolean {
   if (frequency === "daily" && startDate && endDate) {
     return getDateRange(startDate, endDate).every(day => {
-      const dayActivities = activities.filter(a => a.start_date.startsWith(day))
+      const [wStart, wEnd] = dayWindowBRT(day)
+      const dayActivities = activities.filter(a => {
+        const t = new Date(a.start_date).getTime()
+        return t >= wStart && t <= wEnd
+      })
       return computeStravaMetric(dayActivities, rule) >= targetValue
     })
   }
   if (frequency === "weekly" && startDate && endDate) {
     return getWeekRanges(startDate, endDate).every(([wStart, wEnd]) => {
+      const windowStart = new Date(wStart + "T03:00:00Z").getTime()
+      const endDt = new Date(wEnd + "T02:59:59.999Z")
+      endDt.setUTCDate(endDt.getUTCDate() + 1)
+      const windowEnd = endDt.getTime()
       const weekActivities = activities.filter(a => {
-        const d = a.start_date.split("T")[0]
-        return d >= wStart && d <= wEnd
+        const t = new Date(a.start_date).getTime()
+        return t >= windowStart && t <= windowEnd
       })
       return computeStravaMetric(weekActivities, rule) >= targetValue
     })

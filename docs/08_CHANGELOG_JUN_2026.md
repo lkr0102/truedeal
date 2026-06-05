@@ -355,3 +355,174 @@ for (const p of others ?? []) {
 | `app/home-client.tsx` | Pills de canal verificação, tipografia Entry/Pot |
 | `app/profile/profile-client.tsx` | Popup OAuth, listener postMessage, refresh sem reload |
 | `lib/actions/deals.ts` | Notificação de join para todos os participantes ativos |
+
+---
+
+### `[05/06]` — Fix crítico: DealGuard não rastreava corretamente quem cumpriu a regra
+
+**Commits desta sessão** — motivo: deal expirou, não fechou automaticamente e participantes que postaram foram marcados como `eliminated`.
+
+**Diagnóstico completo:** o pipeline de auditoria falhou em **três camadas independentes**, cada uma capaz de gerar resultado incorreto sozinha.
+
+---
+
+#### Bug 1 — `x.ts`: Env var errada bloqueava refresh de token X (CRÍTICO)
+
+**Problema:** O token OAuth 2.0 do X expira após 2 horas. `refreshXToken()` lia `process.env.TWITTER_CLIENT_ID` e `TWITTER_CLIENT_SECRET` — variáveis que não existem no projeto (o padrão é `X_CLIENT_ID` / `X_CLIENT_SECRET`). O refresh sempre retornava `null` silenciosamente. Após expirar o token, a X API retornava 401 → `fetchXUserPosts()` capturava o erro e retornava `[]` → `validateXRule([], ...)` retornava `false` → **todos os participantes com canal X eram marcados `eliminated` independente de terem postado**.
+
+**Mudança em `lib/integrations/x.ts`:**
+```typescript
+// era (quebrado):
+Buffer.from(`${process.env.TWITTER_CLIENT_ID}:${process.env.TWITTER_CLIENT_SECRET}`)
+
+// agora (correto):
+Buffer.from(`${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`)
+```
+
+---
+
+#### Bug 2 — Pipeline inteiro: janelas de tempo em UTC excluíam posts feitos no horário BRT (CRÍTICO com UTC-3)
+
+**Problema:** O fuso padrão da plataforma é UTC-3 (BRT). Os posts feitos entre **21:00 e 23:59:59 BRT** de qualquer dia de deal correspondem ao dia seguinte em UTC (`T00:00Z` → `T02:59:59Z`). O código anterior usava `end_date + "T23:59:59.999Z"` como janela de fim, cortando exatamente esses posts — nunca eram buscados da API do X nem validados.
+
+O mesmo problema afetava o Strava (epoch unix) e o totalpass (query ISO no Supabase).
+
+**Padrão UTC-3 adotado em todo o pipeline:**
+- Início de dia: `dateStr + "T03:00:00Z"` (= 00:00 BRT)
+- Fim de dia: `(endDate+1) + "T02:59:59.999Z"` (= 23:59:59.999 BRT)
+
+**Mudanças em `lib/integrations/polling-service.ts`:**
+```typescript
+// Strava — epoch unix
+const afterEpoch = deal.start_date
+  ? Math.floor(new Date(deal.start_date + "T03:00:00Z").getTime() / 1000)
+  : undefined
+let beforeEpoch: number | undefined
+if (deal.end_date) {
+  const dt = new Date(deal.end_date + "T02:59:59Z")
+  dt.setUTCDate(dt.getUTCDate() + 1)   // 23:59:59 BRT = 02:59:59Z do dia seguinte
+  beforeEpoch = Math.floor(dt.getTime() / 1000)
+}
+
+// X — ISO 8601
+const startTime = deal.start_date
+  ? new Date(deal.start_date + "T03:00:00Z").toISOString()
+  : undefined
+let endTime: string | undefined
+if (deal.end_date) {
+  const endDt = new Date(deal.end_date + "T02:59:59.999Z")
+  endDt.setUTCDate(endDt.getUTCDate() + 1)
+  endTime = endDt.toISOString()
+}
+```
+
+**Mudanças em `lib/integrations/x.ts` — `validateXRule`:**
+
+Substituído `p.created_at?.startsWith(day)` (compara string de data UTC) por comparação de timestamp:
+```typescript
+const DAY_MS = 24 * 60 * 60 * 1000
+
+function dayWindowBRT(dateStr: string): [number, number] {
+  const start = new Date(dateStr + "T03:00:00Z").getTime()
+  return [start, start + DAY_MS - 1]
+}
+
+// frequency === "daily":
+const [wStart, wEnd] = dayWindowBRT(day)
+const dayPosts = posts.filter(p => {
+  if (!p.created_at) return false
+  const t = new Date(p.created_at).getTime()
+  return t >= wStart && t <= wEnd
+})
+
+// frequency === "weekly":
+const windowStart = new Date(wStart + "T03:00:00Z").getTime()
+const endDt = new Date(wEnd + "T02:59:59.999Z")
+endDt.setUTCDate(endDt.getUTCDate() + 1)
+const windowEnd = endDt.getTime()
+```
+
+**Mudanças em `lib/integrations/strava.ts` — `validateStravaRule`:**
+
+Mesma lógica — `dayWindowBRT()` + comparação de timestamp substituindo `a.start_date.startsWith(day)`.
+
+**Mudanças em `lib/integrations/polling-service.ts` — bloco `totalpass`:**
+
+Query Supabase e filtros inline também convertidos para janelas UTC-3.
+
+---
+
+#### Bug 3 — `settlement.ts`: update de status dos participantes sem error handling (MODERADO)
+
+**Problema:** O loop que marca participantes como `winner` / `eliminated` não verificava o retorno do Supabase. Se o update falhasse (ex: RLS, enum inválido), o deal aparecia como `encerrado` mas participantes ficavam em `active` para sempre, com potencial de inconsistência no pote.
+
+**Mudança em `lib/actions/settlement.ts`:**
+```typescript
+for (const result of audit.results) {
+  const { error: participantErr } = await supabase
+    .from("deal_participants")
+    .update({ status: result.is_success ? "winner" : "eliminated" })
+    .eq("deal_id", dealId)
+    .eq("user_id", result.user_id)
+  if (participantErr) {
+    console.error(`[DealGuard] Failed to update participant ${result.user_id}:`, participantErr.message)
+  }
+}
+```
+
+---
+
+#### Feature — Endpoint admin de liquidação manual (Fix Bug 2: cron como único mecanismo)
+
+**Novo arquivo:** `app/api/admin/settle-deal/[id]/route.ts`
+
+**Problema:** O único mecanismo de fechamento era o Vercel Cron (12:00 UTC diário). Se falhasse por qualquer razão (CRON_SECRET ausente no dashboard, preview branch, cold start), nenhum deal era encerrado — sem alerta, sem fallback.
+
+Rota `POST /api/admin/settle-deal/{deal_id}` protegida por `CRON_SECRET`, chama `settleDealProtocol()` diretamente:
+
+```typescript
+export async function POST(
+  request: NextRequest,
+  { params }: { params: { id: string } },
+) {
+  const authHeader = request.headers.get("authorization")
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+  }
+  const result = await settleDealProtocol(params.id)
+  return NextResponse.json({ ok: true, ...result })
+}
+```
+
+**Uso para deals presos:**
+```bash
+curl -X POST https://<dominio>/api/admin/settle-deal/<deal_id> \
+  -H "Authorization: Bearer <CRON_SECRET>"
+```
+
+---
+
+#### Estrutural — `fetchXUserPostsSafe`: distingue erro de API de "usuário não postou"
+
+**Problema:** `fetchXUserPosts()` retornava `[]` em qualquer falha — indistinguível de "usuário não fez nenhum post". Erros de infra (401, 429, timeout) eliminavam participantes injustamente.
+
+**Novo export em `lib/integrations/x.ts`:**
+```typescript
+export async function fetchXUserPostsSafe(
+  accessToken: string, userId: string, options: XFetchOptions = {},
+): Promise<{ data: XPost[]; error: string | null }> { ... }
+```
+
+`fetchXUserPosts()` mantido como wrapper de compatibilidade. No `polling-service.ts`, erros de fetch são logados e propagados como campo `api_error` no resultado da auditoria. Padrão replicável para Strava e canais futuros.
+
+---
+
+## Arquivos Modificados — Sprint 05/06
+
+| Arquivo | Mudança |
+|---------|---------|
+| `lib/integrations/x.ts` | Bug 1: `TWITTER_CLIENT_ID` → `X_CLIENT_ID`; `validateXRule` UTC-3; `fetchXUserPostsSafe` |
+| `lib/integrations/strava.ts` | `validateStravaRule` UTC-3 com `dayWindowBRT()` |
+| `lib/integrations/polling-service.ts` | Janelas de fetch UTC-3 (Strava epoch + X ISO); totalpass UTC-3; `api_error` tracking |
+| `lib/actions/settlement.ts` | Error handling no loop de update de `deal_participants` |
+| `app/api/admin/settle-deal/[id]/route.ts` | **NOVO** — trigger manual de settlement protegido por `CRON_SECRET` |
