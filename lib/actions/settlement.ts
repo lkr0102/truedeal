@@ -4,18 +4,17 @@ import { PublicKey } from "@solana/web3.js"
 import { auditDeal } from "../integrations/polling-service"
 import { generateEvidenceHash } from "../integrations/crypto-proof"
 import { createServiceClient } from "../supabase/server"
-import { settleUsdcDirect } from "../solana/escrow"
-import { getFeePayer } from "../solana/fee-payer"
+import { getFeePayer, getOracle2, getConnection } from "../solana/fee-payer"
 
 /**
  * 🏛️ Sovereign Settlement Protocol (DealGuard Engine)
  *
  * Pipeline:
- *  1. DealGuard Audit  — real-world evidence across all verification channels
- *  2. Forensic Proof   — SHA-256 proof hash for on-chain attestation
- *  3. Supabase Update  — mark deal as "liquidando" with audit logs
- *  4. SPL Payout       — direct USDC transfers from custodial escrow to winners
- *  5. Supabase Final   — mark deal as "encerrado" with tx signature
+ *  1. DealGuard Audit   — real-world evidence across all verification channels
+ *  2. Forensic Proof    — SHA-256 proof hash for on-chain attestation
+ *  3. Supabase Update   — mark deal as "liquidando" with audit logs
+ *  4. Anchor Settlement — vault PDA → winners' ATAs + 3% fee → treasury (dual-oracle)
+ *  5. Supabase Final    — mark deal as "encerrado" with tx signature
  */
 export async function settleDealProtocol(
   dealId: string,
@@ -43,20 +42,16 @@ export async function settleDealProtocol(
     .eq("id", dealId)
   if (preUpdateErr) throw new Error(`[DealGuard] Pre-settlement DB update failed: ${preUpdateErr.message}`)
 
-  // ── 4. SPL Payout ────────────────────────────────────────────────────────
+  // ── 4. Anchor Settlement ─────────────────────────────────────────────────
   const winnerUserIds = audit.results
     .filter((r: any) => r.is_success === true)
     .map((r: any) => r.user_id)
 
-  const loserCount = audit.results.length - winnerUserIds.length
-
-  // Fetch deal entry amount (USDC per participant)
+  // Fetch deal title for notifications
   const { data: deal } = await (supabase.from("deals") as any)
     .select("entry_amount, title")
     .eq("id", dealId)
     .single()
-
-  const stakeAmountMicro = BigInt(Math.round((deal?.entry_amount ?? 0) * 1_000_000))
 
   // Fetch winner wallet pubkeys
   const { data: winnerWallets } = await (supabase.from("user_wallets") as any)
@@ -67,20 +62,41 @@ export async function settleDealProtocol(
     .filter((w: any) => w.public_key)
     .map((w: any) => new PublicKey(w.public_key))
 
-  let txSignatures: string[] = []
   let txSignature: string
 
   const hasOracleKey = !!process.env.APP_FEE_PAYER_KEY
 
-  if (!hasOracleKey || winnerPubkeys.length === 0) {
-    const reason = !hasOracleKey ? "missing fee payer key" : "no winners — stake stays in treasury"
-    console.warn(`[DealGuard] Settlement note (${reason}). No transfers executed.`)
+  if (!hasOracleKey) {
+    console.warn(`[DealGuard] Settlement demo mode — APP_FEE_PAYER_KEY not set.`)
     txSignature = `DEMO_TX_${Date.now()}_${dealId.slice(0, 8)}`
   } else {
-    const feePayer = getFeePayer()
-    txSignatures = await settleUsdcDirect(feePayer, winnerPubkeys, loserCount, stakeAmountMicro)
-    txSignature = txSignatures[txSignatures.length - 1] ?? `NO_TX_${Date.now()}`
-    console.log(`[SPL] Settlement complete. ${txSignatures.length} transfers: ${txSignatures.join(", ")}`)
+    const {
+      settlePerformanceAgreement,
+    } = await import("../solana/anchor-client")
+    const { getOrCreateAssociatedTokenAccount } = await import("@solana/spl-token")
+    const { USDC_MINT } = await import("../solana/constants")
+
+    const feePayer  = getFeePayer()
+    const oracle2   = getOracle2()
+    const connection = getConnection()
+
+    // Ensure treasury ATA exists (feePayer's USDC ATA receives platform fee)
+    const treasuryATA = await getOrCreateAssociatedTokenAccount(
+      connection, feePayer, USDC_MINT, feePayer.publicKey,
+    )
+
+    const proofHashBytes = Buffer.from(proofHashHex, "hex")
+
+    txSignature = await settlePerformanceAgreement(
+      feePayer,
+      oracle2,
+      dealId,
+      winnerPubkeys,
+      treasuryATA.address,
+      proofHashBytes,
+      BigInt(winnerPubkeys.length),
+    )
+    console.log(`[Anchor] DualGuard settlement complete. Tx: ${txSignature}`)
   }
 
   // ── 5. Supabase Post-settlement Update ──────────────────────────────────
@@ -132,7 +148,6 @@ export async function settleDealProtocol(
     success: true,
     proofHash: proofHashHex,
     txSignature,
-    txSignatures,
     explorerUrl: `https://explorer.solana.com/tx/${txSignature}?cluster=devnet`,
     results: audit.results,
   }

@@ -131,24 +131,75 @@ export async function joinAgreementUSDC(
   return txSignature
 }
 
-// ── TX 3: Settle Performance Agreement (USDC) ─────────────────────────────────
-// Dual-oracle settlement: vault → winners' ATAs + 3% fee → treasury ATA.
-// winnerPubkeys: wallet pubkeys of all winners.
-// treasuryUsdcATA: oracle1's USDC ATA to receive platform fee.
+// ── TX 3a: Cancel Agreement ───────────────────────────────────────────────────
+// Called when a deal is cancelled before start (quorum < 2).
+// Refunds each participant proportionally from the vault PDA.
+// oracle1 must sign; participant USDC ATAs passed as remainingAccounts.
+
+export async function cancelAgreement(
+  oracle1: Keypair,
+  agreementId: string,
+  participantPublicKeys: PublicKey[],
+): Promise<string> {
+  const connection = getConnection()
+  const provider   = getProvider(oracle1)
+  const program    = getProgram(provider)
+  const [agreementAccount] = deriveAgreementPDA(agreementId)
+  const [vault]            = deriveVaultPDA(agreementId)
+
+  // Derive USDC ATAs for each participant
+  const { getOrCreateAssociatedTokenAccount } = await import("@solana/spl-token")
+  const participantATAs = await Promise.all(
+    participantPublicKeys.map(pk =>
+      getOrCreateAssociatedTokenAccount(connection, oracle1, USDC_MINT, pk)
+    )
+  )
+
+  const txSignature = await program.methods
+    .cancelAgreement()
+    .accounts({
+      agreementAccount,
+      oracle1: oracle1.publicKey,
+      vault,
+      usdcMint:     USDC_MINT,
+      tokenProgram: TOKEN_PROGRAM_ID,
+    })
+    .remainingAccounts(
+      participantATAs.map(ata => ({
+        pubkey:     ata.address,
+        isWritable: true,
+        isSigner:   false,
+      }))
+    )
+    .rpc()
+
+  console.log(`[Anchor] Agreement cancelled. Refunded ${participantPublicKeys.length} participants: ${txSignature}`)
+  return txSignature
+}
+
+// ── TX 3b: Settle Performance Agreement (USDC) ────────────────────────────────
+// Dual-oracle settlement: vault → winners' USDC ATAs + 3% fee → treasury ATA.
+// winnerWalletPubkeys: wallet pubkeys of all winners (ATAs are derived internally).
+// treasuryTokenAccount: oracle1's USDC ATA to receive platform fee.
 
 export async function settlePerformanceAgreement(
   oracle1: Keypair,
   oracle2: Keypair,
   agreementId: string,
-  winnerPubkeys: PublicKey[],
+  winnerWalletPubkeys: PublicKey[],
   treasuryTokenAccount: PublicKey,
-  proofHash: Uint8Array, // 32-byte forensic proof from generateEvidenceHash
+  proofHash: Uint8Array,
   winnersCount: bigint,
 ): Promise<string> {
   const provider = getProvider(oracle1)
   const program  = getProgram(provider)
   const [agreementAccount] = deriveAgreementPDA(agreementId)
-  const [vault] = deriveVaultPDA(agreementId)
+  const [vault]            = deriveVaultPDA(agreementId)
+
+  // remaining_accounts must be USDC ATAs, not wallet pubkeys
+  const winnerATAs = await Promise.all(
+    winnerWalletPubkeys.map(pk => getAssociatedTokenAddress(USDC_MINT, pk))
+  )
 
   const txSignature = await program.methods
     .settlePerformanceAgreement(
@@ -157,23 +208,23 @@ export async function settlePerformanceAgreement(
     )
     .accounts({
       agreementAccount,
-      oracle1: oracle1.publicKey,
-      oracle2: oracle2.publicKey,
+      oracle1:              oracle1.publicKey,
+      oracle2:              oracle2.publicKey,
       vault,
       treasuryTokenAccount,
-      usdcMint: USDC_MINT,
-      tokenProgram: TOKEN_PROGRAM_ID,
+      usdcMint:             USDC_MINT,
+      tokenProgram:         TOKEN_PROGRAM_ID,
     })
     .remainingAccounts(
-      winnerPubkeys.map(pubkey => ({
-        pubkey,
+      winnerATAs.map(ata => ({
+        pubkey:     ata,
         isWritable: true,
-        isSigner: false,
+        isSigner:   false,
       }))
     )
     .signers([oracle2])
     .rpc()
 
-  console.log(`[Anchor] Agreement settled via DealGuard Consensus: ${txSignature}`)
+  console.log(`[Anchor] Agreement settled via DualGuard Consensus: ${txSignature}`)
   return txSignature
 }

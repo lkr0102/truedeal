@@ -52,6 +52,18 @@
         { "name": "winners_count", "type": "u64" },
         { "name": "proof_hash",    "type": { "array": ["u8", 32] } }
       ]
+    },
+    {
+      "name": "cancel_agreement",
+      "discriminator": [75, 89, 85, 4, 100, 216, 143, 37],
+      "accounts": [
+        { "name": "agreement_account", "writable": true,  "signer": false },
+        { "name": "oracle_1",          "writable": false, "signer": true  },
+        { "name": "vault",             "writable": true,  "signer": false },
+        { "name": "usdc_mint",         "writable": false, "signer": false },
+        { "name": "token_program",     "writable": false, "signer": false }
+      ],
+      "args": []
     }
   ],
   "accounts": [
@@ -95,6 +107,7 @@
   "errors": [
     { "code": 6000, "name": "InvalidStatus",            "msg": "The agreement is not in a valid status for this operation." },
     { "code": 6001, "name": "DealGuardConsensusFailed", "msg": "DealGuard consensus validation failed. Missing required node signatures." },
-    { "code": 6002, "name": "InvalidTokenAccount",      "msg": "Token account invalid: mint or owner does not match." }
+    { "code": 6002, "name": "InvalidTokenAccount",      "msg": "Token account invalid: mint or owner does not match." },
+    { "code": 6003, "name": "WinnersCountMismatch",     "msg": "Winners count does not match the number of winner accounts provided." }
   ]
 }

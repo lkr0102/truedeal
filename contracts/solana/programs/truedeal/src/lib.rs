@@ -10,7 +10,7 @@ use anchor_spl::token::{self, Mint, Token, TokenAccount, Transfer};
 // IP: Architecture incorporates DealGuard Engine & Risk Guardian (Symbeon Labs).
 // ============================================================================
 
-declare_id!("885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFb2");
+declare_id!("885scJ15uLUjnG8tfPUFbx4pAS6ZCkHpSuFd9ZUaxFbZ");
 
 #[program]
 pub mod truedeal {
@@ -83,6 +83,14 @@ pub mod truedeal {
             AgreementError::DealGuardConsensusFailed
         );
 
+        // Guard: remaining_accounts must exactly match winners_count
+        if winners_count > 0 {
+            require!(
+                ctx.remaining_accounts.len() as u64 == winners_count,
+                AgreementError::WinnersCountMismatch
+            );
+        }
+
         agreement.winners_count = winners_count;
         agreement.status        = AgreementStatus::Settled;
         agreement.proof_hash    = Some(proof_hash);
@@ -151,6 +159,52 @@ pub mod truedeal {
         }
 
         msg!("Agreement Settled. Winners: {}. Platform fee collected.", winners_count);
+        Ok(())
+    }
+
+    /// Cancel Agreement: refunds all participants equally from the vault.
+    /// Called when a deal is cancelled (e.g. quorum not reached before start_date).
+    /// oracle_1 must sign to prevent unauthorized cancellation.
+    /// Participant USDC ATAs are passed as remaining_accounts (writable).
+    pub fn cancel_agreement<'info>(
+        ctx: Context<'_, '_, '_, 'info, CancelAgreement<'info>>,
+    ) -> Result<()> {
+        let agreement = &mut ctx.accounts.agreement_account;
+
+        require!(
+            agreement.status == AgreementStatus::Formation
+                || agreement.status == AgreementStatus::Active,
+            AgreementError::InvalidStatus
+        );
+        require!(ctx.accounts.oracle_1.is_signer, AgreementError::DealGuardConsensusFailed);
+
+        let total       = agreement.total_guarantee;
+        let count       = ctx.remaining_accounts.len() as u64;
+        let per_part    = if count > 0 { total / count } else { 0 };
+        let agreement_id = agreement.agreement_id.clone();
+        let bump         = ctx.bumps.agreement_account;
+        let seeds        = &[b"agreement".as_ref(), agreement_id.as_bytes(), &[bump]];
+        let signer       = &[&seeds[..]];
+
+        for participant_ata in ctx.remaining_accounts.iter() {
+            if per_part > 0 {
+                token::transfer(
+                    CpiContext::new_with_signer(
+                        ctx.accounts.token_program.to_account_info(),
+                        Transfer {
+                            from:      ctx.accounts.vault.to_account_info(),
+                            to:        participant_ata.to_account_info(),
+                            authority: ctx.accounts.agreement_account.to_account_info(),
+                        },
+                        signer,
+                    ),
+                    per_part,
+                )?;
+            }
+        }
+
+        agreement.status = AgreementStatus::Cancelled;
+        msg!("Agreement Cancelled. Refunded {} participants.", count);
         Ok(())
     }
 }
@@ -244,6 +298,26 @@ pub struct SettlePerformanceAgreement<'info> {
     pub token_program: Program<'info, Token>,
 }
 
+#[derive(Accounts)]
+pub struct CancelAgreement<'info> {
+    #[account(mut, seeds = [b"agreement", agreement_account.agreement_id.as_bytes()], bump)]
+    pub agreement_account: Account<'info, AgreementAccount>,
+
+    pub oracle_1: Signer<'info>,
+
+    #[account(
+        mut,
+        seeds = [b"vault", agreement_account.agreement_id.as_bytes()],
+        bump,
+        token::mint      = usdc_mint,
+        token::authority = agreement_account,
+    )]
+    pub vault: Account<'info, TokenAccount>,
+
+    pub usdc_mint:     Account<'info, Mint>,
+    pub token_program: Program<'info, Token>,
+}
+
 // ── State ─────────────────────────────────────────────────────────────────────
 
 #[account]
@@ -276,4 +350,6 @@ pub enum AgreementError {
     DealGuardConsensusFailed,
     #[msg("Token account invalid: mint or owner does not match.")]
     InvalidTokenAccount,
+    #[msg("Winners count does not match the number of winner accounts provided.")]
+    WinnersCountMismatch,
 }

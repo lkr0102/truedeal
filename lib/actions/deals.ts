@@ -86,11 +86,10 @@ export async function sweepStaleDeals() {
             .map((w: any) => new PublicKey(w.public_key))
 
           if (pubkeys.length > 0) {
-            const { getFeePayer }      = await import("@/lib/solana/fee-payer")
-            const { refundUsdcDirect } = await import("@/lib/solana/escrow")
+            const { getFeePayer }     = await import("@/lib/solana/fee-payer")
+            const { cancelAgreement } = await import("@/lib/solana/anchor-client")
             const feePayer = getFeePayer()
-            const amountMicro = BigInt(Math.round(deal.entry_amount * 1_000_000))
-            await refundUsdcDirect(feePayer, pubkeys, amountMicro)
+            await cancelAgreement(feePayer, deal.id, pubkeys)
           }
         }
       } catch (err: any) {
@@ -211,40 +210,62 @@ export async function createDeal(input: CreateDealInput) {
     status:  "active",
   })
 
-  // ── On-chain: stake creator USDC → fee payer escrow ─────────────────────────
+  // ── On-chain: init PDA vault + stake creator USDC into vault ─────────────────
   // Non-blocking — deal exists in Supabase regardless of on-chain success.
   let stakeTxSignature: string | undefined
   try {
     const { getFeePayer } = await import("@/lib/solana/fee-payer")
-    const { stakeUsdc }   = await import("@/lib/solana/escrow")
     const { toUSDCUnits } = await import("@/lib/solana/constants")
+    const {
+      initPerformanceAgreement,
+      joinAgreementUSDC,
+      deriveAgreementPDA,
+    } = await import("@/lib/solana/anchor-client")
+    const { generateEvidenceHash } = await import("@/lib/integrations/crypto-proof")
 
     const { data: walletData } = await (supabase.from("user_wallets") as any)
       .select("encrypted_secret")
       .eq("user_id", user.id)
       .single()
 
-    if (walletData?.encrypted_secret && input.entry_amount > 0) {
+    if (walletData?.encrypted_secret && process.env.APP_FEE_PAYER_KEY) {
       const feePayer    = getFeePayer()
       const userKeypair = decryptSecret(walletData.encrypted_secret)
-      stakeTxSignature  = await stakeUsdc(userKeypair, feePayer, toUSDCUnits(input.entry_amount))
 
-      const txShortId = stakeTxSignature.slice(-8).toUpperCase()
+      // Hash of empty audit results serves as the rule commitment at init time
+      const ruleHashHex   = generateEvidenceHash(deal.id, [])
+      const ruleHashBytes = Buffer.from(ruleHashHex, "hex")
+
+      await initPerformanceAgreement(feePayer, deal.id, toUSDCUnits(input.entry_amount), ruleHashBytes)
+
+      const [pdaAddress] = deriveAgreementPDA(deal.id)
+
+      if (input.entry_amount > 0) {
+        stakeTxSignature = await joinAgreementUSDC(userKeypair, feePayer, deal.id)
+      }
+
+      const txShortId = stakeTxSignature ? stakeTxSignature.slice(-8).toUpperCase() : uuidShortId
       await Promise.all([
         (supabase.from("deals") as any)
-          .update({ solana_tx_signature: stakeTxSignature, short_id: txShortId })
+          .update({
+            pda_address:         pdaAddress.toBase58(),
+            solana_tx_signature: stakeTxSignature ?? null,
+            short_id:            txShortId,
+          })
           .eq("id", deal.id),
-        (supabase.from("deal_participants") as any)
-          .update({ transaction_hash: stakeTxSignature })
-          .eq("deal_id", deal.id)
-          .eq("user_id", user.id),
+        stakeTxSignature
+          ? (supabase.from("deal_participants") as any)
+              .update({ transaction_hash: stakeTxSignature })
+              .eq("deal_id", deal.id)
+              .eq("user_id", user.id)
+          : Promise.resolve(),
       ])
 
-      console.log(`[USDC] Creator staked for deal ${deal.id}: ${stakeTxSignature}`)
+      console.log(`[Anchor] PDA initialized and creator staked for deal ${deal.id}: ${stakeTxSignature}`)
     }
   } catch (err: any) {
-    console.error("[USDC] stakeUsdc failed (non-blocking):", err?.message ?? err)
-    if (!process.env.APP_FEE_PAYER_KEY) console.error("[USDC] APP_FEE_PAYER_KEY is not set — on-chain stake skipped")
+    console.error("[Anchor] initPerformanceAgreement / joinAgreementUSDC failed (non-blocking):", err?.message ?? err)
+    if (!process.env.APP_FEE_PAYER_KEY) console.error("[Anchor] APP_FEE_PAYER_KEY is not set — on-chain init skipped")
   }
 
   revalidatePath("/")
@@ -576,7 +597,7 @@ export async function joinDeal(dealId: string) {
     console.error("[notifications] joinDeal notify failed:", err?.message)
   }
 
-  // ── On-chain: stake USDC → fee payer escrow ───────────────────────────────────
+  // ── On-chain: stake USDC → PDA vault ─────────────────────────────────────────
   // Non-blocking — participant is registered in DB regardless of on-chain result.
   let txSignature: string | undefined
   try {
@@ -585,26 +606,25 @@ export async function joinDeal(dealId: string) {
       .eq("user_id", user.id)
       .single()
 
-    if (walletData?.encrypted_secret && deal.entry_amount > 0) {
-      const { getFeePayer } = await import("@/lib/solana/fee-payer")
-      const { stakeUsdc }   = await import("@/lib/solana/escrow")
-      const { toUSDCUnits } = await import("@/lib/solana/constants")
+    if (walletData?.encrypted_secret && deal.entry_amount > 0 && process.env.APP_FEE_PAYER_KEY) {
+      const { getFeePayer }      = await import("@/lib/solana/fee-payer")
+      const { joinAgreementUSDC } = await import("@/lib/solana/anchor-client")
 
       const userKeypair = decryptSecret(walletData.encrypted_secret)
       const feePayer    = getFeePayer()
 
-      txSignature = await stakeUsdc(userKeypair, feePayer, toUSDCUnits(deal.entry_amount))
+      txSignature = await joinAgreementUSDC(userKeypair, feePayer, dealId)
 
       await (supabase.from("deal_participants") as any)
         .update({ transaction_hash: txSignature })
         .eq("deal_id", dealId)
         .eq("user_id", user.id)
 
-      console.log(`[USDC] Participant ${user.id} staked for deal ${dealId}: ${txSignature}`)
+      console.log(`[Anchor] Participant ${user.id} staked into vault for deal ${dealId}: ${txSignature}`)
     }
   } catch (err: any) {
-    console.error("[USDC] stakeUsdc failed (non-blocking):", err?.message ?? err)
-    if (!process.env.APP_FEE_PAYER_KEY) console.error("[USDC] APP_FEE_PAYER_KEY is not set — on-chain stake skipped")
+    console.error("[Anchor] joinAgreementUSDC failed (non-blocking):", err?.message ?? err)
+    if (!process.env.APP_FEE_PAYER_KEY) console.error("[Anchor] APP_FEE_PAYER_KEY is not set — on-chain stake skipped")
   }
 
   revalidatePath("/")
