@@ -58,7 +58,7 @@ function buildAuthUrl(
         response_type: "code",
         client_id: process.env.X_CLIENT_ID ?? "",
         redirect_uri: redirectUri,
-        scope: "users.read tweet.read",
+        scope: "users.read tweet.read offline.access",
         state,
         code_challenge: codeChallenge ?? "",
         code_challenge_method: "S256",

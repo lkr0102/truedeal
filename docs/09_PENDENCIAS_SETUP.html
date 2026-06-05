@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TrueDeal - Pendências e Setup</title>
+  <style>
+    :root {
+      --bg: #F0F3F0;
+      --surface: #FFFFFF;
+      --border: #D8E0D8;
+      --text: #0B1309;
+      --mid: #4E614E;
+      --dim: #8BA09A;
+      --brand: #00B852;
+      --forming: #E8620A;
+      --danger: #FF4A4A;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 40px 20px;
+      margin: 0;
+    }
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      margin: 0 0 10px 0;
+      font-size: 26px;
+    }
+    .header p {
+      color: var(--mid);
+      margin: 0;
+    }
+    .progress-container {
+      background: var(--border);
+      height: 8px;
+      border-radius: 100px;
+      margin-bottom: 32px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      background: var(--brand);
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.03);
+    }
+    .section h2 {
+      margin-top: 0;
+      font-size: 18px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+    .checkbox-item:last-child { margin-bottom: 0; }
+    .checkbox-item input[type="checkbox"] {
+      margin-top: 4px;
+      margin-right: 12px;
+      width: 18px;
+      height: 18px;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+    .checkbox-content { flex: 1; }
+    .checkbox-title {
+      font-weight: 600;
+      margin: 0 0 4px 0;
+    }
+    .checkbox-desc {
+      font-size: 13px;
+      color: var(--mid);
+      margin: 0;
+    }
+    .code-block {
+      background: rgba(0,0,0,0.04);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 12px;
+      color: #D97706;
+      margin-top: 6px;
+      display: inline-block;
+    }
+    .tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .tag.env { background: rgba(0, 184, 82, 0.1); color: var(--brand); border: 1px solid rgba(0, 184, 82, 0.2); }
+    .tag.code { background: rgba(232, 98, 10, 0.1); color: var(--forming); border: 1px solid rgba(232, 98, 10, 0.2); }
+    .tag.infra { background: rgba(37, 99, 235, 0.1); color: #2563EB; border: 1px solid rgba(37, 99, 235, 0.2); }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <h1>🚧 Checklist de Setup e TODOs — TrueDeal</h1>
+      <p>Gerado após a varredura do código e do changelog de Junho/2026.</p>
+    </div>
+
+    <div class="progress-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <div class="section">
+      <h2>🔑 1. Credenciais de Ambiente (.env.local)</h2>
+      
+      <div class="checkbox-item">
+        <input type="checkbox" onchange="updateProgress()">
+        <div class="checkbox-content">
+          <p class="checkbox-title">X (Twitter) OAuth <span class="tag env">ENV</span></p>
+          <p class="checkbox-desc">Faltam as chaves <code>X_CLIENT_ID</code> e <code>X_CLIENT_SECRET</code>. O bug de scope (offline.access) já foi corrigido, agora só precisa configurar no Portal Developer do X e adicionar ao .env.local.</p>
+        </div>
+      </div>
+
+      <div class="checkbox-item">
+        <input type="checkbox" onchange="updateProgress()">
+        <div class="checkbox-content">
+          <p class="checkbox-title">Strava OAuth <span class="tag env">ENV</span></p>
+          <p class="checkbox-desc">Falta configurar <code>STRAVA_CLIENT_ID</code> para validar deals de corrida e ciclismo.</p>
+        </div>
+      </div>
+
+      <div class="checkbox-item">
+        <input type="checkbox" onchange="updateProgress()">
+        <div class="checkbox-content">
+          <p class="checkbox-title">Apple, TikTok e Instagram <span class="tag env">ENV</span></p>
+          <p class="checkbox-desc">A rota genérica está desenhada para aceitar estes provedores, mas todos estão com variáveis ausentes.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>🛡️ 2. Blockchain & Contratos (Anchor)</h2>
+
+      <div class="checkbox-item">
+        <input type="checkbox" onchange="updateProgress()">
+        <div class="checkbox-content">
+          <p class="checkbox-title">Oráculos para Multi-Sig <span class="tag env">ENV</span> <span class="tag infra">INFRA</span></p>
+          <p class="checkbox-desc">O changelog mostra a migração completa para Anchor com assinatura dual-oracle na liquidação. É OBRIGATÓRIO ter <code>APP_FEE_PAYER_KEY</code> e <code>ORACLE_2_PRIVATE_KEY</code> configurados para as transferências ocorrerem on-chain.</p>
+        </div>
+      </div>
+
+      <div class="checkbox-item">
+        <input type="checkbox" onchange="updateProgress()">
+        <div class="checkbox-content">
+          <p class="checkbox-title">USDC Mock na Devnet <span class="tag env">ENV</span> <span class="tag infra">INFRA</span></p>
+          <p class="checkbox-desc">O ambiente precisa da variável <code>NEXT_PUBLIC_USDC_MINT_DEVNET</code> preenchida com a pubkey gerada pelo script <code>scripts/create-devnet-usdc.cjs</code>.</p>
+        </div>
+      </div>
+
+      <div class="checkbox-item">
+        <input type="checkbox" onchange="updateProgress()">
+        <div class="checkbox-content">
+          <p class="checkbox-title">Chave da Carteira Custodial <span class="tag env">ENV</span></p>
+          <p class="checkbox-desc">Falta a <code>WALLET_MASTER_KEY</code> (32 bytes em HEX) para a criptografia AES-256-GCM dos usuários.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>💻 3. TODOs Residuais no Código</h2>
+
+      <div class="checkbox-item">
+        <input type="checkbox" onchange="updateProgress()">
+        <div class="checkbox-content">
+          <p class="checkbox-title">Callback do Telegram Incompleto <span class="tag code">CÓDIGO</span></p>
+          <p class="checkbox-desc">No arquivo <code>app/api/auth/callback/[provider]/route.ts</code> (linha 53). A validação de Hash está pronta, mas falta criar a lógica de integração com o banco de dados.</p>
+          <div class="code-block">// TODO: criar/buscar usuário no banco com data.id...</div>
+        </div>
+      </div>
+
+      <div class="checkbox-item">
+        <input type="checkbox" onchange="updateProgress()">
+        <div class="checkbox-content">
+          <p class="checkbox-title">Callback do Apple Sign-In Incompleto <span class="tag code">CÓDIGO</span></p>
+          <p class="checkbox-desc">No mesmo arquivo <code>route.ts</code> (linha 156), a rota POST da Apple não troca o `code` pelo token real.</p>
+          <div class="code-block">// TODO: trocar code por token com Apple Sign In</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>⚙️ 4. Servidor e Cron Jobs</h2>
+
+      <div class="checkbox-item">
+        <input type="checkbox" onchange="updateProgress()">
+        <div class="checkbox-content">
+          <p class="checkbox-title">Autenticação do Vercel Cron <span class="tag env">ENV</span> <span class="tag infra">INFRA</span></p>
+          <p class="checkbox-desc">A rota <code>/api/admin/settle-deal</code> (recentemente adicionada pelo Lukas para settlement manual/backup) e a rota do Oracle Airdrop exigem a configuração do header <code>Authorization: Bearer CRON_SECRET</code>. Falta definir <code>CRON_SECRET</code>.</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    function updateProgress() {
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      const total = checkboxes.length;
+      let checked = 0;
+      checkboxes.forEach(cb => {
+        if (cb.checked) checked++;
+      });
+      const percent = Math.round((checked / total) * 100);
+      document.getElementById('progressBar').style.width = percent + '%';
+    }
+  </script>
+</body>
+</html>
