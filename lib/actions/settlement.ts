@@ -48,10 +48,11 @@ export async function settleDealProtocol(
     .map((r: any) => r.user_id)
 
   // Fetch deal title for notifications
-  const { data: deal } = await (supabase.from("deals") as any)
+  const { data: deal, error: dealFetchErr } = await (supabase.from("deals") as any)
     .select("entry_amount, title, pda_address")
     .eq("id", dealId)
     .single()
+  if (dealFetchErr || !deal) throw new Error(`[DealGuard] Failed to fetch deal for settlement: ${dealFetchErr?.message ?? "not found"}`)
 
   // Fetch winner wallet pubkeys
   const { data: winnerWallets } = await (supabase.from("user_wallets") as any)

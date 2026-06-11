@@ -408,7 +408,7 @@ export async function fetchDeals(filters?: {
       )
     `)
     .order("created_at", { ascending: false })
-    .neq("status", "encerrado")
+    .not("status", "in", '("encerrado","liquidando")')
 
   if (filters?.status)    query = query.eq("status", filters.status)
   if (filters?.type)      query = query.eq("type",   filters.type)

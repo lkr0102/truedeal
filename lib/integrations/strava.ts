@@ -22,6 +22,14 @@ export async function fetchStravaActivities(
   accessToken: string,
   options: StravaFetchOptions = {},
 ): Promise<StravaActivity[]> {
+  const { data } = await fetchStravaActivitiesSafe(accessToken, options)
+  return data
+}
+
+export async function fetchStravaActivitiesSafe(
+  accessToken: string,
+  options: StravaFetchOptions = {},
+): Promise<{ data: StravaActivity[]; error: string | null }> {
   try {
     const params = new URLSearchParams({ per_page: "200" })
     if (options.after  !== undefined) params.set("after",  String(options.after))
@@ -33,13 +41,16 @@ export async function fetchStravaActivities(
     )
 
     if (!response.ok) {
-      throw new Error(`Strava API Error: ${response.statusText}`)
+      const msg = `Strava API Error ${response.status}: ${response.statusText}`
+      console.error("Failed to fetch Strava activities:", msg)
+      return { data: [], error: msg }
     }
 
-    return await response.json()
-  } catch (error) {
-    console.error("Failed to fetch Strava activities:", error)
-    return []
+    return { data: await response.json(), error: null }
+  } catch (err: any) {
+    const msg = err?.message ?? "unknown error"
+    console.error("Failed to fetch Strava activities:", msg)
+    return { data: [], error: msg }
   }
 }
 

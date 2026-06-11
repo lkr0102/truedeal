@@ -1,5 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/server"
-import { fetchStravaActivities, validateStravaRule } from "./strava"
+import { fetchStravaActivitiesSafe, validateStravaRule } from "./strava"
 import { fetchXUserPostsSafe, refreshXToken, validateXRule } from "./x"
 import { analyzeEvidence } from "./sentinel-core"
 
@@ -138,10 +138,17 @@ export async function auditDeal(dealId: string) {
         if (expiresAt > 0 && Date.now() / 1000 > expiresAt - 300 && conn.refresh_token) {
           token = (await refreshStravaToken(supabase, conn.id, conn.refresh_token)) ?? token
         }
-        rawData = await fetchStravaActivities(token, {
+        const stravaResult = await fetchStravaActivitiesSafe(token, {
           after:  afterEpoch,
           before: beforeEpoch,
         })
+        if (stravaResult.error) {
+          console.error(`[DealGuard] Strava API fetch failed for participant ${participant.user_id}: ${stravaResult.error}`)
+          apiError = stravaResult.error
+          channelResults.push(false)
+          continue
+        }
+        rawData = stravaResult.data
         channelSuccess = validateStravaRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
 
       } else if (channel === "x") {
