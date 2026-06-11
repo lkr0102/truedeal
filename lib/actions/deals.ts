@@ -44,7 +44,7 @@ export async function sweepStaleDeals() {
       .filter((d: any) => (d.deal_participants?.length ?? 0) >= 2)
       .map((d: any) => d.id)
 
-    const toCancel: { id: string; title: string; entry_amount: number; participants: any[] }[] = (stale as any[])
+    const toCancel: { id: string; title: string; entry_amount: number; pda_address: string | null; participants: any[] }[] = (stale as any[])
       .filter((d: any) => (d.deal_participants?.length ?? 0) < 2)
       .map((d: any) => ({ id: d.id, title: d.title ?? "", entry_amount: d.entry_amount ?? 0, pda_address: d.pda_address ?? null, participants: d.deal_participants ?? [] }))
 

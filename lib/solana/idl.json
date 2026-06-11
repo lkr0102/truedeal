@@ -1,4 +1,5 @@
 {
+  "address": "7sb3HQQbaCPYiT2x3tZZGMJyn5qRNiy4PgvCvb2BzZS8",
   "version": "0.1.0",
   "name": "truedeal",
   "instructions": [
@@ -312,6 +313,8 @@
     }
   ],
   "metadata": {
-    "address": "7sb3HQQbaCPYiT2x3tZZGMJyn5qRNiy4PgvCvb2BzZS8"
+    "name": "truedeal",
+    "version": "0.1.0",
+    "spec": "0.1.0"
   }
 }

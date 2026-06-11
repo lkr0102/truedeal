@@ -37,7 +37,7 @@ export function getProvider(signer: Keypair): AnchorProvider {
 }
 
 export function getProgram(provider: AnchorProvider): Program {
-  return new Program(idl as Idl, provider)
+  return new Program(idl as unknown as Idl, provider)
 }
 
 // ── PDA Derivation ───────────────────────────────────────────────────────────

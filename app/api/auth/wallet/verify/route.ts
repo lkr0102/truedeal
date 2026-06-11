@@ -21,14 +21,16 @@ export async function POST(req: NextRequest) {
     }
 
     // ── 2. Verify ed25519 signature (Web Crypto API — no extra deps) ─────────
-    const pubkeyBytes = new PublicKey(publicKey).toBytes()
-    const msgBytes    = new TextEncoder().encode(message)
-    const sigBytes    = new Uint8Array(signature)
+    // new Uint8Array(ArrayLike<number>) constructor always returns Uint8Array<ArrayBuffer>,
+    // which satisfies Web Crypto API's BufferSource constraint (unlike Buffer or Uint8Array<ArrayBufferLike>)
+    const pubkeyBuf = new Uint8Array(new PublicKey(publicKey).toBytes())
+    const msgBuf    = new Uint8Array(new TextEncoder().encode(message))
+    const sigBuf    = new Uint8Array(signature as number[])
 
     const cryptoKey = await crypto.subtle.importKey(
-      "raw", pubkeyBytes, { name: "Ed25519" }, false, ["verify"],
+      "raw", pubkeyBuf, { name: "Ed25519" }, false, ["verify"],
     )
-    const valid = await crypto.subtle.verify("Ed25519", cryptoKey, sigBytes, msgBytes)
+    const valid = await crypto.subtle.verify("Ed25519", cryptoKey, sigBuf, msgBuf)
     if (!valid) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 401 })
     }
