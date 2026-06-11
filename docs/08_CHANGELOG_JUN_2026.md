@@ -1,6 +1,6 @@
 # TrueDeal — Changelog · Junho 2026
 
-**Período coberto:** 01–03 de Junho de 2026  
+**Período coberto:** 01–10 de Junho de 2026  
 **Responsável:** Lukas (Frontend / Product)  
 **Branch:** `main` — todos os commits estão na produção (Vercel auto-deploy)
 
@@ -16,6 +16,9 @@
 6. **Deal cards legíveis** — canal de verificação exibido como pill com ícone + nome; Entrada e Pote com tipografia mais destacada
 7. **X OAuth via popup** — fluxo abre em janela popup para preservar sessão TrueDeal; sucesso comunicado via `postMessage`; erros silenciosos eliminados
 8. **Notificações de join para todos** — todos os participantes ativos recebem notificação a cada novo membro, não apenas nos milestones
+9. **Fix Anchor — compatibilidade de tipos** — `idl as unknown as Idl` e wrappers `new Uint8Array()` em wallet/verify para satisfazer Web Crypto API; `address` promovido ao topo do IDL
+10. **Bug crítico — X token expirado marcava todos como perdedores** — app Twitter configurada como Public client não emite refresh tokens; adicionado fallback para Bearer Token de app (`X_BEARER_TOKEN`) em duas camadas no DealGuard
+11. **Bug crítico — deal não liquidava no dia correto** — cron de settlement rodava às 12:00 UTC (09h BRT) e perdia deals do dia; movido para 03:00 UTC = **00h00 BRT exata** — deals liquidados ao fim do end_date para todos os períodos (1 dia, semanal, mensal)
 
 ---
 
@@ -742,3 +745,69 @@ Balance after cancel: 5000000
 | `contracts/solana/tests/truedeal.ts` | B2: keypairs explícitos; airdrop tolerante a rate limit; teste de cancel |
 | `contracts/solana/package.json` | **NOVO** — infraestrutura ts-mocha |
 | `contracts/solana/tsconfig.json` | **NOVO** — TypeScript config para testes |
+
+---
+
+## Arquivos Modificados — Sprint 09–10/06 DealGuard + Cron
+
+| Arquivo | Mudança |
+|---------|---------|
+| `lib/integrations/polling-service.ts` | Bearer Token fallback X: token expirado + sem refresh_token → usa `X_BEARER_TOKEN`; retry de runtime se user token falhar |
+| `vercel.json` | Cron `settle-deals`: `0 12 * * *` → `0 3 * * *` (00h BRT exata) |
+| `.env.example` | Documenta `X_BEARER_TOKEN` como variável obrigatória de produção |
+| `lib/solana/anchor-client.ts` | Cast `idl as unknown as Idl` para compatibilidade com Anchor v0.31 |
+| `lib/solana/idl.json` | `address` promovido ao topo; `name`/`version`/`spec` adicionados ao metadata |
+| `app/api/auth/wallet/verify/route.ts` | Wrappers `new Uint8Array()` satisfazem constraint `BufferSource` da Web Crypto API |
+| `lib/actions/deals.ts` | `pda_address` adicionado ao tipo `toCancel` para `cancelAgreement` |
+
+---
+
+### `[10/06]` — Fix: X Bearer Token fallback + settlement cron às 00h BRT
+
+#### Contexto — Deal "1 post em 24h" não verificou nem liquidou
+
+Deal `90cd69e6` (end_date 10/06/2026) apresentou dois problemas independentes:
+
+1. **Verificação X falhava silenciosamente** — o token OAuth do participante estava expirado. A app TrueDeal está configurada como **Public client** no Twitter Developer Portal. Clients públicos **não recebem refresh tokens** do Twitter, mesmo com o scope `offline.access` solicitado. O código tentava usar o token expirado → 401 da API X → participante marcado como perdedor sem verificação real.
+
+2. **Deal não liquidou ao fim do dia** — o cron rodava às 12:00 UTC (09h BRT). A query `.lt("end_date", today)` só pega deals cujo end_date é estritamente menor que hoje. Com o cron às 09h BRT do dia N, `today` ainda era o dia N, então deals com end_date = N aguardavam até o cron do dia N+1 às 09h — ~33 horas após o fim real do dia.
+
+#### Fix 1 — Bearer Token fallback em `lib/integrations/polling-service.ts`
+
+**Duas camadas de fallback:**
+
+```typescript
+const tokenExpired = xExpiresAt > 0 && Date.now() / 1000 > xExpiresAt - 300
+const appBearerToken = process.env.X_BEARER_TOKEN
+
+if (tokenExpired && conn.refresh_token) {
+  // Camada 1a: tenta refresh (funciona se app migrar para Confidential client)
+  xToken = (await refreshXToken(supabase, conn.id, conn.refresh_token)) ?? xToken
+} else if (tokenExpired && !conn.refresh_token && appBearerToken) {
+  // Camada 1b: sem refresh token (Public client) → usa Bearer Token de app
+  xToken = appBearerToken
+}
+
+// Camada 2: se user token falhou em runtime por qualquer razão, retry com Bearer
+let xResult = await fetchXUserPostsSafe(xToken, conn.external_id, { startTime, endTime })
+if (xResult.error && appBearerToken && xToken !== appBearerToken) {
+  const fallback = await fetchXUserPostsSafe(appBearerToken, conn.external_id, { startTime, endTime })
+  if (!fallback.error) xResult = fallback
+}
+```
+
+**Variável obrigatória em Vercel:** `X_BEARER_TOKEN` — obtida em developer.twitter.com → app → Keys and Tokens → Bearer Token. Não tem expiração. Funciona para contas públicas (todos os usuários TrueDeal por ora).
+
+#### Fix 2 — Cron às 03:00 UTC = 00h00 BRT em `vercel.json`
+
+```json
+{ "path": "/api/cron/settle-deals", "schedule": "0 3 * * *" }
+```
+
+**A matemática:** Dia BRT X termina às 02:59:59 UTC do dia X+1. O cron às 03:00 UTC já está no dia X+1 em UTC, então `today = "YYYY-MM-(X+1)"`. A query `.lt("end_date", today)` pega `end_date = "YYYY-MM-X"`. ✓
+
+| Deal | `end_date` | Cron dispara | Liquidado às |
+|------|------------|--------------|--------------|
+| 1 dia (11→11) | Jun 11 | 03:00 UTC Jun 12 | 00h00 BRT Jun 12 ✓ |
+| 7 dias (11→17) | Jun 17 | 03:00 UTC Jun 18 | 00h00 BRT Jun 18 ✓ |
+| 30 dias (11→Jul 10) | Jul 10 | 03:00 UTC Jul 11 | 00h00 BRT Jul 11 ✓ |
