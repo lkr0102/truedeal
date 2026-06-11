@@ -147,9 +147,18 @@ export async function auditDeal(dealId: string) {
       } else if (channel === "x") {
         let xToken = conn.access_token
         const xExpiresAt = conn.token_expires_at ? new Date(conn.token_expires_at).getTime() / 1000 : 0
-        if (xExpiresAt > 0 && Date.now() / 1000 > xExpiresAt - 300 && conn.refresh_token) {
+        const tokenExpired = xExpiresAt > 0 && Date.now() / 1000 > xExpiresAt - 300
+        const appBearerToken = process.env.X_BEARER_TOKEN
+
+        if (tokenExpired && conn.refresh_token) {
           xToken = (await refreshXToken(supabase, conn.id, conn.refresh_token)) ?? xToken
+        } else if (tokenExpired && !conn.refresh_token && appBearerToken) {
+          // No refresh token (app is Public client on X dev portal — refresh tokens not issued).
+          // Bearer token works for public accounts and doesn't expire.
+          console.warn(`[DealGuard] X token expired for ${participant.user_id}, no refresh token — using app bearer token`)
+          xToken = appBearerToken
         }
+
         const startTime = deal.start_date
           ? new Date(deal.start_date + "T03:00:00Z").toISOString()
           : undefined
@@ -160,14 +169,21 @@ export async function auditDeal(dealId: string) {
           endDt.setUTCDate(endDt.getUTCDate() + 1)
           endTime = endDt.toISOString()
         }
-        const { data: xPosts, error: xFetchErr } = await fetchXUserPostsSafe(xToken, conn.external_id, { startTime, endTime })
-        if (xFetchErr) {
-          console.error(`[DealGuard] X API fetch failed for participant ${participant.user_id}: ${xFetchErr}`)
-          apiError = xFetchErr
+
+        let xResult = await fetchXUserPostsSafe(xToken, conn.external_id, { startTime, endTime })
+        if (xResult.error && appBearerToken && xToken !== appBearerToken) {
+          // Last resort: user token failed at runtime — retry with app bearer token
+          console.warn(`[DealGuard] X user token failed for ${participant.user_id} (${xResult.error}), retrying with app bearer token`)
+          const fallback = await fetchXUserPostsSafe(appBearerToken, conn.external_id, { startTime, endTime })
+          if (!fallback.error) xResult = fallback
+        }
+        if (xResult.error) {
+          console.error(`[DealGuard] X API fetch failed for participant ${participant.user_id}: ${xResult.error}`)
+          apiError = xResult.error
           channelResults.push(false)
           continue
         }
-        rawData = xPosts
+        rawData = xResult.data
         channelSuccess = validateXRule(rawData, ruleType, ruleTarget, deal.rule_frequency, deal.start_date, deal.end_date)
 
       } else if (channel === "totalpass") {

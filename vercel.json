@@ -9,7 +9,7 @@
     },
     {
       "path": "/api/cron/settle-deals",
-      "schedule": "0 12 * * *"
+      "schedule": "0 3 * * *"
     },
     {
       "path": "/api/cron/provision-wallets",
